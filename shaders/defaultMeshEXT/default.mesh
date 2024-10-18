@@ -1,0 +1,31 @@
+#version 460
+
+#extension GL_EXT_mesh_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(triangles, max_vertices = 128, max_primitives = 128) out;
+
+layout (location = 0) out PerVertexData {
+    vec4 color;
+} v_out[];
+
+const float PI = 3.14159265359;
+
+void main() {
+    int stepCount = 30;
+
+    gl_MeshVerticesEXT[0].gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+    v_out[0].color = vec4(1.0, 0.0, 0.0, 1.0);
+
+    for (int i = 0; i < stepCount; i++) {
+        float angle = PI * 2.0 * float(i) / stepCount;
+        gl_MeshVerticesEXT[i + 1].gl_Position = vec4(.7 * cos(angle), .7 * sin(angle), 0.0, 1.0);
+        v_out[i + 1].color = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+
+    for (int i = 0; i < stepCount; i++) {
+        gl_PrimitiveTriangleIndicesEXT[i] = uvec3(0, i + 1, (i + 1) % stepCount + 1);
+    }
+
+    SetMeshOutputsEXT(stepCount + 1, stepCount);
+}
