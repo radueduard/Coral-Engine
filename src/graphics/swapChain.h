@@ -8,6 +8,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "../core/device.h"
+#include "renderPass.h"
 
 namespace Graphics {
     class SwapChain {
@@ -19,9 +20,7 @@ namespace Graphics {
             vk::Semaphore imageAvailable;
             vk::Semaphore renderFinished;
 
-            vk::Image image;
-            vk::ImageView imageView;
-            vk::Framebuffer framebuffer;
+            std::unique_ptr<Memory::Image> image;
 
             std::unordered_map<vk::QueueFlagBits, vk::CommandBuffer> commandBuffers;
         };
@@ -30,10 +29,9 @@ namespace Graphics {
         ~SwapChain();
 
         vk::SwapchainKHR operator *() const { return m_swapChain; }
-        vk::SwapchainKHR operator ->() const { return m_swapChain; }
         [[nodiscard]] const vk::Extent2D &Extent() const { return m_extent; }
         [[nodiscard]] const Frame &CurrentFrame() const { return m_frames[m_currentFrame]; }
-        [[nodiscard]] const vk::RenderPass &RenderPass() const { return m_renderPass; }
+        [[nodiscard]] const RenderPass &RenderPass() const { return *m_renderPass; }
 
         vk::Result Acquire();
         void Submit();
@@ -46,12 +44,12 @@ namespace Graphics {
 
         uint32_t m_currentFrame = 0;
         std::vector<Frame> m_frames;
-        vk::RenderPass m_renderPass;
+        std::unique_ptr<Graphics::RenderPass> m_renderPass;
 
         uint32_t m_imageIndex = 0;
 
         static vk::SurfaceFormatKHR ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
         static vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
-        static vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR &capabilities, const vk::Extent2D extent);
+        static vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR &capabilities, vk::Extent2D extent);
     };
 }

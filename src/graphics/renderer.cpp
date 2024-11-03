@@ -6,17 +6,34 @@
 
 #include <iostream>
 
+#include "swapChain.h"
+
 namespace Graphics {
     Renderer::Renderer(const Core::Window &window, const Core::Device &device)
         : m_window(window), m_device(device) {
         m_swapChain = std::make_unique<Graphics::SwapChain>(
             device,
             window.Extent());
+        CreateDescriptorPool();
+    }
+
+    void Renderer::CreateDescriptorPool() {
+        m_descriptorPool = Memory::Descriptor::Pool::Builder(m_device)
+            .AddPoolSize(vk::DescriptorType::eUniformBuffer, 100)
+            .AddPoolSize(vk::DescriptorType::eStorageBuffer, 100)
+            .AddPoolSize(vk::DescriptorType::eCombinedImageSampler, 100)
+            .PoolFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+            .MaxSets(100)
+            .Build();
     }
 
     bool Renderer::BeginFrame() {
         if (m_frameStarted) {
             std::cerr << "Called BeginFrame() while frame is already started!" << std::endl;
+        }
+
+        if (m_window.IsPaused()) {
+            return false;
         }
 
         if (const auto result = m_swapChain->Acquire();
@@ -26,14 +43,14 @@ namespace Graphics {
                 m_window.Extent(),
                 std::move(m_swapChain));
             m_swapChain = std::move(newSwapChain);
-            return false;
+            m_frameStarted = false;
+        } else {
+            m_frameStarted = true;
         }
-
-        m_frameStarted = true;
-        return true;
+        return m_frameStarted;
     }
 
-    void Renderer::Draw(std::function<void(vk::CommandBuffer)> drawFunc) const {
+    void Renderer::Draw(const std::function<void(vk::CommandBuffer)> &drawFunc) const {
         if (!m_frameStarted) {
             std::cerr << "Called Draw() while frame is not started!" << std::endl;
         }
@@ -42,45 +59,20 @@ namespace Graphics {
         const auto &commandBuffer = frame.commandBuffers.at(vk::QueueFlagBits::eGraphics);
         const auto &renderPass = m_swapChain->RenderPass();
 
-        const auto clearValues = {
-            vk::ClearValue().setColor(vk::ClearColorValue().setFloat32({0.0f, 0.0f, 0.0f, 1.0f}))
-        };
-
-        const auto renderArea = vk::Rect2D()
-            .setOffset(vk::Offset2D())
-            .setExtent(m_swapChain->Extent());
-
-        const auto beginInfo = vk::RenderPassBeginInfo()
-            .setRenderPass(renderPass)
-            .setFramebuffer(frame.framebuffer)
-            .setRenderArea(renderArea)
-            .setClearValues(clearValues);
-
-        const auto viewport = vk::Viewport()
-            .setX(0.0f)
-            .setY(0.0f)
-            .setWidth(static_cast<float>(m_window.Extent().width))
-            .setHeight(static_cast<float>(m_window.Extent().height))
-            .setMinDepth(0.0f)
-            .setMaxDepth(1.0f);
-
-        const auto scissor = vk::Rect2D()
-            .setOffset({0, 0})
-            .setExtent(m_window.Extent());
-
-        commandBuffer.beginRenderPass(beginInfo, vk::SubpassContents::eInline);
-        commandBuffer.setViewport(0, viewport);
-        commandBuffer.setScissor(0, scissor);
-
+        renderPass.Begin(commandBuffer, frame.imageIndex);
         drawFunc(commandBuffer);
-
-        commandBuffer.endRenderPass();
+        renderPass.End(commandBuffer);
     }
 
     bool Renderer::EndFrame() {
         if (!m_frameStarted) {
             std::cerr << "Called EndFrame() while frame is not started!" << std::endl;
         }
+
+        if (m_window.IsPaused()) {
+            return false;
+        }
+
         m_swapChain->Submit();
         m_frameStarted = false;
 
@@ -93,7 +85,6 @@ namespace Graphics {
             m_swapChain = std::move(newSwapChain);
             return false;
         }
-
         return true;
     }
 }

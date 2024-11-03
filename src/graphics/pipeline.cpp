@@ -7,10 +7,13 @@
 #include <iostream>
 #include <ranges>
 
+#include "memory/descriptor/pool.h"
+#include "memory/descriptor/set.h"
+
 namespace Graphics {
 
     Pipeline::Builder::Builder() {
-        m_yetPossibleTypes = std::unordered_set {VTG, TM, RT};
+        m_yetPossibleTypes = std::unordered_set {VTG, TM};
 
         m_inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
             .setTopology(vk::PrimitiveTopology::eTriangleList)
@@ -43,49 +46,28 @@ namespace Graphics {
             vk::ShaderStageFlagBits::eTessellationControl,
             vk::ShaderStageFlagBits::eTessellationEvaluation,
             vk::ShaderStageFlagBits::eGeometry,
-            vk::ShaderStageFlagBits::eFragment,
         };
 
         const auto tmStages = std::unordered_set {
             vk::ShaderStageFlagBits::eTaskEXT,
             vk::ShaderStageFlagBits::eMeshEXT,
-            vk::ShaderStageFlagBits::eFragment,
-        };
-
-        const auto rtStages = std::unordered_set {
-            vk::ShaderStageFlagBits::eRaygenKHR,
-            vk::ShaderStageFlagBits::eAnyHitKHR,
-            vk::ShaderStageFlagBits::eClosestHitKHR,
-            vk::ShaderStageFlagBits::eMissKHR,
-            vk::ShaderStageFlagBits::eIntersectionKHR,
-            vk::ShaderStageFlagBits::eCallableKHR,
         };
 
         if ((!m_yetPossibleTypes.contains(VTG) && vtgStages.contains(stage)) &&
-            (!m_yetPossibleTypes.contains(TM) && tmStages.contains(stage)) &&
-            (!m_yetPossibleTypes.contains(RT) && rtStages.contains(stage)))
+            (!m_yetPossibleTypes.contains(TM) && tmStages.contains(stage)))
         {
             const std::string errorMessage =
             "You can't have shaders of different types in the same pipeline\n"
             "You can add shaders within the following types:\n"
                 "\t- VTG: Vertex, Tessellation Control, Tessellation Evaluation, Geometry, Fragment\n"
-                "\t- TM: Task, Mesh, Fragment\n"
-                "\t- RT: Ray Generation, Any Hit, Closest Hit, Miss, Intersection, Callable\n";
+                "\t- TM: Task, Mesh, Fragment\n";
             throw std::runtime_error(errorMessage);
         }
 
-        if (stage == vk::ShaderStageFlagBits::eFragment) {
-            m_yetPossibleTypes.erase(RT);
-        }
-        else if (vtgStages.contains(stage)) {
+        if (vtgStages.contains(stage)) {
             m_yetPossibleTypes.erase(TM);
-            m_yetPossibleTypes.erase(RT);
         } else if (tmStages.contains(stage)) {
             m_yetPossibleTypes.erase(VTG);
-            m_yetPossibleTypes.erase(RT);
-        } else if (rtStages.contains(stage)) {
-            m_yetPossibleTypes.erase(VTG);
-            m_yetPossibleTypes.erase(TM);
         }
 
         m_shaders[stage] = module;
@@ -158,12 +140,6 @@ namespace Graphics {
         return *this;
     }
 
-    Pipeline::Builder &Pipeline::Builder::PipelineLayout(const vk::PipelineLayout &pipelineLayout)
-    {
-        m_pipelineLayout = pipelineLayout;
-        return *this;
-    }
-
     Pipeline::Builder &Pipeline::Builder::RenderPass(const vk::RenderPass &renderPass)
     {
         m_renderPass = renderPass;
@@ -180,6 +156,22 @@ namespace Graphics {
     {
         m_basePipeline = basePipeline;
         m_basePipelineIndex = basePipelineIndex;
+        return *this;
+    }
+
+    Pipeline::Builder &Pipeline::Builder::DescriptorSetLayout(const uint32_t setNumber, const Memory::Descriptor::SetLayout &layout) {
+        if (m_descriptorSetLayouts.size() != setNumber) {
+            std::cerr << "Descriptor set layouts must be added in order, and without gaps" << std::endl;
+            return *this;
+        }
+        m_descriptorSetLayouts.emplace_back(*layout);
+        return *this;
+    }
+
+    Pipeline::Builder &Pipeline::Builder::DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts) {
+        for (const auto &layout : layouts) {
+            DescriptorSetLayout(startingSet++, layout);
+        }
         return *this;
     }
 
@@ -200,18 +192,17 @@ namespace Graphics {
                     throw std::runtime_error("TM pipeline: At least Mesh and Fragment shaders are required");
                 }
             break;
-            case RT:
-                // TODO: Check validity of error message
-                if (!m_shaders.contains(vk::ShaderStageFlagBits::eRaygenKHR) ||
-                    !m_shaders.contains(vk::ShaderStageFlagBits::eMissKHR)) {
-                    throw std::runtime_error("RT pipeline: At least Ray Generation and Miss shaders are required");
-                }
-            break;
         }
     }
 
     std::unique_ptr<Pipeline> Pipeline::Builder::Build(const Core::Device &device)
     {
+        const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
+            .setSetLayouts(m_descriptorSetLayouts)
+            .setPushConstantRanges(m_pushConstantRanges);
+
+        m_pipelineLayout = (*device).createPipelineLayout(pipelineLayoutInfo);
+
         CheckShaderStagesValidity();
 
         for (const auto &[stage, shader] : m_shaders) {
@@ -243,7 +234,7 @@ namespace Graphics {
     }
 
     Pipeline::Pipeline(const Core::Device &device, const Builder &builder)
-        : m_device(device)
+        : m_device(device), m_pipelineLayout(builder.m_pipelineLayout)
     {
         const auto m_createInfo = vk::GraphicsPipelineCreateInfo()
             .setStages(builder.m_stages)
@@ -268,15 +259,40 @@ namespace Graphics {
         }
         m_pipeline = pipeline.value;
         m_type = *builder.m_yetPossibleTypes.begin();
-        m_shaders = std::move(builder.m_shaders);
+        m_shaders = builder.m_shaders;
     }
 
     Pipeline::~Pipeline()
     {
+        (*m_device).waitIdle();
         (*m_device).destroyPipeline(m_pipeline);
+        (*m_device).destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer& commandBuffer) const {
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline);
+    }
+
+    void Pipeline::BindDescriptorSet(const uint32_t setNumber, const vk::CommandBuffer commandBuffer, const Memory::Descriptor::Set &descriptorSet) const {
+        commandBuffer.bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics,
+            m_pipelineLayout,
+            setNumber,
+            *descriptorSet,
+            nullptr);
+    }
+
+    void Pipeline::BindDescriptorSets(const uint32_t startingSet, const vk::CommandBuffer commandBuffer, const std::vector<Memory::Descriptor::Set>& descriptorSets) const {
+        std::vector<vk::DescriptorSet> sets;
+        for (const auto &descriptorSet : descriptorSets) {
+            sets.push_back(*descriptorSet);
+        }
+
+        commandBuffer.bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics,
+            m_pipelineLayout,
+            startingSet,
+            sets,
+            nullptr);
     }
 }

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <optional>
 #include <unordered_map>
 
 #include "physicalDevice.h"
@@ -51,6 +52,11 @@ namespace Core {
         [[nodiscard]] const vk::CommandPool& CommandPool(Queue::Type type) const;
 
         void QuerySurfaceCapabilities() const;
+
+        [[nodiscard]] std::optional<uint32_t> FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
+
+        vk::CommandBuffer BeginSingleTimeCommands(Queue::Type type) const;
+        void EndSingleTimeCommands(vk::CommandBuffer commandBuffer, Queue::Type type) const;
     private:
         vk::Device m_device;
         Core::PhysicalDevice& m_physicalDevice;

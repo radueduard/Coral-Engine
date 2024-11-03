@@ -4,6 +4,7 @@
 
 #include "device.h"
 
+#include <iostream>
 #include <ranges>
 #include <unordered_map>
 
@@ -132,6 +133,41 @@ namespace Core {
 
     void Device::QuerySurfaceCapabilities() const {
         m_physicalDevice.QuerySurfaceCapabilities();
+    }
+
+    std::optional<uint32_t> Device::FindMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const {
+        const auto memoryTypes = (*m_physicalDevice).getMemoryProperties().memoryTypes;
+        for (uint32_t i = 0; i < memoryTypes.size(); i++) {
+            if ((typeFilter & (1 << i)) &&
+                (memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+
+        std::cerr << "Failed to find suitable memory type!" << std::endl;
+        return std::nullopt;
+    }
+
+    vk::CommandBuffer Device::BeginSingleTimeCommands(const Queue::Type type) const {
+        const auto allocInfo = vk::CommandBufferAllocateInfo()
+            .setCommandPool(m_commandPools.at(type))
+            .setLevel(vk::CommandBufferLevel::ePrimary)
+            .setCommandBufferCount(1);
+
+        const auto commandBuffer = m_device.allocateCommandBuffers(allocInfo).front();
+        commandBuffer.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+
+        return commandBuffer;
+    }
+
+    void Device::EndSingleTimeCommands(vk::CommandBuffer commandBuffer, const Queue::Type type) const {
+        commandBuffer.end();
+        const auto submitInfo = vk::SubmitInfo()
+            .setCommandBuffers(commandBuffer);
+
+        const auto queue = m_queues.at(type)->queue;
+        queue.waitIdle();
+        queue.submit(submitInfo);
     }
 
 }

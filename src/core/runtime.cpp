@@ -47,6 +47,7 @@ namespace Core {
         },
         .requiredQueueFamilies = {
             vk::QueueFlagBits::eGraphics,
+            vk::QueueFlagBits::eTransfer,
         },
     };
 

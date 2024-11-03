@@ -78,51 +78,68 @@ namespace Graphics {
             oldSwapChain.reset();
         }
 
-        std::cout << "Swap chain created with " << m_swapChainImages.size() << " images" << std::endl;
-
         m_extent = swapExtent;
 
-        const auto colorAttachment = vk::AttachmentDescription()
-            .setFormat(surfaceFormat.format)
-            .setSamples(vk::SampleCountFlagBits::e1)
-            .setLoadOp(vk::AttachmentLoadOp::eClear)
-            .setStoreOp(vk::AttachmentStoreOp::eStore)
-            .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-            .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-            .setInitialLayout(vk::ImageLayout::eUndefined)
-            .setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
+        auto attachment = RenderPass::Attachment {
+            .description = vk::AttachmentDescription()
+                .setFormat(surfaceFormat.format)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setFinalLayout(vk::ImageLayout::ePresentSrcKHR),
+            .reference = vk::AttachmentReference()
+                .setAttachment(0)
+                .setLayout(vk::ImageLayout::eColorAttachmentOptimal),
+            .images = {},
+            .clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
+        };
 
-        constexpr auto colorAttachmentRef = vk::AttachmentReference()
-            .setAttachment(0)
-            .setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+        for (const auto &image : m_swapChainImages) {
+            attachment.images.emplace_back(Memory::Image::Builder()
+                .Image(image)
+                .Format(surfaceFormat.format)
+                .Extent({ m_extent.width, m_extent.height, 1 })
+                .UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
+                .MipLevels(1)
+                .LayersCount(1)
+                .InitialLayout(vk::ImageLayout::eUndefined)
+                .Build(m_device));
+        }
 
         const auto subpass = vk::SubpassDescription()
             .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-            .setColorAttachments(colorAttachmentRef);
+            .setColorAttachmentCount(1)
+            .setPColorAttachments(&attachment.reference);
 
-        const auto dependencies = {
+        const auto dependencies = std::vector {
             vk::SubpassDependency()
-                .setSrcSubpass(VK_SUBPASS_EXTERNAL)
+                .setSrcSubpass(vk::SubpassExternal)
                 .setDstSubpass(0)
                 .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
                 .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-                .setSrcAccessMask(vk::AccessFlagBits::eNoneKHR)
-                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite),
+                .setSrcAccessMask(vk::AccessFlagBits::eNone)
+                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite),
             vk::SubpassDependency()
                 .setSrcSubpass(0)
-                .setDstSubpass(VK_SUBPASS_EXTERNAL)
+                .setDstSubpass(vk::SubpassExternal)
                 .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-                .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eNoneKHR),
-        };
+                .setDstStageMask(vk::PipelineStageFlagBits::eBottomOfPipe)
+                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eNone)
+            };
 
-        const auto renderPassCreateInfo = vk::RenderPassCreateInfo()
-            .setAttachments(colorAttachment)
-            .setSubpasses(subpass)
-            .setDependencies(dependencies);
-
-        m_renderPass = (*m_device).createRenderPass(renderPassCreateInfo);
+        m_renderPass = RenderPass::Builder()
+            .ImageCount(imageCount)
+            .OutputImageIndex(0)
+            .Extent(m_extent)
+            .Attachment(0, std::move(attachment))
+            .Subpass(subpass)
+            .Dependency(dependencies[0])
+            .Dependency(dependencies[1])
+            .Build(m_device);
 
         m_frames.reserve(imageCount);
         for (uint32_t i = 0; i < imageCount; i++) {
@@ -134,37 +151,6 @@ namespace Graphics {
             vk::Semaphore imageAvailable = (*m_device).createSemaphore(semaphoreCreateInfo);
             vk::Semaphore renderFinished = (*m_device).createSemaphore(semaphoreCreateInfo);
 
-            const auto image = m_swapChainImages[i];
-
-            constexpr auto components = vk::ComponentMapping()
-                .setR(vk::ComponentSwizzle::eIdentity)
-                .setG(vk::ComponentSwizzle::eIdentity)
-                .setB(vk::ComponentSwizzle::eIdentity)
-                .setA(vk::ComponentSwizzle::eIdentity);
-
-            constexpr auto subresourceRange = vk::ImageSubresourceRange()
-                .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                .setBaseMipLevel(0)
-                .setLevelCount(1)
-                .setBaseArrayLayer(0)
-                .setLayerCount(1);
-
-            const auto imageViewCreateInfo = vk::ImageViewCreateInfo()
-                .setImage(image)
-                .setViewType(vk::ImageViewType::e2D)
-                .setFormat(surfaceFormat.format)
-                .setComponents(components)
-                .setSubresourceRange(subresourceRange);
-            const auto imageView = (*m_device).createImageView(imageViewCreateInfo);
-
-            const auto framebufferCreateInfo = vk::FramebufferCreateInfo()
-                .setRenderPass(m_renderPass)
-                .setAttachments(imageView)
-                .setWidth(m_extent.width)
-                .setHeight(m_extent.height)
-                .setLayers(1);
-            const auto framebuffer = (*m_device).createFramebuffer(framebufferCreateInfo);
-
             const auto commandBufferAllocateInfo = vk::CommandBufferAllocateInfo()
                 .setCommandPool(m_device.CommandPool(Core::Queue::Type::Graphics))
                 .setLevel(vk::CommandBufferLevel::ePrimary)
@@ -172,33 +158,33 @@ namespace Graphics {
 
             const auto commandBuffer = (*m_device).allocateCommandBuffers(commandBufferAllocateInfo)[0];
 
-            Frame frame = {
+             m_frames.emplace_back(Frame {
                 .imageIndex = i,
                 .inFlight = inFlight,
                 .imageAvailable = imageAvailable,
                 .renderFinished = renderFinished,
-                .image = image,
-                .imageView = imageView,
-                .framebuffer = framebuffer,
+                 .image = Memory::Image::Builder()
+                     .Image(m_swapChainImages[i])
+                     .Format(surfaceFormat.format)
+                     .Extent({ m_extent.width, m_extent.height, 1 })
+                     .UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
+                     .MipLevels(1)
+                     .LayersCount(1)
+                     .InitialLayout(vk::ImageLayout::eUndefined)
+                     .Build(m_device),
                 .commandBuffers = {
                     { vk::QueueFlagBits::eGraphics, commandBuffer },
                 }
-            };
-
-            m_frames.emplace_back(frame);
+            });
         }
     }
 
     SwapChain::~SwapChain() {
         (*m_device).waitIdle();
-        (*m_device).destroyRenderPass(m_renderPass);
-        for (auto &frame : m_frames) {
+        for (auto& frame : m_frames) {
             (*m_device).destroyFence(frame.inFlight);
             (*m_device).destroySemaphore(frame.imageAvailable);
             (*m_device).destroySemaphore(frame.renderFinished);
-
-            (*m_device).destroyFramebuffer(frame.framebuffer);
-            (*m_device).destroyImageView(frame.imageView);
 
             (*m_device).freeCommandBuffers(m_device.CommandPool(Core::Queue::Type::Graphics), frame.commandBuffers[vk::QueueFlagBits::eGraphics]);
         }
@@ -213,7 +199,6 @@ namespace Graphics {
             std::cerr << "Failed to wait for fence: " << vk::to_string(result) << std::endl;
         }
 
-        // TODO: Check if this is better than resetting the fence right before submitting the command buffer
         if (const auto result = (*m_device).resetFences(1, &m_frames[m_currentFrame].inFlight);
             result != vk::Result::eSuccess) {
             std::cerr << "Failed to reset fence: " << vk::to_string(result) << std::endl;
@@ -258,12 +243,6 @@ namespace Graphics {
 
         const auto& graphicsQueue = m_device.Queue(Core::Queue::Type::Graphics);
 
-        // TODO: Check if this is better than resetting the fence right after acquiring the image
-        // if (const auto result = (*m_device).resetFences(1, &m_frames[m_currentFrame].inFlight);
-        //     result != vk::Result::eSuccess) {
-        //     std::cerr << "Failed to reset fence: " << vk::to_string(result) << std::endl;
-        // }
-
         graphicsQueue->queue.submit(submitInfo, m_frames[m_currentFrame].inFlight);
     }
 
@@ -286,8 +265,7 @@ namespace Graphics {
             const auto result = presentQueue->queue.presentKHR(presentInfo);
             m_currentFrame = (m_currentFrame + 1) % m_frames.size();
             return result;
-        } catch (const vk::OutOfDateKHRError &e) {
-            std::cerr << e.what() << std::endl;
+        } catch (const vk::OutOfDateKHRError &_) {
             return vk::Result::eErrorOutOfDateKHR;
         }
     }

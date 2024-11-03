@@ -3,7 +3,15 @@
 #extension GL_EXT_mesh_shader : enable
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-layout(triangles, max_vertices = 128, max_primitives = 128) out;
+layout(triangles, max_vertices = 256, max_primitives = 256) out;
+
+layout (push_constant) uniform PushConstants {
+    uint stepCount;
+} pushConstants;
+
+layout (set = 0, binding = 0) buffer VertexColors {
+    vec4 data[];
+} vertexColors;
 
 layout (location = 0) out PerVertexData {
     vec4 color;
@@ -12,20 +20,22 @@ layout (location = 0) out PerVertexData {
 const float PI = 3.14159265359;
 
 void main() {
-    int stepCount = 30;
+    uint instanceIndex = gl_GlobalInvocationID.x;
+
+    int stepCount = int(pushConstants.stepCount);
 
     gl_MeshVerticesEXT[0].gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
-    v_out[0].color = vec4(1.0, 0.0, 0.0, 1.0);
+    v_out[0].color = vec4(0.0, 0.0, 0.0, 1.0);
 
-    for (int i = 0; i < stepCount; i++) {
-        float angle = PI * 2.0 * float(i) / stepCount;
-        gl_MeshVerticesEXT[i + 1].gl_Position = vec4(.7 * cos(angle), .7 * sin(angle), 0.0, 1.0);
-        v_out[i + 1].color = vec4(1.0, 1.0, 1.0, 1.0);
-    }
+    float angle = PI * 2.0 * float(instanceIndex) / stepCount;
+    gl_MeshVerticesEXT[1].gl_Position = vec4(.7 * cos(angle), .7 * sin(angle), 0.0, 1.0);
+    v_out[1].color = vertexColors.data[instanceIndex];
 
-    for (int i = 0; i < stepCount; i++) {
-        gl_PrimitiveTriangleIndicesEXT[i] = uvec3(0, i + 1, (i + 1) % stepCount + 1);
-    }
+    angle = PI * 2.0 * float((instanceIndex + 1) % stepCount) / stepCount;
+    gl_MeshVerticesEXT[2].gl_Position = vec4(.7 * cos(angle), .7 * sin(angle), 0.0, 1.0);
+    v_out[2].color = vertexColors.data[(instanceIndex + 1) % stepCount];
 
-    SetMeshOutputsEXT(stepCount + 1, stepCount);
+    gl_PrimitiveTriangleIndicesEXT[0] = uvec3(0, 1, 2);
+
+    SetMeshOutputsEXT(3, 1);
 }

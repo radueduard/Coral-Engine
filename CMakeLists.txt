@@ -19,6 +19,9 @@ find_package(glslang CONFIG REQUIRED)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE HEADERS "src/*.h")
 
+# Add the include directories
+include_directories("src")
+
 # Add the executable
 add_executable(MotorGraficVulkan ${SOURCES} ${HEADERS})
 

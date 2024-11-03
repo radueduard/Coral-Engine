@@ -9,13 +9,14 @@
 
 #include "../core/device.h"
 #include "../core/shader.h"
+#include "memory/descriptor/pool.h"
+#include "memory/descriptor/set.h"
 
 namespace Graphics {
     class Pipeline {
         enum Type {
             VTG,
             TM,
-            RT
         };
     public:
         class Builder {
@@ -42,11 +43,23 @@ namespace Graphics {
             Builder &DynamicState(const vk::DynamicState &);
             Builder &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
 
-            Builder &PipelineLayout(const vk::PipelineLayout &);
             Builder &RenderPass(const vk::RenderPass &);
             Builder &Subpass(uint32_t);
 
             Builder &BasePipeline(const vk::Pipeline &, int32_t);
+
+            template<typename T>
+            Builder &PushConstantRange(const vk::ShaderStageFlags &stageFlags, const uint32_t offset = 0) {
+                const auto pushConstantRange = vk::PushConstantRange()
+                    .setStageFlags(stageFlags)
+                    .setOffset(offset)
+                    .setSize(sizeof(T));
+                m_pushConstantRanges.push_back(pushConstantRange);
+                return *this;
+            }
+
+            Builder &DescriptorSetLayout(uint32_t setNumber, const Memory::Descriptor::SetLayout &layout);
+            Builder &DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts);
 
             std::unique_ptr<Pipeline> Build(const Core::Device &);
         private:
@@ -83,6 +96,9 @@ namespace Graphics {
             uint32_t m_subpass = 0;
             vk::Pipeline m_basePipeline = nullptr;
             int32_t m_basePipelineIndex = -1;
+
+            std::vector<vk::PushConstantRange> m_pushConstantRanges;
+            std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
         };
 
         Pipeline(const Pipeline &) = delete;
@@ -92,11 +108,25 @@ namespace Graphics {
 
         Pipeline(const Core::Device &, const Builder &);
         ~Pipeline();
+
+        void BindDescriptorSet(uint32_t, vk::CommandBuffer, const Memory::Descriptor::Set &) const;
+        void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
+
+        template<typename T>
+        void PushConstants(const vk::CommandBuffer commandBuffer, const vk::ShaderStageFlags stageFlags, const uint32_t offset, const T& data) const {
+            commandBuffer.pushConstants(
+                m_pipelineLayout,
+                stageFlags,
+                offset,
+                sizeof(T),
+                &data);
+        }
     private:
 
         const Core::Device &m_device;
         Type m_type;
         vk::Pipeline m_pipeline;
+        vk::PipelineLayout m_pipelineLayout;
         std::unordered_map<vk::ShaderStageFlagBits, vk::ShaderModule> m_shaders;
     };
 }
