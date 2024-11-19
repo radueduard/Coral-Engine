@@ -17,10 +17,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
     switch (messageSeverity) {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-            std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
+            std::cerr << pCallbackData->pMessage << std::endl;
         return VK_FALSE;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-            std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
+            std::cerr << pCallbackData->pMessage << std::endl;
         return VK_TRUE;
         default:
             return VK_FALSE;
@@ -31,6 +31,8 @@ namespace Core {
     Runtime::Settings Runtime::settings = {
         .deviceFeatures = vk::PhysicalDeviceFeatures()
             .setSamplerAnisotropy(true)
+            .setFragmentStoresAndAtomics(true)
+            .setVertexPipelineStoresAndAtomics(true)
         ,
         .instanceLayers = {
             "VK_LAYER_KHRONOS_validation",
@@ -47,6 +49,7 @@ namespace Core {
         },
         .requiredQueueFamilies = {
             vk::QueueFlagBits::eGraphics,
+            vk::QueueFlagBits::eCompute,
             vk::QueueFlagBits::eTransfer,
         },
     };
@@ -76,26 +79,13 @@ namespace Core {
             .setEngineVersion(VK_MAKE_VERSION(1, 0, 0))
             .setApiVersion(VK_API_VERSION_1_3);
 
-        const auto debugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT()
-            .setMessageSeverity(
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
-            .setMessageType(
-                vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-                vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
-            .setPfnUserCallback(debugCallback);
-
         const auto windowExtensions = Window::GetRequiredExtensions();
         settings.instanceExtensions.insert(settings.instanceExtensions.end(), windowExtensions.begin(), windowExtensions.end());
 
         const auto createInfo = vk::InstanceCreateInfo()
             .setPApplicationInfo(&appInfo)
             .setPEnabledExtensionNames(settings.instanceExtensions)
-            .setPEnabledLayerNames(settings.instanceLayers)
-            .setPNext(&debugCreateInfo);
+            .setPEnabledLayerNames(settings.instanceLayers);;
 
         m_instance = vk::createInstance(createInfo);
     }
@@ -105,8 +95,8 @@ namespace Core {
             .setMessageSeverity(
                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose)
+                // vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
             .setMessageType(
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |

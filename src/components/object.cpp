@@ -6,6 +6,8 @@
 
 #include <ranges>
 
+#include "imgui.h"
+
 namespace mgv {
     Component::Component(const Object &owner) : m_ownerId(owner.Id()) {}
 
@@ -13,10 +15,22 @@ namespace mgv {
         return *Object::objects.at(m_ownerId);
     }
 
+    void Component::InitUI() {}
+
+    void Component::UpdateUI() {}
+
+    void Component::DrawUI() {
+        ImGui::Begin("Component");
+        ImGui::Text("Component - UI not implemented");
+        ImGui::End();
+    }
+
+    void Component::DestroyUI() {}
+
     boost::uuids::random_generator Object::generator = boost::uuids::random_generator();
     boost::unordered_map<boost::uuids::uuid, Object*> Object::objects;
 
-    Object::Object() : m_id(generator()) {
+    Object::Object(std::string name) : m_id(generator()), m_name(std::move(name)) {
         objects[m_id] = this;
     }
 

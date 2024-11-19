@@ -4,49 +4,52 @@
 
 #pragma once
 
-#include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
 #include "../core/device.h"
 #include "renderPass.h"
 
+namespace mgv {
+    struct Frame;
+    class Renderer;
+}
+
 namespace Graphics {
     class SwapChain {
     public:
-        struct Frame {
-            uint32_t imageIndex;
-
-            vk::Fence inFlight;
-            vk::Semaphore imageAvailable;
-            vk::Semaphore renderFinished;
-
-            std::unique_ptr<Memory::Image> image;
-
-            std::unordered_map<vk::QueueFlagBits, vk::CommandBuffer> commandBuffers;
+        struct Settings {
+            uint32_t minImageCount;
+            uint32_t imageCount;
+            vk::SampleCountFlagBits sampleCount;
+            std::vector<uint32_t> queueFamilyIndices;
         };
 
-        SwapChain(const Core::Device &device, vk::Extent2D extent, std::unique_ptr<SwapChain> oldSwapChain = nullptr);
+        SwapChain(Core::Device &device, vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain = nullptr);
         ~SwapChain();
 
         vk::SwapchainKHR operator *() const { return m_swapChain; }
         [[nodiscard]] const vk::Extent2D &Extent() const { return m_extent; }
-        [[nodiscard]] const Frame &CurrentFrame() const { return m_frames[m_currentFrame]; }
-        [[nodiscard]] const RenderPass &RenderPass() const { return *m_renderPass; }
+        [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
+        [[nodiscard]] RenderPass &RenderPass() const { return *m_renderPass; }
 
-        vk::Result Acquire();
-        void Submit();
-        vk::Result Present();
+        vk::Result Acquire(const mgv::Frame &frame);
+
+        void Render(vk::CommandBuffer commandBuffer) const;
+
+        vk::Result Present(const mgv::Frame &frame);
     private:
-        const Core::Device &m_device;
+        Core::Device &m_device;
         vk::SwapchainKHR m_swapChain;
-        std::vector<vk::Image> m_swapChainImages;
         vk::Extent2D m_extent;
+        uint32_t m_imageCount;
+        Core::Queue *m_presentQueue;
 
-        uint32_t m_currentFrame = 0;
-        std::vector<Frame> m_frames;
         std::unique_ptr<Graphics::RenderPass> m_renderPass;
 
         uint32_t m_imageIndex = 0;
+
+        void CreateSwapChain(const vk::SurfaceFormatKHR &surfaceFormat, const vk::PresentModeKHR &presentMode, const Settings& settings, const std::unique_ptr<SwapChain> &oldSwapChain);
+        void CreateRenderPass(const vk::SurfaceFormatKHR &surfaceFormat, const Settings& settings, const std::unique_ptr<SwapChain> &oldSwapChain);
 
         static vk::SurfaceFormatKHR ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
         static vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);

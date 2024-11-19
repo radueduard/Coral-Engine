@@ -11,7 +11,7 @@ namespace Memory {
     template<typename T>
     class Buffer {
     public:
-        Buffer(const Core::Device &device,
+        Buffer(Core::Device &device,
             uint32_t instanceCount,
             vk::BufferUsageFlags usage,
             vk::MemoryPropertyFlags properties,
@@ -109,11 +109,9 @@ namespace Memory {
          *
          * @remark If the instanceCount is vk::WholeSize, the srcOffset and dstOffset are ignored
          */
-        void CopyBuffer(const Buffer<T> &srcBuffer, vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize srcOffset = 0, vk::DeviceSize dstOffset = 0) const;
+        void CopyBuffer(const std::unique_ptr<Buffer> &srcBuffer, vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize srcOffset = 0, vk::DeviceSize dstOffset = 0) const;
 
-        [[nodiscard]]
-
-        vk::Buffer operator *() const { return m_buffer; }
+        [[nodiscard]] vk::Buffer operator *() const { return m_buffer; }
         T *Data() const { return reinterpret_cast<T *>(m_mapped); }
         [[nodiscard]] uint32_t InstanceCount() const { return m_instanceCount; }
         [[nodiscard]] vk::DeviceSize AlignmentSize() const { return m_alignmentSize; }
@@ -123,7 +121,7 @@ namespace Memory {
 
 
     private:
-        const Core::Device &m_device;
+        Core::Device &m_device;
         vk::Buffer m_buffer;
         vk::DeviceMemory m_memory;
 
@@ -147,7 +145,7 @@ static vk::DeviceSize GetAlignment(const vk::DeviceSize size, const vk::DeviceSi
 namespace Memory {
     template<typename T>
     Buffer<T>::Buffer(
-        const Core::Device &device,
+        Core::Device &device,
         const uint32_t instanceCount,
         const vk::BufferUsageFlags usage,
         const vk::MemoryPropertyFlags properties,
@@ -198,19 +196,19 @@ namespace Memory {
             return;
         }
 
-        if (instanceCount == vk::WholeSize) {
-            instanceCount = m_instanceCount;
-            offset = 0;
+        if (instanceCount != vk::WholeSize) {
+            instanceCount *= m_alignmentSize;
         }
+
         m_mapped = static_cast<T*>((*m_device).mapMemory(
             m_memory,
             offset * m_alignmentSize,
-            instanceCount * m_alignmentSize,
+            instanceCount,
             vk::MemoryMapFlags()));
 
         m_mappedRange = vk::MappedMemoryRange()
             .setMemory(m_memory)
-            .setSize(instanceCount * m_alignmentSize)
+            .setSize(instanceCount)
             .setOffset(offset * m_alignmentSize);
     }
 
@@ -346,23 +344,29 @@ namespace Memory {
     }
 
     template<typename T>
-    void Buffer<T>::CopyBuffer(const Buffer &srcBuffer, vk::DeviceSize instanceCount, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
-        if (instanceCount == vk::WholeSize) {
-            instanceCount = m_instanceCount;
+    void Buffer<T>::CopyBuffer(const std::unique_ptr<Buffer> &srcBuffer, const vk::DeviceSize instanceCount, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
+        if (m_alignmentSize != srcBuffer->m_alignmentSize) {
+            std::cerr << "Buffer::CopyBuffer : Alignment sizes do not match" << std::endl;
+            return;
+        }
+
+        auto size = instanceCount;
+        if (instanceCount != vk::WholeSize) {
+            size *= m_alignmentSize;
+            srcOffset *= m_alignmentSize;
+            dstOffset *= m_alignmentSize;
+        } else {
+            size = std::min(m_instanceCount, srcBuffer->m_instanceCount) * m_alignmentSize;
             srcOffset = 0;
             dstOffset = 0;
         }
 
-        const auto commandBuffer = m_device.BeginSingleTimeCommands(Core::Queue::Type::Transfer);
-
-        const auto copyRegion = vk::ArrayProxy {
-            vk::BufferCopy()
-                .setSrcOffset(srcOffset * m_alignmentSize)
-                .setDstOffset(dstOffset * m_alignmentSize)
-                .setSize(instanceCount * m_alignmentSize)
-        };
-
-        commandBuffer.copyBuffer(*srcBuffer, m_buffer, copyRegion);
-        m_device.EndSingleTimeCommands(commandBuffer, Core::Queue::Type::Transfer);
+        m_device.RunSingleTimeCommand([this, srcOffset, dstOffset, &srcBuffer, size](const vk::CommandBuffer &commandBuffer) {
+            const auto copyRegion = vk::BufferCopy()
+                .setSrcOffset(srcOffset)
+                .setDstOffset(dstOffset)
+                .setSize(size);
+            commandBuffer.copyBuffer(**srcBuffer, m_buffer, 1, &copyRegion);
+        }, vk::QueueFlagBits::eTransfer);
     }
 }

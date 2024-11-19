@@ -75,6 +75,12 @@ namespace Core {
         return { surface };
     }
 
+    void Window::UpdateDeltaTime() {
+        const double currentTime = glfwGetTime();
+        m_deltaTime = currentTime - m_lastTime;
+        m_lastTime = currentTime;
+    }
+
     void Window::Callbacks::keyCallback(GLFWwindow *window, int key, int _, const int action, int mods) {
         const auto k = static_cast<Key>(key);
         switch (action) {

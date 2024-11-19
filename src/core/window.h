@@ -42,6 +42,8 @@ namespace Core {
         Window(const Window &) = delete;
         Window &operator=(const Window &) = delete;
 
+        GLFWwindow* operator*() const { return m_window; }
+
         [[nodiscard]] bool ShouldClose() const { return glfwWindowShouldClose(m_window); }
         void Close() const { glfwSetWindowShouldClose(m_window, GLFW_TRUE); }
         static void PollEvents() { glfwPollEvents(); }
@@ -54,6 +56,9 @@ namespace Core {
 
         void Pause() { m_paused = true; }
         void UnPause() { m_paused = false; }
+
+        void UpdateDeltaTime();
+        [[nodiscard]] float DeltaTime() const { return static_cast<float>(m_deltaTime); }
 
         void SetTitle(const std::string &title) {
             m_info.title = title;
@@ -78,5 +83,8 @@ namespace Core {
 
         Info m_info;
         bool m_paused = false;
+
+        double m_lastTime = 0.0;
+        double m_deltaTime = 0.0;
     };
 }

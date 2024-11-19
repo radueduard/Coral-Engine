@@ -4,65 +4,69 @@
 
 #pragma once
 
+#include <functional>
 #include <optional>
 #include <unordered_map>
 
 #include "physicalDevice.h"
+#include "runtime.h"
 
 namespace Core {
+    class Device;
+
+    struct Queue {
+        uint32_t familyIndex;
+        uint32_t index;
+        bool inUse = false;
+        vk::Queue queue;
+
+        vk::Queue operator *() const { return queue; }
+
+        Queue(const Device& device, uint32_t familyIndex, uint32_t index);
+    };
+
+    struct CommandBuffer {
+        uint32_t familyIndex;
+        vk::CommandBuffer commandBuffer;
+
+        vk::CommandBuffer operator *() const { return commandBuffer; }
+    };
 
     struct QueueFamily
     {
         uint32_t index;
         vk::QueueFamilyProperties properties;
         bool presentSupport;
-        uint32_t remainingQueues;
-    };
-
-    struct Queue
-    {
-        enum class Type
-        {
-            Graphics,
-            Compute,
-            Transfer,
-            Present,
-            Unassigned
-        };
-
-        uint32_t familyIndex;
-        uint32_t index;
-        vk::Queue queue = nullptr;
-        Type type = Type::Unassigned;
-
-        static Type TypeFromFlag(vk::QueueFlagBits);
+        std::vector<std::unique_ptr<Queue>> queues;
     };
 
     class Device {
     public:
-        explicit Device(PhysicalDevice& physicalDevice);
+        explicit Device(const Runtime& runtime);
         ~Device();
 
         Device(const Device &) = delete;
         Device &operator=(const Device &) = delete;
 
         vk::Device operator *() const { return m_device; }
-        [[nodiscard]] const PhysicalDevice& PhysicalDevice() const { return m_physicalDevice; }
-        [[nodiscard]] const std::unique_ptr<Core::Queue>& Queue(Queue::Type type) const;
-        [[nodiscard]] const vk::CommandPool& CommandPool(Queue::Type type) const;
+        [[nodiscard]] const vk::Instance& Instance() const { return m_runtime.Instance(); }
+        [[nodiscard]] const PhysicalDevice& PhysicalDevice() const { return m_runtime.PhysicalDevice(); }
+        [[nodiscard]] std::optional<Queue*> RequestQueue(vk::QueueFlags type) const;
+        [[nodiscard]] std::optional<Queue*> RequestPresentQueue() const;
+
+        [[nodiscard]] uint32_t GetQueueFamilyIndex(vk::QueueFlags type) const;
+        [[nodiscard]] std::vector<CommandBuffer> RequestCommandBuffers(uint32_t familyIndex, uint32_t count, uint32_t thread = 0) const;
+        void FreeCommandBuffers(const std::vector<CommandBuffer> &commandBuffers, uint32_t thread = 0) const;
 
         void QuerySurfaceCapabilities() const;
-
         [[nodiscard]] std::optional<uint32_t> FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 
-        vk::CommandBuffer BeginSingleTimeCommands(Queue::Type type) const;
-        void EndSingleTimeCommands(vk::CommandBuffer commandBuffer, Queue::Type type) const;
+        void RunSingleTimeCommand(const std::function<void(vk::CommandBuffer)> &command, vk::QueueFlags requiredFlags, vk::Fence fence = nullptr, uint32_t thread = 0) const;
     private:
         vk::Device m_device;
-        Core::PhysicalDevice& m_physicalDevice;
+        const Runtime& m_runtime;
 
-        std::vector<Core::QueueFamily> m_queueFamilies;
-        std::unordered_map<Core::Queue::Type, std::unique_ptr<Core::Queue>> m_queues;
-        std::unordered_map<Core::Queue::Type, vk::CommandPool> m_commandPools;
+        std::vector<QueueFamily> m_queueFamilies;
+        std::unordered_map<uint32_t, std::vector<vk::CommandPool>> m_commandPools;
     };
 }

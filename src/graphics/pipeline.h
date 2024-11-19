@@ -101,17 +101,13 @@ namespace Graphics {
             std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
         };
 
+        Pipeline(const Core::Device &, const Builder &);
+        ~Pipeline();
+
         Pipeline(const Pipeline &) = delete;
         Pipeline &operator=(const Pipeline &) = delete;
 
         void Bind(const vk::CommandBuffer&) const;
-
-        Pipeline(const Core::Device &, const Builder &);
-        ~Pipeline();
-
-        void BindDescriptorSet(uint32_t, vk::CommandBuffer, const Memory::Descriptor::Set &) const;
-        void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
-
         template<typename T>
         void PushConstants(const vk::CommandBuffer commandBuffer, const vk::ShaderStageFlags stageFlags, const uint32_t offset, const T& data) const {
             commandBuffer.pushConstants(
@@ -121,8 +117,11 @@ namespace Graphics {
                 sizeof(T),
                 &data);
         }
-    private:
 
+        void BindDescriptorSet(uint32_t, vk::CommandBuffer, const Memory::Descriptor::Set &) const;
+        void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
+
+    private:
         const Core::Device &m_device;
         Type m_type;
         vk::Pipeline m_pipeline;

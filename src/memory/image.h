@@ -59,7 +59,7 @@ namespace Memory {
                 return *this;
             }
 
-            std::unique_ptr<Memory::Image> Build(const Core::Device& device) {
+            std::unique_ptr<Memory::Image> Build(Core::Device& device) {
                 if (m_extent.width == 0 || m_extent.height == 0 || m_extent.depth == 0) {
                     throw std::runtime_error("Image : Extent must be set");
                 }
@@ -78,7 +78,7 @@ namespace Memory {
             std::optional<vk::Image> m_image = std::nullopt;
         };
 
-        Image(const Core::Device& device, const Builder& builder);
+        Image(Core::Device& device, const Builder& builder);
         ~Image();
 
         Image(const Image&) = delete;
@@ -86,26 +86,28 @@ namespace Memory {
 
         const vk::Image& operator*() const { return m_image; }
         [[nodiscard]] const vk::ImageView& ImageView() const { return m_imageView; }
-        [[nodiscard]] const vk::Sampler& Sampler() const { return m_sampler; }
         [[nodiscard]] const vk::ImageLayout& Layout() const { return m_layout; }
         [[nodiscard]] const vk::Extent3D& Extent() const { return m_extent; }
 
-        void Copy(const vk::Buffer& buffer, uint32_t layer = 0) const;
+        void Copy(const vk::Buffer& buffer, uint32_t mipLevel = 0, uint32_t layer = 0, uint32_t thread = 0) const;
         void TransitionLayout(vk::ImageLayout newLayout);
+        void GenerateMipmaps();
+        void Resize(const vk::Extent3D& extent);
+
+        [[nodiscard]] std::vector<vk::ImageView> IndividualMipLevels() const;
 
     private:
-        void GenerateMipmaps() const;
-
-        const Core::Device& m_device;
+        Core::Device& m_device;
         vk::Image m_image;
         vk::DeviceMemory m_imageMemory;
         vk::ImageView m_imageView;
 
         vk::Format m_format;
         vk::Extent3D m_extent;
-        vk::ImageLayout m_layout;
+        vk::ImageLayout m_layout = vk::ImageLayout::eUndefined;
         vk::ImageUsageFlags m_usageFlags;
-        vk::Sampler m_sampler;
+        vk::SampleCountFlagBits m_sampleCount;
+        vk::ImageAspectFlags m_aspectMask;
 
         uint32_t m_mipLevels;
         uint32_t m_layersCount;

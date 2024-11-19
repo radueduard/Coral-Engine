@@ -4,11 +4,14 @@
 
 #pragma once
 
+#include <functional>
 #include <iostream>
 #include <vector>
 
 #include <core/device.h>
 #include <memory/image.h>
+
+#include "programs/program.h"
 
 namespace Graphics {
     class RenderPass {
@@ -19,7 +22,7 @@ namespace Graphics {
             std::vector<std::unique_ptr<Memory::Image>> images;
             vk::ClearValue clearValue;
 
-            void Resize();
+            void Resize(vk::Extent2D extent) const;
         };
 
         class Builder {
@@ -62,7 +65,7 @@ namespace Graphics {
             }
 
             std::unique_ptr<RenderPass> Build(const Core::Device &device) {
-                return std::make_unique<RenderPass>(device, *this);
+                return std::make_unique<RenderPass>(device, this);
             }
 
 
@@ -76,20 +79,40 @@ namespace Graphics {
         };
 
 
-        explicit RenderPass(const Core::Device &device, Builder &builder);
+        explicit RenderPass(const Core::Device &device, Builder *builder);
         ~RenderPass();
 
         RenderPass(const RenderPass &) = delete;
         RenderPass &operator=(const RenderPass &) = delete;
 
-        void Begin(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const;
-        void End(vk::CommandBuffer commandBuffer) const;
+        void AddProgram(Program *program, const uint32_t subpass) { m_programs[subpass].emplace_back(program); }
+        void RemoveProgram(Program *program) {
+            for (auto &subpass : m_programs) {
+                std::erase(subpass, program);
+            }
+        }
+
+        void Begin(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
+        void Draw(vk::CommandBuffer commandBuffer) const;
+        void End(vk::CommandBuffer commandBuffer);
 
         const vk::RenderPass& operator*() const { return m_renderPass; }
         [[nodiscard]] const vk::Framebuffer& FrameBuffer(const uint32_t index) const { return m_frameBuffers[index]; }
         [[nodiscard]] const vk::Extent2D& Extent() const { return m_extent; }
+        [[nodiscard]] const vk::SampleCountFlagBits& SampleCount() const { return m_sampleCount; }
+        [[nodiscard]] uint32_t OutputImageIndex() const { return m_outputImageIndex; }
+        [[nodiscard]] uint32_t InFlightImageIndex() const {
+            if (!m_inFlightImageIndex.has_value()) {
+                std::cerr << "No in flight image index" << std::endl;
+                return -1;
+            }
+            return m_inFlightImageIndex.value();
+        }
 
-        const std::unique_ptr<Memory::Image>& OutputImage(uint32_t index);
+        [[nodiscard]] Memory::Image& OutputImage(uint32_t index) const;
+        [[nodiscard]] Memory::Image& CurrentOutputImage() const;
+
+        [[nodiscard]] std::vector<std::vector<Program*>>& Programs() { return m_programs; }
 
         void CreateRenderPass();
         void DestroyRenderPass();
@@ -100,7 +123,9 @@ namespace Graphics {
 
     private:
         const Core::Device &m_device;
+        uint32_t m_outputAttachmentIndex = 0;
         uint32_t m_outputImageIndex = 0;
+        std::optional<uint32_t> m_inFlightImageIndex;
         uint32_t m_imageCount;
         vk::Extent2D m_extent;
 
@@ -110,5 +135,9 @@ namespace Graphics {
         std::vector<Attachment> m_attachments;
         std::vector<vk::SubpassDescription> m_subpasses;
         std::vector<vk::SubpassDependency> m_dependencies;
+
+        vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
+
+        std::vector<std::vector<Program*>> m_programs;
     };
 }

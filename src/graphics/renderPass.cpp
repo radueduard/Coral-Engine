@@ -6,15 +6,19 @@
 
 namespace Graphics {
 
-    void RenderPass::Attachment::Resize() {
-
+    void RenderPass::Attachment::Resize(vk::Extent2D extent) const {
+        for (auto &image : images) {
+            image->Resize({extent.width, extent.height, 1});
+        }
     }
 
-    RenderPass::RenderPass(const Core::Device &device, Builder &builder)
-        : m_device(device), m_outputImageIndex(builder.m_outputImageIndex), m_imageCount(builder.m_imageCount), m_extent(builder.m_extent) {
-        m_attachments = std::move(builder.m_attachments);
-        m_subpasses = builder.m_subpasses;
-        m_dependencies = builder.m_dependencies;
+    RenderPass::RenderPass(const Core::Device &device, Builder* builder)
+        : m_device(device), m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
+        m_attachments = std::move(builder->m_attachments);
+        m_subpasses = builder->m_subpasses;
+        m_dependencies = builder->m_dependencies;
+        m_sampleCount = m_attachments[0].description.samples;
+        m_programs.resize(m_subpasses.size());
 
         CreateRenderPass();
         CreateFrameBuffers();
@@ -73,7 +77,8 @@ namespace Graphics {
         m_frameBuffers.clear();
     }
 
-    void RenderPass::Begin(const vk::CommandBuffer commandBuffer, const uint32_t imageIndex) const {
+    void RenderPass::Begin(const vk::CommandBuffer commandBuffer, const uint32_t imageIndex) {
+        m_inFlightImageIndex = imageIndex;
         auto clearValues = std::vector<vk::ClearValue>();
         for (const auto &attachment : m_attachments) {
             clearValues.emplace_back(attachment.clearValue);
@@ -103,12 +108,30 @@ namespace Graphics {
         commandBuffer.setScissor(0, scissor);
     }
 
-    void RenderPass::End(const vk::CommandBuffer commandBuffer) const  {
-        commandBuffer.endRenderPass();
+    void RenderPass::Draw(const vk::CommandBuffer commandBuffer) const {
+        uint32_t i = 0;
+        for (const auto& subpass : m_programs) {
+            for (const auto& program : subpass) {
+                program->Draw(commandBuffer);
+            }
+            if (i + 1 < m_programs.size()) {
+                commandBuffer.nextSubpass(vk::SubpassContents::eInline);
+            }
+            i++;
+        }
     }
 
-    const std::unique_ptr<Memory::Image>& RenderPass::OutputImage(const uint32_t index) {
-        return m_attachments[m_outputImageIndex].images[index];
+    void RenderPass::End(const vk::CommandBuffer commandBuffer)  {
+        commandBuffer.endRenderPass();
+        m_inFlightImageIndex = std::nullopt;
+    }
+
+    Memory::Image& RenderPass::OutputImage(const uint32_t index) const {
+        return *m_attachments[m_outputAttachmentIndex].images[index];
+    }
+
+    Memory::Image& RenderPass::CurrentOutputImage() const {
+        return OutputImage(m_outputImageIndex);
     }
 
 
@@ -116,13 +139,16 @@ namespace Graphics {
         if (m_imageCount == imageCount && m_extent == extent) {
             return false;
         }
+
+        (*m_device).waitIdle();
+
         DestroyFrameBuffers();
 
         m_imageCount = imageCount;
         m_extent = extent;
 
         for (auto &attachment : m_attachments) {
-            attachment.Resize();
+            attachment.Resize(extent);
         }
         CreateFrameBuffers();
         return true;

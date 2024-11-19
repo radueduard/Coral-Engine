@@ -11,8 +11,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include "memory/descriptor/pool.h"
-#include "memory/descriptor/set.h"
+#include "core/input.h"
 
 namespace mgv {
     Camera* Camera::mainCamera = nullptr;
@@ -22,11 +21,44 @@ namespace mgv {
           m_projectionData(createInfo.projectionData),
           m_viewportSize(createInfo.size),
           m_primary(createInfo.primary) {
+
+        if (m_primary) {
+            if (mainCamera != nullptr) {
+                mainCamera->m_primary = false;
+            }
+            mainCamera = this;
+        }
+
         RecalculateProjection();
         RecalculateView();
     }
 
-    void Camera::Update(double deltaTime) {
+    void Camera::Update(const double deltaTime) {
+        if (m_primary && Core::Input::IsMouseButtonHeld(MouseButtonRight)) {
+            static constexpr float sensitivity = 5.f;
+            const auto delta = Core::Input::GetMousePositionDelta();
+            Rotate(static_cast<float>(delta.x) * sensitivity, static_cast<float>(delta.y) * sensitivity);
+
+            if (Core::Input::IsKeyHeld(W)) {
+                MoveForward(3.0f * static_cast<float>(deltaTime));
+            }
+            if (Core::Input::IsKeyHeld(S)) {
+                MoveForward(-3.0f * static_cast<float>(deltaTime));
+            }
+            if (Core::Input::IsKeyHeld(A)) {
+                MoveRight(-3.0f * static_cast<float>(deltaTime));
+            }
+            if (Core::Input::IsKeyHeld(D)) {
+                MoveRight(3.0f * static_cast<float>(deltaTime));
+            }
+            if (Core::Input::IsKeyHeld(E)) {
+                MoveUp(3.0f * static_cast<float>(deltaTime));
+            }
+            if (Core::Input::IsKeyHeld(Q)) {
+                MoveUp(-3.0f * static_cast<float>(deltaTime));
+            }
+        }
+
         if (m_moved) {
             RecalculateView();
             m_moved = false;
@@ -86,8 +118,9 @@ namespace mgv {
         if (pitch == 0 && yaw == 0)
             return;
 
-        const auto rotation = glm::quat(glm::radians(Owner().rotation));
-        glm::vec3 forwardDirection = rotation * glm::vec3(0, 0, -1);
+        auto forwardDirection = glm::vec3(0, 0, -1);
+        const glm::quat rotation = glm::radians(Owner().rotation);
+        forwardDirection = rotation * forwardDirection;
 
         const glm::vec3 right = glm::normalize(glm::cross(forwardDirection, m_up));
         yaw /= static_cast<float>(m_viewportSize.x);
@@ -95,11 +128,12 @@ namespace mgv {
 
         const auto rotate = glm::normalize(glm::cross(
             glm::angleAxis(-pitch, right),
-            glm::angleAxis(yaw, m_up)));
+            glm::angleAxis(-yaw, m_up)));
         forwardDirection = glm::rotate(rotate, forwardDirection);
         m_moved = true;
 
-        Owner().rotation = glm::eulerAngles(glm::quatLookAt(forwardDirection, m_up));
+
+        Owner().rotation = glm::degrees(glm::eulerAngles(glm::quatLookAt(forwardDirection, m_up)));
     }
 
     void Camera::MoveForward(const float amount) {
@@ -126,6 +160,4 @@ namespace mgv {
         Owner().position += m_up * amount;
         m_moved = true;
     }
-
-
 }

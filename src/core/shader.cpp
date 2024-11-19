@@ -5,6 +5,7 @@
 #include "shader.h"
 
 #include <fstream>
+#include <iostream>
 #include <sstream>
 
 #include <glslang/Public/ResourceLimits.h>
@@ -105,6 +106,7 @@ namespace Core {
         constexpr auto messages = static_cast<EShMessages>(EShMsgSpvRules | EShMsgVulkanRules | EShMsgDefault);
 
         if (!shader->parse(GetDefaultResources(), 100, false, messages)) {
+            std::cerr << shader->getInfoLog() << std::endl;
             throw std::runtime_error("GLSL parsing failed for stage: " + std::to_string(eShStage));
         }
 

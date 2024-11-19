@@ -7,13 +7,12 @@
 #include <glm/glm.hpp>
 
 #include "object.h"
-#include "memory/descriptor/pool.h"
 
 namespace mgv {
-    class Camera : public Component
+    class Camera final : public Component
     {
-        static Camera* mainCamera;
     public:
+        static Camera* mainCamera;
         enum Type {
             Perspective,
             Orthographic
@@ -63,7 +62,8 @@ namespace mgv {
         [[nodiscard]] const glm::mat4& InverseProjection() const { return m_inverseProjection; }
         [[nodiscard]] const glm::mat4& View() const { return m_view; }
         [[nodiscard]] const glm::mat4& InverseView() const { return m_inverseView; }
-        [[nodiscard]] Camera::Info BufferData() const;
+        [[nodiscard]] bool Moved() const { return m_moved; }
+        [[nodiscard]] Info BufferData() const;
 
     private:
         void RecalculateProjection();

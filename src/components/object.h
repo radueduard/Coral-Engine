@@ -15,6 +15,8 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/unordered_map.hpp>
 
+#include "gui/layer.h"
+
 namespace mgv {
     struct Transform {
         glm::vec3 position;
@@ -29,14 +31,20 @@ namespace mgv {
         }
     };
 
-    class Component {
+    class Component : public GUI::Layer {
         friend class Object;
     public:
         explicit Component(const Object& owner);
-        virtual ~Component() = default;
+
+        ~Component() override = default;
         virtual void Update(double deltaTime) = 0;
 
         [[nodiscard]] Object& Owner() const;
+
+        void InitUI() override;
+        void UpdateUI() override;
+        void DrawUI() override;
+        void DestroyUI() override;
 
     protected:
         boost::uuids::uuid m_ownerId;
@@ -48,7 +56,7 @@ namespace mgv {
         static boost::uuids::random_generator generator;
         static boost::unordered_map<boost::uuids::uuid, Object*> objects;
     public:
-        Object();
+        explicit Object(std::string name = "root");
         ~Object();
 
         Object(const Object&) = delete;
@@ -56,9 +64,11 @@ namespace mgv {
 
         [[nodiscard]] const boost::uuids::uuid &Id() const { return m_id; }
         [[nodiscard]] const std::string &Name() const { return m_name; }
-        [[nodiscard]] const Object& Parent() const { return *m_parent; }
+        [[nodiscard]] Object* Parent() const { return m_parent; }
         [[nodiscard]] std::vector<Object*> Children() const;
         [[nodiscard]] std::vector<Component*> Components() const;
+        [[nodiscard]] bool Moved() const { return m_moved; }
+        uint32_t& Index() { return m_indexInBuffer; }
 
         void AddChild(std::unique_ptr<Object> child);
         void RemoveChild(const boost::uuids::uuid& id);
@@ -67,7 +77,7 @@ namespace mgv {
         std::optional<T*> Get() {
             const std::type_index type = typeid(T);
             if (!m_components.contains(type)) {
-                return nullptr;
+                return std::nullopt;
             }
             auto component = m_components[type].get();
             return static_cast<T*>(component);
@@ -90,7 +100,9 @@ namespace mgv {
                 return nullptr;
             }
             m_components[type] = std::make_unique<T>(*this, std::forward<Args>(args)...);
-            return static_cast<T*>(m_components[type].get());
+            auto component = static_cast<T*>(m_components[type].get());
+            component->InitUI();
+            return component;
         }
 
         template<typename T>
@@ -99,6 +111,7 @@ namespace mgv {
             if (!m_components.contains(type)) {
                 return;
             }
+            m_components[type]->DestroyUI();
             m_components.erase(type);
         }
 
@@ -107,6 +120,9 @@ namespace mgv {
     private:
         boost::uuids::uuid m_id;
         std::string m_name;
+        uint32_t m_indexInBuffer = 0;
+        bool m_moved = false;
+
         Object *m_parent = nullptr;
         boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Object>> m_children;
         boost::unordered_map<std::type_index, std::unique_ptr<mgv::Component>> m_components;

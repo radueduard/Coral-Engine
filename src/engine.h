@@ -15,14 +15,13 @@ namespace mgv {
     class Engine {
     public:
         Engine();
-        ~Engine() = default;
+        ~Engine();
 
         void Run() const;
     private:
         std::unique_ptr<Core::Window> m_window;
         std::unique_ptr<Core::Runtime> m_runtime;
         std::unique_ptr<Core::Device> m_device;
-        std::unique_ptr<Graphics::Renderer> m_renderer;
     };
 
 }

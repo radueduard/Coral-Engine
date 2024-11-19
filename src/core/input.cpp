@@ -173,6 +173,9 @@ namespace Core {
                 m_mouseButtonStates[button] = NotPressed;
             }
         }
+
+        m_mouseDelta = { 0, 0 };
+        m_scrollDelta = { 0.0f, 0.0f };
     }
 
     KeyState Input::GetKeyState(const Key key) {
