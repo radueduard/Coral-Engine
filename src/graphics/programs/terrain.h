@@ -8,8 +8,19 @@
 #include "graphics/objects/texture.h"
 #include "graphics/objects/textureArray.h"
 #include "graphics/programs/program.h"
+#include "memory/buffer.h"
 
 class Terrain final : public Graphics::Program {
+    struct Settings {
+        float maxHeight = 5.f;
+        float patchSize = .1f;
+        float padding[2];
+        float noiseWeights[10] = {
+            1 / 512.f, 1 / 256.f, 1 / 128.f, 1 / 64.f,
+            1 / 32.f, 1 / 16.f, 1 / 8.f, 1 / 4.f,
+            1 / 2.f, 1.f
+        };
+    };
 public:
     struct CreateInfo {
         const mgv::Camera &camera;
@@ -35,6 +46,10 @@ private:
     uint32_t m_selectedMipLevel = 0;
 
     glm::ivec2 patchCount = { 100, 100 };
+    Settings m_settings;
+
+    bool m_changed = false;
+    std::unique_ptr<Memory::Buffer<Settings>> m_settingsBuffer;
     std::unique_ptr<Memory::Image> m_noiseTextures;
 
     std::vector<vk::DescriptorSet> m_uiTextureDescriptors;

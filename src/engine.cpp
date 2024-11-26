@@ -61,9 +61,9 @@ namespace mgv {
         terrain->Init();
         terrain->InitUI();
 
-        auto lake = std::make_unique<Lake>(*m_device, mainViewport->RenderPass(), Renderer::DescriptorPool(), lakeCreateInfo);
-        lake->Init();
-        terrain->InitUI();
+        // auto lake = std::make_unique<Lake>(*m_device, mainViewport->RenderPass(), Renderer::DescriptorPool(), lakeCreateInfo);
+        // lake->Init();
+        // lake->InitUI();
 
         while (!m_window->ShouldClose()) {
             Core::Window::PollEvents();
@@ -91,19 +91,19 @@ namespace mgv {
             if (Core::Input::IsKeyPressed(F5)) {
                 (**m_device).waitIdle();
                 terrain->DestroyUI();
-                lake->DestroyUI();
+                // lake->DestroyUI();
                 terrain = std::make_unique<Terrain>(*m_device, mainViewport->RenderPass(), Renderer::DescriptorPool(), terrainCreateInfo);
-                lake = std::make_unique<Lake>(*m_device, mainViewport->RenderPass(), Renderer::DescriptorPool(), lakeCreateInfo);
+                // lake = std::make_unique<Lake>(*m_device, mainViewport->RenderPass(), Renderer::DescriptorPool(), lakeCreateInfo);
                 terrain->Init();
                 terrain->InitUI();
-                lake->Init();
-                lake->InitUI();
+                // lake->Init();
+                // lake->InitUI();
             }
             Core::Input::Update();
         }
         (**m_device).waitIdle();
         terrain->DestroyUI();
-        lake->DestroyUI();
+        // lake->DestroyUI();
         scene->DestroyUI();
         mainViewport->DestroyUI();
         Memory::Sampler::FreeAllSamplers();

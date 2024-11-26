@@ -6,10 +6,16 @@ layout(local_size_x = 3, local_size_y = 1, local_size_z = 3) in;
 layout(triangles, max_vertices = 128, max_primitives = 256) out;
 
 layout (push_constant) uniform PushConstants {
-    mat4 ViewProjection;
+    mat4 View;
+    mat4 Projection;
 } pushConstants;
 
 layout (set = 0, binding = 0) uniform sampler2D heightMap;
+layout (set = 0, binding = 1) uniform Settings {
+    float maxHeight;
+    float patchSize;
+    vec4 lodWeights[4];
+} settings;
 
 layout (location = 0) out PerVertexData {
     vec4 position;
@@ -17,7 +23,6 @@ layout (location = 0) out PerVertexData {
     vec2 uv;
 } v_out[];
 
-const float patchSize = .1;
 const uint vertexPerLinePerInstance = 3;
 const uint vertexPerInstance = vertexPerLinePerInstance * vertexPerLinePerInstance;
 const uint vertexPerPatch = vertexPerInstance * gl_WorkGroupSize.x * gl_WorkGroupSize.z;
@@ -27,29 +32,22 @@ const uint trianglePerInstance = trianglePerLinePerInstance * trianglePerLinePer
 const uint trianglePerPatch = trianglePerInstance * gl_WorkGroupSize.x * gl_WorkGroupSize.z;
 
 float SampleFunction(vec2 uv) {
-    float hmax = 5.0;
     float d = length(uv);
-    float height =
+    float height = (1 + tanh(d * 12 - 4)) * settings.maxHeight / 2;
     uv = (uv + 1.0) / 2.0;
 
-    float h0 = textureLod(heightMap, uv, 0).r * hmax / 128.0 - hmax / 128.0 / 2.0;
-    float h1 = textureLod(heightMap, uv, 1).r * hmax / 64.0 - hmax / 64.0 / 2.0;
-    float h2 = textureLod(heightMap, uv, 2).r * hmax / 32.0 - hmax / 32.0 / 2.0;
-    float h3 = textureLod(heightMap, uv, 3).r * hmax / 16.0 - hmax / 16.0 / 2.0;
-    float h4 = textureLod(heightMap, uv, 4).r * hmax / 8.0 - hmax / 8.0 / 2.0;
-    float h5 = textureLod(heightMap, uv, 5).r * hmax / 4.0 - hmax / 4.0 / 2.0;
-    float h6 = textureLod(heightMap, uv, 6).r * hmax / 2.0 - hmax / 2.0 / 2.0;
-    float h7 = textureLod(heightMap, uv, 7).r * hmax * 1.0 - hmax * 1.0 / 2.0;
-    float h8 = textureLod(heightMap, uv, 8).r * hmax * 2.0 - hmax * 2.0 / 2.0;
-    float h9 = textureLod(heightMap, uv, 9).r * hmax * 4.0 - hmax * 4.0 / 2.0;
-    return height + h0 + h1 + h2 + h3 + h4 + h5 + h6 + h7 + h8 + h9;
+    for (int i = 0; i < 10; i++) {
+        height += (textureLod(heightMap, uv, i).r -.5f) * settings.maxHeight * settings.lodWeights[i / 4][i % 4] * 4;
+    }
+    
+    return height;
 }
 
 vec3 ComputeNormal(vec2 uv) {
-    float hL = SampleFunction(uv + vec2(-patchSize / vertexPerLinePerInstance, 0.0));
-    float hR = SampleFunction(uv + vec2(patchSize / vertexPerLinePerInstance, 0.0));
-    float hD = SampleFunction(uv + vec2(0.0, -patchSize / vertexPerLinePerInstance));
-    float hU = SampleFunction(uv + vec2(0.0, patchSize / vertexPerLinePerInstance));
+    float hL = SampleFunction(uv + vec2(-settings.patchSize / vertexPerLinePerInstance, 0.0));
+    float hR = SampleFunction(uv + vec2(settings.patchSize / vertexPerLinePerInstance, 0.0));
+    float hD = SampleFunction(uv + vec2(0.0, -settings.patchSize / vertexPerLinePerInstance));
+    float hU = SampleFunction(uv + vec2(0.0, settings.patchSize / vertexPerLinePerInstance));
     return normalize(vec3(hL - hR, 2.0, hD - hU));
 }
 
@@ -59,7 +57,7 @@ void main() {
         0.0,
         float(gl_NumWorkGroups.z * gl_WorkGroupSize.z)) / 2;
 
-    const vec3 maxPosition = (anchor + vec3(gl_NumWorkGroups.x * gl_WorkGroupSize.x, 0.0, gl_NumWorkGroups.z * gl_WorkGroupSize.z)) * patchSize;
+    const vec3 maxPosition = (anchor + vec3(gl_NumWorkGroups.x * gl_WorkGroupSize.x, 0.0, gl_NumWorkGroups.z * gl_WorkGroupSize.z)) * settings.patchSize;
 
     for (uint i = 0; i < vertexPerLinePerInstance; i++) {
         for (uint j = 0; j < vertexPerLinePerInstance; j++) {
@@ -67,11 +65,11 @@ void main() {
             uint index = vertexPerInstance * gl_LocalInvocationIndex + localIndex;
 
             vec3 positionInInstance = vec3(i, 0.0, j) / float(vertexPerLinePerInstance - 1);
-            vec3 position = (anchor + positionInInstance + vec3(gl_GlobalInvocationID.x, 0.0, gl_GlobalInvocationID.z)) * patchSize;
+            vec3 position = (anchor + positionInInstance + vec3(gl_GlobalInvocationID.x, 0.0, gl_GlobalInvocationID.z)) * settings.patchSize;
             position.y = SampleFunction(position.xz / maxPosition.xz);
 
             v_out[index].position = vec4(position, 1.0);
-            v_out[i].normal = ComputeNormal(v_out[i].position.xz / maxPosition.xz);
+            v_out[index].normal = ComputeNormal(position.xz / maxPosition.xz);
             v_out[index].uv = positionInInstance.xz;
         }
     }
@@ -102,7 +100,7 @@ void main() {
     barrier();
 
     for (uint i = vertexPerInstance * gl_LocalInvocationIndex; i < vertexPerInstance * (gl_LocalInvocationIndex + 1); i++) {
-        gl_MeshVerticesEXT[i].gl_Position = pushConstants.ViewProjection * v_out[i].position;
+        gl_MeshVerticesEXT[i].gl_Position = pushConstants.Projection * pushConstants.View * v_out[i].position;
     }
 
     SetMeshOutputsEXT(vertexPerPatch, trianglePerPatch * 2);

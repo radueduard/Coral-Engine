@@ -11,13 +11,19 @@
 #include "memory/buffer.h"
 #include "memory/sampler.h"
 
+struct CameraData {
+    glm::mat4 view;
+    glm::mat4 projection;
+};
+
 Terrain::Terrain(Core::Device &device, Graphics::RenderPass &renderPass, const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo)
     : Program(renderPass), m_device(device),  m_camera(createInfo.camera), m_noiseTextureCount(createInfo.noiseTextureCount)
 {
     m_setLayout = Memory::Descriptor::SetLayout::Builder(device)
-            .AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
-            .AddBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-            .Build();
+        .AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
+        .AddBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eMeshEXT)
+        .AddBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+        .Build();
 
     const auto multisampleState = vk::PipelineMultisampleStateCreateInfo()
         .setRasterizationSamples(renderPass.SampleCount())
@@ -35,10 +41,20 @@ Terrain::Terrain(Core::Device &device, Graphics::RenderPass &renderPass, const M
             .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA))
         .RenderPass(*renderPass)
         .DescriptorSetLayout(0, *m_setLayout)
-        .PushConstantRange<glm::mat4>(vk::ShaderStageFlagBits::eMeshEXT, 0)
+        .PushConstantRange<CameraData>(vk::ShaderStageFlagBits::eMeshEXT, 0)
         .Subpass(0)
         .Multisampling(multisampleState)
         .Build(device);
+
+    m_settingsBuffer = std::make_unique<Memory::Buffer<Settings>>(
+        device,
+        1,
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+    m_settingsBuffer->Map();
+    m_settingsBuffer->Write(&m_settings);
+    m_settingsBuffer->Unmap();
 
     m_noiseTextures = Memory::Image::Builder()
         .LayersCount(1)
@@ -67,11 +83,12 @@ Terrain::Terrain(Core::Device &device, Graphics::RenderPass &renderPass, const M
 
     m_descriptorSet = Memory::Descriptor::Set::Builder(m_device, pool, *m_setLayout)
         .WriteImage(0, descriptorInfo)
-        .WriteImage(1, m_albedoTextures->DescriptorInfo())
+        .WriteBuffer(1, m_settingsBuffer->DescriptorInfo().value())
+        .WriteImage(2, m_albedoTextures->DescriptorInfo())
         .Build();
 }
 
-Terrain::~Terrain() {}
+Terrain::~Terrain() = default;
 
 void Terrain::Init() {
     m_noiseTextures->TransitionLayout(vk::ImageLayout::eTransferDstOptimal);
@@ -102,14 +119,16 @@ void Terrain::Init() {
     m_noiseTextures->TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
-void Terrain::Update(double deltaTime) {}
+void Terrain::Update(double deltaTime) {
+
+}
 
 void Terrain::Draw(const vk::CommandBuffer &commandBuffer) {
     m_pipeline->Bind(commandBuffer);
     m_pipeline->BindDescriptorSet(0, commandBuffer, *m_descriptorSet);
 
-    const auto viewProj = m_camera.Projection() * m_camera.View();
-    m_pipeline->PushConstants(commandBuffer, vk::ShaderStageFlagBits::eMeshEXT, 0, viewProj);
+    const glm::mat4 cameraData[] = { m_camera.View(), m_camera.Projection() };
+    m_pipeline->PushConstants(commandBuffer, vk::ShaderStageFlagBits::eMeshEXT, 0, cameraData);
     Ext::MeshShader::cmdDrawMeshTasks(commandBuffer, patchCount.x , 1, patchCount.y);
 }
 
@@ -124,15 +143,25 @@ void Terrain::InitUI() {
     }
 }
 
-void Terrain::UpdateUI() {}
+void Terrain::UpdateUI() {
+    if (m_changed) {
+        m_settingsBuffer->Map();
+        m_settingsBuffer->Write(&m_settings);
+        m_settingsBuffer->Unmap();
+    }
+    m_changed = false;
+}
 
 void Terrain::DrawUI() {
     ImGui::Begin("Terrain");
     ImGui::DragInt2("Patch Count", &patchCount.x, 10.0f, 10, 200);
+    m_changed |= ImGui::DragFloat("Max Height", &m_settings.maxHeight, 0.1f, 0.0f, 100.0f);
+    m_changed |= ImGui::DragFloat("Patch Size", &m_settings.patchSize, 0.01f, 0.0f, 1.0f);
 
     ImGui::Text("Noise Textures:");
     const ImVec2 size = ImGui::GetContentRegionAvail();
     ImGui::SliderInt("Selected mip level", reinterpret_cast<int*>(&m_selectedMipLevel), 0, static_cast<int>(m_noiseTextureCount - 1));
+    m_changed |= ImGui::DragFloat("Weight", &m_settings.noiseWeights[m_selectedMipLevel], 0.01f, 0.0f, 1.0f);
     ImGui::Image(m_uiTextureDescriptors[m_selectedMipLevel], ImVec2(size.x, size.x), ImVec2(0, 1), ImVec2(1, 0));
     ImGui::End();
 }
