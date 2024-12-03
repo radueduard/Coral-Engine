@@ -14,15 +14,12 @@ namespace Memory::Descriptor {
         class Builder {
             friend class Pool;
         public:
-            explicit Builder(const Core::Device &device) : m_device{device} {}
-
             Builder &AddPoolSize(vk::DescriptorType type, uint32_t count);
             Builder &PoolFlags(vk::DescriptorPoolCreateFlags flags);
             Builder &MaxSets(uint32_t count);
             [[nodiscard]] std::unique_ptr<Pool> Build() const;
 
         private:
-            const Core::Device &m_device;
             std::vector<vk::DescriptorPoolSize> m_poolSizes = {};
             vk::DescriptorPoolCreateFlags m_flags = {};
             uint32_t m_maxSets = 1000;
@@ -41,10 +38,9 @@ namespace Memory::Descriptor {
         void Free(const vk::DescriptorSet &descriptorSet) const;
         void Free(const std::vector<vk::DescriptorSet> &descriptorSets) const;
 
-        void Reset() const { (*m_device).resetDescriptorPool(m_pool); }
+        void Reset() const { (*Core::Device::Get()).resetDescriptorPool(m_pool); }
 
     private:
-        const Core::Device &m_device;
         vk::DescriptorPool m_pool;
         std::vector<vk::DescriptorPoolSize> m_poolSizes;
         vk::DescriptorPoolCreateFlags m_flags;

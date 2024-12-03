@@ -59,11 +59,11 @@ namespace Memory {
                 return *this;
             }
 
-            std::unique_ptr<Memory::Image> Build(Core::Device& device) {
+            std::unique_ptr<Memory::Image> Build() {
                 if (m_extent.width == 0 || m_extent.height == 0 || m_extent.depth == 0) {
                     throw std::runtime_error("Image : Extent must be set");
                 }
-                return std::make_unique<Memory::Image>(device, *this);
+                return std::make_unique<Memory::Image>(*this);
             }
         private:
             vk::Format m_format = vk::Format::eUndefined;
@@ -78,7 +78,7 @@ namespace Memory {
             std::optional<vk::Image> m_image = std::nullopt;
         };
 
-        Image(Core::Device& device, const Builder& builder);
+        Image(const Builder& builder);
         ~Image();
 
         Image(const Image&) = delete;
@@ -97,7 +97,6 @@ namespace Memory {
         [[nodiscard]] std::vector<vk::ImageView> IndividualMipLevels() const;
 
     private:
-        Core::Device& m_device;
         vk::Image m_image;
         vk::DeviceMemory m_imageMemory;
         vk::ImageView m_imageView;

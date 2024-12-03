@@ -11,11 +11,6 @@ layout (push_constant) uniform PushConstants {
 } pushConstants;
 
 layout (set = 0, binding = 0) uniform sampler2D heightMap;
-layout (set = 0, binding = 1) uniform Settings {
-    float maxHeight;
-    float patchSize;
-    vec4 lodWeights[4];
-} settings;
 
 layout (location = 0) out PerVertexData {
     vec4 position;
@@ -31,24 +26,20 @@ const uint trianglePerLinePerInstance = vertexPerLinePerInstance - 1;
 const uint trianglePerInstance = trianglePerLinePerInstance * trianglePerLinePerInstance;
 const uint trianglePerPatch = trianglePerInstance * gl_WorkGroupSize.x * gl_WorkGroupSize.z;
 
-float SampleFunction(vec2 uv) {
-    float d = length(uv);
-    float height = (1 + tanh(d * 12 - 4)) * settings.maxHeight / 2;
-    uv = (uv + 1.0) / 2.0;
-
-    for (int i = 0; i < 10; i++) {
-        height += (textureLod(heightMap, uv, i).r -.5f) * settings.maxHeight * settings.lodWeights[i / 4][i % 4] * 4;
-    }
-    
-    return height;
-}
+const float patchSize = 0.1f;
 
 vec3 ComputeNormal(vec2 uv) {
-    float hL = SampleFunction(uv + vec2(-settings.patchSize / vertexPerLinePerInstance, 0.0));
-    float hR = SampleFunction(uv + vec2(settings.patchSize / vertexPerLinePerInstance, 0.0));
-    float hD = SampleFunction(uv + vec2(0.0, -settings.patchSize / vertexPerLinePerInstance));
-    float hU = SampleFunction(uv + vec2(0.0, settings.patchSize / vertexPerLinePerInstance));
-    return normalize(vec3(hL - hR, 2.0, hD - hU));
+    vec2 textureSize = vec2(1024.0, 1024.0);
+    vec3 terrainSize = vec3(30.0, 10.0, 30.0);
+    float maxHeightInTexture = 10.0;
+    float maxHeightInTerrain = 10.0;
+
+    float hL = textureLod(heightMap, uv + vec2(1.0 / textureSize.x, 0.0), 0).r * maxHeightInTerrain;
+    float hR = textureLod(heightMap, uv - vec2(1.0 / textureSize.x, 0.0), 0).r * maxHeightInTerrain;
+    float hU = textureLod(heightMap, uv + vec2(0.0, 1.0 / textureSize.y), 0).r * maxHeightInTerrain;
+    float hD = textureLod(heightMap, uv - vec2(0.0, 1.0 / textureSize.y), 0).r * maxHeightInTerrain;
+
+    return normalize(vec3(hL - hR, 2.0 / terrainSize.y, hD - hU));
 }
 
 void main() {
@@ -57,7 +48,7 @@ void main() {
         0.0,
         float(gl_NumWorkGroups.z * gl_WorkGroupSize.z)) / 2;
 
-    const vec3 maxPosition = (anchor + vec3(gl_NumWorkGroups.x * gl_WorkGroupSize.x, 0.0, gl_NumWorkGroups.z * gl_WorkGroupSize.z)) * settings.patchSize;
+    const vec3 maxPosition = (anchor + vec3(gl_NumWorkGroups.x * gl_WorkGroupSize.x, 0.0, gl_NumWorkGroups.z * gl_WorkGroupSize.z)) * patchSize;
 
     for (uint i = 0; i < vertexPerLinePerInstance; i++) {
         for (uint j = 0; j < vertexPerLinePerInstance; j++) {
@@ -65,16 +56,15 @@ void main() {
             uint index = vertexPerInstance * gl_LocalInvocationIndex + localIndex;
 
             vec3 positionInInstance = vec3(i, 0.0, j) / float(vertexPerLinePerInstance - 1);
-            vec3 position = (anchor + positionInInstance + vec3(gl_GlobalInvocationID.x, 0.0, gl_GlobalInvocationID.z)) * settings.patchSize;
-            position.y = SampleFunction(position.xz / maxPosition.xz);
+            vec3 position = (anchor + positionInInstance + vec3(gl_GlobalInvocationID.x, 0.0, gl_GlobalInvocationID.z)) * patchSize;
+            vec2 uv = (position.xz / maxPosition.xz + 1.f) / 2.0;
+            position.y = textureLod(heightMap, uv, 0).r;
 
             v_out[index].position = vec4(position, 1.0);
-            v_out[index].normal = ComputeNormal(position.xz / maxPosition.xz);
+            v_out[index].normal = ComputeNormal(uv);
             v_out[index].uv = positionInInstance.xz;
         }
     }
-
-    barrier();
 
     for (uint i = 0; i < trianglePerLinePerInstance; i++) {
         for (uint j = 0; j < trianglePerLinePerInstance; j++) {
@@ -96,8 +86,6 @@ void main() {
             gl_PrimitiveTriangleIndicesEXT[index + trianglePerPatch] = triangle2;
         }
     }
-
-    barrier();
 
     for (uint i = vertexPerInstance * gl_LocalInvocationIndex; i < vertexPerInstance * (gl_LocalInvocationIndex + 1); i++) {
         gl_MeshVerticesEXT[i].gl_Position = pushConstants.Projection * pushConstants.View * v_out[i].position;

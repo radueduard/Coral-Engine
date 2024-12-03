@@ -12,13 +12,10 @@ namespace Memory::Descriptor {
         class Builder {
             friend class SetLayout;
         public:
-            explicit Builder(const Core::Device &device) : m_device{device} {}
-
             Builder &AddBinding(uint32_t binding, vk::DescriptorType type, vk::ShaderStageFlags stageFlags, uint32_t count = 1);
             [[nodiscard]] std::unique_ptr<SetLayout> Build() const;
 
         private:
-            const Core::Device &m_device;
             std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> m_bindings;
         };
 
@@ -34,7 +31,6 @@ namespace Memory::Descriptor {
         [[nodiscard]] const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> &Bindings() const { return m_bindings; }
 
     private:
-        const Core::Device &m_device;
         vk::DescriptorSetLayout m_layout;
         std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> m_bindings;
     };

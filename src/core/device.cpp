@@ -17,9 +17,18 @@ namespace Core {
         queue = (*device).getQueue(familyIndex, index);
     }
 
+    void Device::Init() {
+        m_instance = std::make_unique<Device>();
+    }
 
-    Device::Device(const Runtime &runtime) : m_runtime(runtime) {
-        const auto& physicalDevice = m_runtime.PhysicalDevice();
+    void Device::Destroy() {
+        m_instance.reset();
+    }
+
+    std::unique_ptr<Device> Device::m_instance = nullptr;
+
+    Device::Device() {
+        const auto& physicalDevice = Core::Runtime::Get().PhysicalDevice();
         for (const auto& queueFamily : physicalDevice.QueueFamilyProperties()) {
             const auto queueFamilyIndex = static_cast<uint32_t>(&queueFamily - physicalDevice.QueueFamilyProperties().data());
             const bool canPresent = (*physicalDevice).getSurfaceSupportKHR(queueFamilyIndex, physicalDevice.Surface());
@@ -45,14 +54,18 @@ namespace Core {
             .setTaskShader(false)
             .setMeshShader(true);
 
-        const auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features()
+        auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features()
             .setMaintenance4(true)
             .setPNext(&deviceMeshShaderFeatures);
+
+        const auto shaderBufferFloat32Atomics = vk::PhysicalDeviceShaderAtomicFloatFeaturesEXT()
+            .setShaderBufferFloat32Atomics(true)
+            .setPNext(&maintenance4Features);
 
         const auto deviceCreateInfo = vk::DeviceCreateInfo()
             .setQueueCreateInfos(queueCreateInfos)
             .setPEnabledFeatures(&Runtime::settings.deviceFeatures)
-            .setPNext(&maintenance4Features)
+            .setPNext(&shaderBufferFloat32Atomics)
             .setPEnabledExtensionNames(Runtime::settings.deviceExtensions)
             .setPEnabledLayerNames(Runtime::settings.deviceLayers);
 
@@ -147,11 +160,11 @@ namespace Core {
     }
 
     void Device::QuerySurfaceCapabilities() const {
-        m_runtime.PhysicalDevice().QuerySurfaceCapabilities();
+        Core::Runtime::Get().PhysicalDevice().QuerySurfaceCapabilities();
     }
 
     std::optional<uint32_t> Device::FindMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const {
-        const auto& physicalDevice = m_runtime.PhysicalDevice();
+        const auto& physicalDevice = Core::Runtime::Get().PhysicalDevice();
         const auto memoryTypes = (*physicalDevice).getMemoryProperties().memoryTypes;
         for (uint32_t i = 0; i < memoryTypes.size(); i++) {
             if ((typeFilter & (1 << i)) &&

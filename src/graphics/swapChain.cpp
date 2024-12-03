@@ -38,15 +38,16 @@ namespace Graphics {
         return actualExtent;
     }
 
-    SwapChain::SwapChain(Core::Device &device, const vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain)
-        : m_device(device), m_imageCount(settings.imageCount)
+    SwapChain::SwapChain(const vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain)
+        : m_imageCount(settings.imageCount)
     {
+        const auto &m_device = Core::Device::Get();
         (*m_device).waitIdle();
         m_device.QuerySurfaceCapabilities();
 
-        const vk::SurfaceFormatKHR surfaceFormat = ChooseSurfaceFormat(m_device.PhysicalDevice().SurfaceFormats());
-        const vk::PresentModeKHR presentMode = ChoosePresentMode(m_device.PhysicalDevice().SurfacePresentModes());
-        m_extent = ChooseExtent(m_device.PhysicalDevice().SurfaceCapabilities(), extent);
+        const vk::SurfaceFormatKHR surfaceFormat = ChooseSurfaceFormat(Core::Runtime::Get().PhysicalDevice().SurfaceFormats());
+        const vk::PresentModeKHR presentMode = ChoosePresentMode(Core::Runtime::Get().PhysicalDevice().SurfacePresentModes());
+        m_extent = ChooseExtent(Core::Runtime::Get().PhysicalDevice().SurfaceCapabilities(), extent);
 
         if (oldSwapChain) {
             m_presentQueue = oldSwapChain->m_presentQueue;
@@ -64,8 +65,10 @@ namespace Graphics {
         auto queueFamilyIndices = settings.queueFamilyIndices;
         queueFamilyIndices.push_back(m_presentQueue->familyIndex);
 
+        const auto& device = Core::Device::Get();
+
         auto createInfo = vk::SwapchainCreateInfoKHR()
-            .setSurface(m_device.PhysicalDevice().Surface())
+            .setSurface(Core::Runtime::Get().PhysicalDevice().Surface())
             .setMinImageCount(settings.imageCount)
             .setImageFormat(surfaceFormat.format)
             .setImageColorSpace(surfaceFormat.colorSpace)
@@ -74,7 +77,7 @@ namespace Graphics {
             .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
             .setImageSharingMode(vk::SharingMode::eExclusive)
             .setQueueFamilyIndices(queueFamilyIndices)
-            .setPreTransform(m_device.PhysicalDevice().SurfaceCapabilities().currentTransform)
+            .setPreTransform(Core::Runtime::Get().PhysicalDevice().SurfaceCapabilities().currentTransform)
             .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
             .setPresentMode(presentMode)
             .setClipped(true);
@@ -83,11 +86,12 @@ namespace Graphics {
             createInfo.setOldSwapchain(oldSwapChain->m_swapChain);
             m_imageIndex = oldSwapChain->m_imageIndex;
         }
-        m_swapChain = (*m_device).createSwapchainKHR(createInfo);
+        m_swapChain = (*device).createSwapchainKHR(createInfo);
     }
 
     void SwapChain::CreateRenderPass(const vk::SurfaceFormatKHR &surfaceFormat, const Settings& settings, const std::unique_ptr<SwapChain> &oldSwapChain) {
-        const auto swapChainImageHandles = (*m_device).getSwapchainImagesKHR(m_swapChain);
+        const auto &device = Core::Device::Get();
+        const auto swapChainImageHandles = (*device).getSwapchainImagesKHR(m_swapChain);
         std::vector<std::unique_ptr<Memory::Image>> swapChainImages;
         swapChainImages.reserve(swapChainImageHandles.size());
         for (const auto &image : swapChainImageHandles) {
@@ -99,7 +103,7 @@ namespace Graphics {
                 .MipLevels(1)
                 .LayersCount(1)
                 .InitialLayout(vk::ImageLayout::eUndefined)
-                .Build(m_device));
+                .Build());
         }
 
         auto colorAttachment = RenderPass::Attachment {
@@ -150,7 +154,7 @@ namespace Graphics {
                .Subpass(subpass)
                .Dependency(dependency1)
                .Dependency(dependency2)
-               .Build(m_device);
+               .Build();
         } else {
             // colorAttachment.description.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
 
@@ -179,7 +183,7 @@ namespace Graphics {
                     .LayersCount(1)
                     .SampleCount(settings.sampleCount)
                     .InitialLayout(vk::ImageLayout::eUndefined)
-                    .Build(m_device));
+                    .Build());
             }
 
             resolveAttachment.images = std::move(swapChainImages);
@@ -199,7 +203,7 @@ namespace Graphics {
                 .Subpass(subpass)
                 .Dependency(dependency1)
                 .Dependency(dependency2)
-                .Build(m_device);
+                .Build();
 
             if (oldSwapChain) {
                 uint32_t i = 0;
@@ -214,15 +218,15 @@ namespace Graphics {
     }
 
     SwapChain::~SwapChain() {
-        (*m_device).waitIdle();
+        (*Core::Device::Get()).waitIdle();
         if (m_swapChain) {
-            (*m_device).destroySwapchainKHR(m_swapChain);
+            (*Core::Device::Get()).destroySwapchainKHR(m_swapChain);
         }
     }
 
     vk::Result SwapChain::Acquire(const mgv::Frame &frame) {
         try {
-            const auto result = (*m_device).acquireNextImageKHR(
+            const auto result = (*Core::Device::Get()).acquireNextImageKHR(
                 m_swapChain,
                 UINT64_MAX,
                 frame.imageAvailable);

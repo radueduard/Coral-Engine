@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <vector>
+#include <boost/uuid/uuid.hpp>
 #include <glm/glm.hpp>
 
 #include "core/device.h"
@@ -71,5 +72,11 @@ namespace mgv {
 
         void CreateVertexBuffer(const std::vector<Vertex> &vertices);
         void CreateIndexBuffer(const std::vector<uint32_t> &indices);
+
+    public:
+        static const mgv::Mesh *Cube();
+        static const mgv::Mesh *Sphere();
+    private:
+        static std::unordered_map<std::string, boost::uuids::uuid> m_meshes;
     };
 }

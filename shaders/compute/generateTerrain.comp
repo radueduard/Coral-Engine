@@ -1,0 +1,31 @@
+#version 460 core
+
+layout(local_size_x = 32, local_size_y = 32) in;
+
+layout (set = 0, binding = 0) uniform Settings {
+    float maxHeight;
+    uint lodCount;
+    vec4 lodWeights[5];
+} settings;
+
+layout (set = 0, binding = 1) uniform sampler2D noiseTextures;
+layout (set = 0, binding = 2) writeonly uniform image2D heightMap;
+
+float SampleFunction(vec2 uv) {
+    float d = length((uv - 0.5) * 2);
+    float height = (1 + tanh(d * 12 - 4)) * settings.maxHeight / 2;
+
+    for (int i = 0; i < settings.lodCount; i++) {
+        height += (textureLod(noiseTextures, uv, i).r - 0.5f) * settings.maxHeight * settings.lodWeights[i / 4][i % 4] * 4;
+    }
+
+    return height;
+}
+
+void main() {
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+    vec2 uv = vec2(texel) / vec2(imageSize(heightMap));
+
+    float height = SampleFunction(uv);
+    imageStore(heightMap, texel, vec4(height, 0.0, 0.0, 0.0));
+}

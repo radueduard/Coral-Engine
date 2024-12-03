@@ -11,7 +11,7 @@
 #include "memory/sampler.h"
 
 namespace mgv {
-    Texture::Texture(Core::Device &device, const Builder &builder) : m_name(builder.m_name) {
+    Texture::Texture(const Builder &builder) : m_name(builder.m_name) {
         const auto extent = vk::Extent3D(builder.m_width, builder.m_height, 1);
         const auto mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(builder.m_width, builder.m_height)))) + 1;
         m_image = Memory::Image::Builder()
@@ -22,11 +22,10 @@ namespace mgv {
             .InitialLayout(vk::ImageLayout::eUndefined)
             .UsageFlags(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
             .ViewType(vk::ImageViewType::e2D)
-            .Build(device);
+            .Build();
 
         if (builder.m_data) {
             auto stagingBuffer = Memory::Buffer<glm::u8vec4>(
-                device,
                 builder.m_width * builder.m_height,
                 vk::BufferUsageFlagBits::eTransferSrc,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -42,7 +41,7 @@ namespace mgv {
         m_image->TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
         m_descriptorInfo = vk::DescriptorImageInfo()
-            .setSampler(Memory::Sampler::Get(device, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear))
+            .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear))
             .setImageView(m_image->ImageView())
             .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
     }

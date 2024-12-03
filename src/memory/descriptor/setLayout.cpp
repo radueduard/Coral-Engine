@@ -31,7 +31,7 @@ namespace Memory::Descriptor {
         return std::make_unique<SetLayout>(*this);
     }
 
-    SetLayout::SetLayout(const Builder &builder) : m_device(builder.m_device) {
+    SetLayout::SetLayout(const Builder &builder) {
         std::vector<vk::DescriptorSetLayoutBinding> bindings;
         for (const auto &binding: builder.m_bindings | std::views::values) {
             bindings.emplace_back(binding);
@@ -40,12 +40,12 @@ namespace Memory::Descriptor {
         const auto layoutCreateInfo = vk::DescriptorSetLayoutCreateInfo()
             .setBindings(bindings);
 
-        m_layout = (*m_device).createDescriptorSetLayout(layoutCreateInfo);
+        m_layout = (*Core::Device::Get()).createDescriptorSetLayout(layoutCreateInfo);
         m_bindings = builder.m_bindings;
     }
 
     SetLayout::~SetLayout() {
-        (*m_device).destroyDescriptorSetLayout(m_layout);
+        (*Core::Device::Get()).destroyDescriptorSetLayout(m_layout);
     }
 
     bool SetLayout::HasBinding(const uint32_t binding) const {

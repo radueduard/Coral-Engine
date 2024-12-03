@@ -42,15 +42,15 @@ namespace Core {
 
     class Device {
     public:
-        explicit Device(const Runtime& runtime);
-        ~Device();
+        static void Init();
+        static void Destroy();
+
+        static Device& Get() { return *m_instance; }
 
         Device(const Device &) = delete;
         Device &operator=(const Device &) = delete;
 
         vk::Device operator *() const { return m_device; }
-        [[nodiscard]] const vk::Instance& Instance() const { return m_runtime.Instance(); }
-        [[nodiscard]] const PhysicalDevice& PhysicalDevice() const { return m_runtime.PhysicalDevice(); }
         [[nodiscard]] std::optional<Queue*> RequestQueue(vk::QueueFlags type) const;
         [[nodiscard]] std::optional<Queue*> RequestPresentQueue() const;
 
@@ -62,10 +62,13 @@ namespace Core {
         [[nodiscard]] std::optional<uint32_t> FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 
         void RunSingleTimeCommand(const std::function<void(vk::CommandBuffer)> &command, vk::QueueFlags requiredFlags, vk::Fence fence = nullptr, uint32_t thread = 0) const;
-    private:
-        vk::Device m_device;
-        const Runtime& m_runtime;
 
+        explicit Device();
+        ~Device();
+    private:
+        static std::unique_ptr<Device> m_instance;
+
+        vk::Device m_device;
         std::vector<QueueFamily> m_queueFamilies;
         std::unordered_map<uint32_t, std::vector<vk::CommandPool>> m_commandPools;
     };

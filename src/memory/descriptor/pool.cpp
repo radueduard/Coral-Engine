@@ -28,7 +28,6 @@ namespace Memory::Descriptor {
     }
 
     Pool::Pool(const Builder &builder) :
-        m_device(builder.m_device),
         m_poolSizes(builder.m_poolSizes),
         m_flags(builder.m_flags),
         m_maxSets(builder.m_maxSets)
@@ -38,11 +37,11 @@ namespace Memory::Descriptor {
             .setMaxSets(m_maxSets)
             .setFlags(m_flags);
 
-        m_pool = (*m_device).createDescriptorPool(poolCreateInfo);
+        m_pool = (*Core::Device::Get()).createDescriptorPool(poolCreateInfo);
     }
 
     Pool::~Pool() {
-        (*m_device).destroyDescriptorPool(m_pool);
+        (*Core::Device::Get()).destroyDescriptorPool(m_pool);
     }
 
     vk::DescriptorSet Pool::Allocate(const SetLayout &layout) const {
@@ -50,7 +49,7 @@ namespace Memory::Descriptor {
         const auto allocateInfo = vk::DescriptorSetAllocateInfo()
             .setDescriptorPool(m_pool)
             .setSetLayouts({layoutHandle});
-        return (*m_device).allocateDescriptorSets(allocateInfo).front();
+        return (*Core::Device::Get()).allocateDescriptorSets(allocateInfo).front();
     }
 
     std::vector<vk::DescriptorSet> Pool::Allocate(const std::vector<SetLayout> &layouts) const {
@@ -63,15 +62,15 @@ namespace Memory::Descriptor {
             .setDescriptorPool(m_pool)
             .setSetLayouts(layoutHandles);
 
-        return (*m_device).allocateDescriptorSets(allocateInfo);
+        return (*Core::Device::Get()).allocateDescriptorSets(allocateInfo);
     }
 
     void Pool::Free(const vk::DescriptorSet &descriptorSet) const {
-        (*m_device).freeDescriptorSets(m_pool, descriptorSet);
+        (*Core::Device::Get()).freeDescriptorSets(m_pool, descriptorSet);
     }
 
     void Pool::Free(const std::vector<vk::DescriptorSet> &descriptorSets) const {
-        (*m_device).freeDescriptorSets(m_pool, descriptorSets);
+        (*Core::Device::Get()).freeDescriptorSets(m_pool, descriptorSets);
     }
 
 }

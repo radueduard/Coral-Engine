@@ -61,7 +61,7 @@ namespace Graphics {
             Builder &DescriptorSetLayout(uint32_t setNumber, const Memory::Descriptor::SetLayout &layout);
             Builder &DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts);
 
-            std::unique_ptr<Pipeline> Build(const Core::Device &);
+            std::unique_ptr<Pipeline> Build();
         private:
             void CheckShaderStagesValidity() const;
 
@@ -101,7 +101,7 @@ namespace Graphics {
             std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
         };
 
-        Pipeline(const Core::Device &, const Builder &);
+        Pipeline(const Builder &);
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
@@ -122,7 +122,6 @@ namespace Graphics {
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
 
     private:
-        const Core::Device &m_device;
         Type m_type;
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;

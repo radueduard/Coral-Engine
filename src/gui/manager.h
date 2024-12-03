@@ -14,7 +14,7 @@ namespace GUI {
 
     class Manager {
     public:
-        static void Init(const mgv::Renderer &renderer);
+        static void Init();
         static void Destroy();
 
         static void Update();
@@ -23,11 +23,10 @@ namespace GUI {
         static void AddLayer(Layer* layer);
         static void RemoveLayer(Layer* layer);
 
-    private:
-        static Manager* m_instance;
-
-        explicit Manager(const mgv::Renderer &renderer);
+        explicit Manager();
         ~Manager();
+    private:
+        static std::unique_ptr<Manager> m_instance;
 
         Manager(const Manager &) = delete;
         Manager &operator=(const Manager &) = delete;
@@ -36,9 +35,7 @@ namespace GUI {
         void CreateContext() const;
         void DestroyContext();
 
-        const mgv::Renderer &m_renderer;
         std::unique_ptr<Memory::Descriptor::Pool> m_descriptorPool;
-
         std::vector<Layer*> m_layers;
     };
 }

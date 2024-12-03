@@ -10,7 +10,7 @@
 
 class CalculateMVP {
 public:
-    CalculateMVP(Core::Device &device, const Memory::Descriptor::Pool &pool);
+    explicit CalculateMVP(const Memory::Descriptor::Pool &pool);
 
     void Init(const mgv::Scene &scene) const;
     void Update(const mgv::Scene &scene) const;

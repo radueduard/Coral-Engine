@@ -12,8 +12,8 @@ namespace Graphics {
         }
     }
 
-    RenderPass::RenderPass(const Core::Device &device, Builder* builder)
-        : m_device(device), m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
+    RenderPass::RenderPass(Builder* builder)
+        : m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
         m_attachments = std::move(builder->m_attachments);
         m_subpasses = builder->m_subpasses;
         m_dependencies = builder->m_dependencies;
@@ -41,7 +41,7 @@ namespace Graphics {
             .setSubpasses(m_subpasses)
             .setDependencies(m_dependencies);
 
-        m_renderPass = (*m_device).createRenderPass(renderPassInfo);
+        m_renderPass = (*Core::Device::Get()).createRenderPass(renderPassInfo);
     }
 
     void RenderPass::CreateFrameBuffers() {
@@ -59,20 +59,20 @@ namespace Graphics {
                 .setHeight(m_extent.height)
                 .setLayers(1);
 
-            m_frameBuffers[i] = (*m_device).createFramebuffer(frameBufferInfo);
+            m_frameBuffers[i] = (*Core::Device::Get()).createFramebuffer(frameBufferInfo);
         }
     }
 
     void RenderPass::DestroyRenderPass() {
         if (m_renderPass) {
-            (*m_device).destroyRenderPass(m_renderPass);
+            (*Core::Device::Get()).destroyRenderPass(m_renderPass);
             m_renderPass = nullptr;
         }
     }
 
     void RenderPass::DestroyFrameBuffers() {
         for (const auto &frameBuffer : m_frameBuffers) {
-            (*m_device).destroyFramebuffer(frameBuffer);
+            (*Core::Device::Get()).destroyFramebuffer(frameBuffer);
         }
         m_frameBuffers.clear();
     }
@@ -108,11 +108,19 @@ namespace Graphics {
         commandBuffer.setScissor(0, scissor);
     }
 
-    void RenderPass::Draw(const vk::CommandBuffer commandBuffer) const {
+    void RenderPass::Update(const float deltaTime) const {
+        for (const auto& subpass : m_programs) {
+            for (const auto& program : subpass) {
+                program->Update(deltaTime);
+            }
+        }
+    }
+
+    void RenderPass::Draw(const vk::CommandBuffer commandBuffer, const bool reflected) const {
         uint32_t i = 0;
         for (const auto& subpass : m_programs) {
             for (const auto& program : subpass) {
-                program->Draw(commandBuffer);
+                program->Draw(commandBuffer, reflected);
             }
             if (i + 1 < m_programs.size()) {
                 commandBuffer.nextSubpass(vk::SubpassContents::eInline);
@@ -136,11 +144,11 @@ namespace Graphics {
 
 
     bool RenderPass::Resize(const uint32_t imageCount, const vk::Extent2D extent) {
-        if (m_imageCount == imageCount && m_extent == extent) {
+        if ((m_imageCount == imageCount && m_extent == extent) || (extent.width == 0 || extent.height == 0)) {
             return false;
         }
 
-        (*m_device).waitIdle();
+        (*Core::Device::Get()).waitIdle();
 
         DestroyFrameBuffers();
 

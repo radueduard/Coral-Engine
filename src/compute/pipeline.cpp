@@ -34,23 +34,22 @@ namespace Compute {
         return *this;
     }
 
-    std::unique_ptr<Pipeline> Pipeline::Builder::Build(const Core::Device &device) {
+    std::unique_ptr<Pipeline> Pipeline::Builder::Build() {
         const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
             .setSetLayouts(m_descriptorSetLayouts)
             .setPushConstantRanges(m_pushConstantRanges);
 
-        m_pipelineLayout = (*device).createPipelineLayout(pipelineLayoutInfo);
+        m_pipelineLayout = (*Core::Device::Get()).createPipelineLayout(pipelineLayoutInfo);
 
         m_shaderStage = vk::PipelineShaderStageCreateInfo()
             .setStage(vk::ShaderStageFlagBits::eCompute)
             .setModule(m_shaderModule)
             .setPName("main");
 
-        return std::make_unique<Pipeline>(device, *this);
+        return std::make_unique<Pipeline>(*this);
     }
 
-    Pipeline::Pipeline(const Core::Device& device, const Builder& builder)
-        : m_device(device), m_pipelineLayout(builder.m_pipelineLayout), m_shaderModule(builder.m_shaderModule)
+    Pipeline::Pipeline(const Builder& builder) : m_pipelineLayout(builder.m_pipelineLayout), m_shaderModule(builder.m_shaderModule)
     {
         const auto createInfo = vk::ComputePipelineCreateInfo()
             .setLayout(m_pipelineLayout)
@@ -58,7 +57,7 @@ namespace Compute {
             .setBasePipelineHandle(builder.m_basePipeline)
             .setBasePipelineIndex(builder.m_basePipelineIndex);
 
-        const auto pipeline = (*device).createComputePipeline(nullptr, createInfo);
+        const auto pipeline = (*Core::Device::Get()).createComputePipeline(nullptr, createInfo);
         if (pipeline.result != vk::Result::eSuccess) {
             std::cerr << "Failed to create compute pipeline" << std::endl;
         }
@@ -66,9 +65,10 @@ namespace Compute {
     }
 
     Pipeline::~Pipeline() {
-        (*m_device).waitIdle();
-        (*m_device).destroyPipeline(m_pipeline);
-        (*m_device).destroyPipelineLayout(m_pipelineLayout);
+        const auto &device = Core::Device::Get();
+        (*device).waitIdle();
+        (*device).destroyPipeline(m_pipeline);
+        (*device).destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer commandBuffer) const {

@@ -6,33 +6,33 @@
 
 #include <queue>
 
-CalculateMVP::CalculateMVP(Core::Device &device, const Memory::Descriptor::Pool &pool) {
+CalculateMVP::CalculateMVP(const Memory::Descriptor::Pool &pool) {
     m_cameraBuffer = std::make_unique<Memory::Buffer<mgv::Camera::Info>>(
-            device, 1,
+            1,
             vk::BufferUsageFlagBits::eUniformBuffer,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
     m_parentBuffer = std::make_unique<Memory::Buffer<glm::uint>>(
-        device, 4096,
+        4096,
         vk::BufferUsageFlagBits::eUniformBuffer,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
     m_modelBuffer = std::make_unique<Memory::Buffer<glm::mat4>>(
-        device, 4096,
+        4096,
         vk::BufferUsageFlagBits::eStorageBuffer,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
     m_outModelBuffer = std::make_unique<Memory::Buffer<glm::mat4>>(
-        device, 4096,
+        4096,
         vk::BufferUsageFlagBits::eStorageBuffer,
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     m_mvpBuffer = std::make_unique<Memory::Buffer<glm::mat4>>(
-        device, 4096,
+        4096,
         vk::BufferUsageFlagBits::eStorageBuffer,
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    m_setLayout = Memory::Descriptor::SetLayout::Builder(device)
+    m_setLayout = Memory::Descriptor::SetLayout::Builder()
         .AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eCompute)
         .AddBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eCompute)
         .AddBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
@@ -40,7 +40,7 @@ CalculateMVP::CalculateMVP(Core::Device &device, const Memory::Descriptor::Pool 
         .AddBinding(4, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
         .Build();
 
-    m_descriptorSet = Memory::Descriptor::Set::Builder(device, pool, *m_setLayout)
+    m_descriptorSet = Memory::Descriptor::Set::Builder(pool, *m_setLayout)
         .WriteBuffer(0, m_cameraBuffer->DescriptorInfo().value())
         .WriteBuffer(1, m_parentBuffer->DescriptorInfo().value())
         .WriteBuffer(2, m_modelBuffer->DescriptorInfo().value())
@@ -49,9 +49,9 @@ CalculateMVP::CalculateMVP(Core::Device &device, const Memory::Descriptor::Pool 
         .Build();
 
     m_computeProgram = Compute::Pipeline::Builder()
-        .Shader(Core::Shader(device, "shaders/compute/calculateMvp.comp"))
+        .Shader(Core::Shader("shaders/compute/calculateMvp.comp"))
         .DescriptorSetLayout(0, *m_setLayout)
-        .Build(device);
+        .Build();
 }
 
 void CalculateMVP::Init(const mgv::Scene &scene) const {

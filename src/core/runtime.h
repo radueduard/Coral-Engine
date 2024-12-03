@@ -26,7 +26,12 @@ namespace Core {
             std::unordered_set<vk::QueueFlagBits> requiredQueueFamilies;
         } settings;
 
-        explicit Runtime(const Window& window);
+        static void Init();
+        static void Destroy();
+
+        static Runtime& Get() { return *m_instance; }
+
+        Runtime();
         ~Runtime();
         Runtime(const Runtime &) = delete;
         Runtime &operator=(const Runtime &) = delete;
@@ -37,13 +42,13 @@ namespace Core {
         void setupDebugMessenger();
         void destroyDebugMessenger() const;
 
-        [[nodiscard]] const vk::Instance& Instance() const { return m_instance; }
+        [[nodiscard]] const vk::Instance& Instance() const { return m_vkInstance; }
         [[nodiscard]] const vk::SurfaceKHR& Surface() const { return m_surface; }
         [[nodiscard]] PhysicalDevice& PhysicalDevice() const { return *m_physicalDevice; }
     private:
-        const Window& m_window;
+        static std::unique_ptr<Runtime> m_instance;
 
-        vk::Instance m_instance;
+        vk::Instance m_vkInstance;
         vk::DebugUtilsMessengerEXT m_debugMessenger;
         vk::SurfaceKHR m_surface;
         std::unique_ptr<Core::PhysicalDevice> m_physicalDevice = nullptr;

@@ -1,0 +1,44 @@
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+struct Particle {
+    vec4 position;
+    vec4 speed;
+    vec4 acceleration;
+    vec4 color;
+};
+
+layout(set = 0, binding = 0) readonly buffer Particles {
+    Particle data[];
+} particles;
+
+struct Indices {
+    uint data[16];
+};
+
+layout(set = 0, binding = 1, std430) buffer IndexBuffer {
+    Indices data[];
+} indexBuffer;
+
+void main() {
+    uint index = gl_WorkGroupID.x * gl_NumWorkGroups.y + gl_WorkGroupID.y;
+    vec2 chunkCenter = vec2(-15.0, -15.0) + vec2(gl_WorkGroupID.xy) + vec2(0.5);
+
+    uint lightIndex = 0;
+    Indices indices;
+    for (uint i = 0; i < 1024; i++) {
+        if (lightIndex >= 16) {
+            break;
+        }
+        Particle particle = particles.data[i];
+        if (length(particle.position.xz - chunkCenter) < 2.0) {
+            indices.data[lightIndex++] = i;
+        }
+    }
+    while (lightIndex < 16) {
+        indices.data[lightIndex++] = 0xFFFFFFFF;
+        lightIndex++;
+    }
+    indexBuffer.data[index] = indices;
+}

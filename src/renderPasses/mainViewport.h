@@ -9,7 +9,7 @@
 
 class MainViewport final : public GUI::Layer {
 public:
-    explicit MainViewport(Core::Device &device);
+    explicit MainViewport();
     ~MainViewport() override = default;
 
     [[nodiscard]] Graphics::RenderPass &RenderPass() const { return *m_renderPass; }
@@ -21,7 +21,6 @@ public:
     void DestroyUI() override;
 
 private:
-    Core::Device &m_device;
     std::unique_ptr<Graphics::RenderPass> m_renderPass;
     uint32_t m_imageCount;
     vk::Extent2D m_extent;

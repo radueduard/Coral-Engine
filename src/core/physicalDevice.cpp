@@ -4,6 +4,8 @@
 
 #include "physicalDevice.h"
 
+#include <iostream>
+
 #include "runtime.h"
 
 namespace Core {
@@ -56,6 +58,10 @@ namespace Core {
             std::string extensionName = availableExtension.extensionName;
             requiredExtensions.erase(extensionName);
         }
+        for (const auto& extension : requiredExtensions) {
+            std::cerr << "PhysicalDevice : Missing required extension " << extension << std::endl;
+        }
+
         return requiredExtensions.empty();
     }
 

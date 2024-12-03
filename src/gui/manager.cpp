@@ -13,9 +13,9 @@
 #include "graphics/renderer.h"
 
 namespace GUI {
-    Manager* Manager::m_instance = nullptr;
+    std::unique_ptr<Manager> Manager::m_instance = nullptr;
 
-    Manager::Manager(const mgv::Renderer &renderer) : m_renderer(renderer) {
+    Manager::Manager() {
         CreateDescriptorPool();
         CreateContext();
     }
@@ -24,12 +24,12 @@ namespace GUI {
         DestroyContext();
     }
 
-    void Manager::Init(const mgv::Renderer &renderer) {
-        m_instance = new Manager(renderer);
+    void Manager::Init() {
+        m_instance = std::make_unique<Manager>();
     }
 
     void Manager::Destroy() {
-        delete m_instance;
+        m_instance.reset();
     }
 
     void Manager::AddLayer(Layer* layer) {
@@ -94,7 +94,7 @@ namespace GUI {
     }
 
     void Manager::CreateDescriptorPool() {
-        m_descriptorPool = Memory::Descriptor::Pool::Builder(m_renderer.m_device)
+        m_descriptorPool = Memory::Descriptor::Pool::Builder()
             .AddPoolSize(vk::DescriptorType::eSampler, 1000)
             .AddPoolSize(vk::DescriptorType::eCombinedImageSampler, 1000)
             .AddPoolSize(vk::DescriptorType::eSampledImage, 1000)
@@ -137,19 +137,21 @@ namespace GUI {
             style.Colors[ImGuiCol_WindowBg].w = 1.0f;
         }
 
-        const auto msaaSamples = static_cast<VkSampleCountFlagBits>(m_renderer.m_swapChainSettings.sampleCount);
+        const auto &device = Core::Device::Get();
+        const auto &renderer = mgv::Renderer::Get();
+        const auto msaaSamples = static_cast<VkSampleCountFlagBits>(renderer.m_swapChainSettings.sampleCount);
 
-        ImGui_ImplGlfw_InitForVulkan(*m_renderer.m_window, true);
+        ImGui_ImplGlfw_InitForVulkan(*Core::Window::Get(), true);
         ImGui_ImplVulkan_InitInfo init_info = {
-            .Instance = m_renderer.m_device.Instance(),
-            .PhysicalDevice = *m_renderer.m_device.PhysicalDevice(),
-            .Device = *m_renderer.m_device,
-            .QueueFamily = m_renderer.m_queues.at(vk::QueueFlagBits::eGraphics)->familyIndex,
-            .Queue = m_renderer.m_queues.at(vk::QueueFlagBits::eGraphics)->queue,
+            .Instance = Core::Runtime::Get().Instance(),
+            .PhysicalDevice = *Core::Runtime::Get().PhysicalDevice(),
+            .Device = *device,
+            .QueueFamily = renderer.m_queues.at(vk::QueueFlagBits::eGraphics)->familyIndex,
+            .Queue = renderer.m_queues.at(vk::QueueFlagBits::eGraphics)->queue,
             .DescriptorPool = **m_descriptorPool,
-            .RenderPass = *(m_renderer.m_swapChain->RenderPass()),
-            .MinImageCount = m_renderer.m_swapChainSettings.minImageCount,
-            .ImageCount = m_renderer.m_swapChainSettings.imageCount,
+            .RenderPass = *(renderer.m_swapChain->RenderPass()),
+            .MinImageCount = renderer.m_swapChainSettings.minImageCount,
+            .ImageCount = renderer.m_swapChainSettings.imageCount,
             .MSAASamples = msaaSamples,
             .PipelineCache = nullptr,
             .Subpass = 0,

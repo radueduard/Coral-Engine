@@ -7,8 +7,8 @@
 #include <iostream>
 
 namespace Memory {
-    Image::Image(Core::Device &device, const Builder &builder)
-        : m_device(device), m_format(builder.m_format), m_extent(builder.m_extent),
+    Image::Image(const Builder &builder)
+        : m_format(builder.m_format), m_extent(builder.m_extent),
             m_usageFlags(builder.m_usageFlags), m_sampleCount(builder.m_sampleCount),
             m_mipLevels(builder.m_mipLevels), m_layersCount(builder.m_layersCount) {
         if (!builder.m_image.has_value()) {
@@ -26,10 +26,11 @@ namespace Memory {
                 .setInitialLayout(vk::ImageLayout::eUndefined)
                 .setFlags(imageCreateFlags);
 
-            m_image = (*m_device).createImage(imageCreateInfo);
+            const auto& device = Core::Device::Get();
+            m_image = (*device).createImage(imageCreateInfo);
 
-            const vk::MemoryRequirements memoryRequirements = (*m_device).getImageMemoryRequirements(m_image);
-            const auto memoryTypeIndex = m_device.FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+            const vk::MemoryRequirements memoryRequirements = (*device).getImageMemoryRequirements(m_image);
+            const auto memoryTypeIndex = device.FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
             if (!memoryTypeIndex.has_value()) {
                 std::cerr << "Image : Failed to find suitable memory type" << std::endl;
             }
@@ -38,8 +39,8 @@ namespace Memory {
                 .setAllocationSize(memoryRequirements.size)
                 .setMemoryTypeIndex(memoryTypeIndex.value());
 
-            m_imageMemory = (*m_device).allocateMemory(allocInfo);
-            (*m_device).bindImageMemory(m_image, m_imageMemory, 0);
+            m_imageMemory = (*device).allocateMemory(allocInfo);
+            (*device).bindImageMemory(m_image, m_imageMemory, 0);
         } else {
             m_image = builder.m_image.value();
         }
@@ -64,17 +65,18 @@ namespace Memory {
                 .setBaseArrayLayer(0)
                 .setLayerCount(builder.m_layersCount));
 
-        m_imageView = (*m_device).createImageView(viewInfo);
+        m_imageView = (*Core::Device::Get()).createImageView(viewInfo);
         if (builder.m_layout != vk::ImageLayout::eUndefined) {
             TransitionLayout(builder.m_layout);
         }
     }
 
     Image::~Image() {
-        (*m_device).destroyImageView(m_imageView);
+        const auto& device = Core::Device::Get();
+        (*device).destroyImageView(m_imageView);
         if (m_imageMemory) {
-            (*m_device).freeMemory(m_imageMemory);
-            (*m_device).destroyImage(m_image);
+            (*device).freeMemory(m_imageMemory);
+            (*device).destroyImage(m_image);
         }
     }
 
@@ -89,7 +91,7 @@ namespace Memory {
             throw std::runtime_error("Image : Layer out of range");
         }
 
-        m_device.RunSingleTimeCommand([this, buffer, layer, mipLevel] (const vk::CommandBuffer commandBuffer) {
+        Core::Device::Get().RunSingleTimeCommand([this, buffer, layer, mipLevel] (const vk::CommandBuffer commandBuffer) {
             vk::Extent3D extent = m_extent;
             for (uint32_t i = 0; i < mipLevel; i++) {
                 extent.width = std::max(1u, extent.width / 2);
@@ -117,7 +119,7 @@ namespace Memory {
             return;
         }
 
-        m_device.RunSingleTimeCommand([this, newLayout] (const vk::CommandBuffer &commandBuffer) {
+        Core::Device::Get().RunSingleTimeCommand([this, newLayout] (const vk::CommandBuffer &commandBuffer) {
             auto barrier = vk::ImageMemoryBarrier()
                 .setOldLayout(m_layout)
                 .setNewLayout(newLayout)
@@ -162,6 +164,10 @@ namespace Memory {
                         case vk::ImageLayout::eShaderReadOnlyOptimal:
                             barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
                             destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+                        break;
+                        case vk::ImageLayout::eGeneral:
+                            barrier.setDstAccessMask(vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite);
+                            destinationStage = vk::PipelineStageFlagBits::eAllCommands;
                         break;
                         default:
                             throw std::runtime_error("Unsupported new layout transition");
@@ -224,9 +230,13 @@ namespace Memory {
     }
 
     void Image::Resize(const vk::Extent3D &extent) {
-        (*m_device).destroyImageView(m_imageView);
-        (*m_device).freeMemory(m_imageMemory);
-        (*m_device).destroyImage(m_image);
+        if (m_extent == extent || (extent.width == 0 || extent.height == 0 || extent.depth == 0))
+            return;
+
+        const auto& device = Core::Device::Get();
+        (*device).destroyImageView(m_imageView);
+        (*device).freeMemory(m_imageMemory);
+        (*device).destroyImage(m_image);
 
 
         m_extent = extent;
@@ -242,18 +252,18 @@ namespace Memory {
             .setSharingMode(vk::SharingMode::eExclusive)
             .setInitialLayout(vk::ImageLayout::eUndefined)
             .setFlags(m_layersCount == 6 ? vk::ImageCreateFlagBits::eCubeCompatible : vk::ImageCreateFlags());
-        m_image = (*m_device).createImage(imageCreateInfo);
+        m_image = (*device).createImage(imageCreateInfo);
 
-        const vk::MemoryRequirements memoryRequirements = (*m_device).getImageMemoryRequirements(m_image);
-        const auto memoryTypeIndex = m_device.FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        const vk::MemoryRequirements memoryRequirements = (*device).getImageMemoryRequirements(m_image);
+        const auto memoryTypeIndex = device.FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
         if (!memoryTypeIndex.has_value()) {
             std::cerr << "Image : Failed to find suitable memory type" << std::endl;
         }
 
-        m_imageMemory = (*m_device).allocateMemory(vk::MemoryAllocateInfo()
+        m_imageMemory = (*device).allocateMemory(vk::MemoryAllocateInfo()
             .setAllocationSize(memoryRequirements.size)
             .setMemoryTypeIndex(memoryTypeIndex.value()));
-        (*m_device).bindImageMemory(m_image, m_imageMemory, 0);
+        (*device).bindImageMemory(m_image, m_imageMemory, 0);
 
         const auto viewInfo = vk::ImageViewCreateInfo()
             .setImage(m_image)
@@ -266,7 +276,7 @@ namespace Memory {
                 .setBaseArrayLayer(0)
                 .setLayerCount(m_layersCount));
 
-        m_imageView = (*m_device).createImageView(viewInfo);
+        m_imageView = (*device).createImageView(viewInfo);
         if (m_layout != vk::ImageLayout::eUndefined) {
             const auto layout = m_layout;
             m_layout = vk::ImageLayout::eUndefined;
@@ -287,7 +297,7 @@ namespace Memory {
                     .setLevelCount(1)
                     .setBaseArrayLayer(0)
                     .setLayerCount(m_layersCount));
-            imageViews.push_back((*m_device).createImageView(viewInfo));
+            imageViews.push_back((*Core::Device::Get()).createImageView(viewInfo));
         }
         return imageViews;
     }
@@ -298,7 +308,7 @@ namespace Memory {
             return;
         }
 
-        m_device.RunSingleTimeCommand([this] (const vk::CommandBuffer &commandBuffer) {
+        Core::Device::Get().RunSingleTimeCommand([this] (const vk::CommandBuffer &commandBuffer) {
             auto mipWidth = static_cast<int32_t>(m_extent.width);
             auto mipHeight = static_cast<int32_t>(m_extent.height);
 

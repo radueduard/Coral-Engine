@@ -37,7 +37,7 @@ namespace Compute {
             Builder &DescriptorSetLayout(uint32_t setNumber, const Memory::Descriptor::SetLayout &layout);
             Builder &DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts);
 
-            std::unique_ptr<Pipeline> Build(const Core::Device &device);
+            std::unique_ptr<Pipeline> Build();
 
         private:
 
@@ -51,7 +51,7 @@ namespace Compute {
             vk::Pipeline m_basePipeline = nullptr;
             int32_t m_basePipelineIndex = -1;
         };
-        Pipeline(const Core::Device& device, const Builder& builder);
+        Pipeline(const Builder& builder);
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
@@ -71,7 +71,6 @@ namespace Compute {
         void BindDescriptorSet(uint32_t, vk::CommandBuffer, const Memory::Descriptor::Set &) const;
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
     private:
-        const Core::Device& m_device;
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
         vk::ShaderModule m_shaderModule;

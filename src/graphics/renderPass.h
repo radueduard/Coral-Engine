@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -64,8 +63,8 @@ namespace Graphics {
                 return *this;
             }
 
-            std::unique_ptr<RenderPass> Build(const Core::Device &device) {
-                return std::make_unique<RenderPass>(device, this);
+            std::unique_ptr<RenderPass> Build() {
+                return std::make_unique<RenderPass>(this);
             }
 
 
@@ -79,7 +78,7 @@ namespace Graphics {
         };
 
 
-        explicit RenderPass(const Core::Device &device, Builder *builder);
+        explicit RenderPass(Builder *builder);
         ~RenderPass();
 
         RenderPass(const RenderPass &) = delete;
@@ -93,7 +92,8 @@ namespace Graphics {
         }
 
         void Begin(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
-        void Draw(vk::CommandBuffer commandBuffer) const;
+        void Update(float deltaTime) const;
+        void Draw(vk::CommandBuffer commandBuffer, bool reflected = false) const;
         void End(vk::CommandBuffer commandBuffer);
 
         const vk::RenderPass& operator*() const { return m_renderPass; }
@@ -122,7 +122,6 @@ namespace Graphics {
         bool Resize(uint32_t imageCount, vk::Extent2D extent);
 
     private:
-        const Core::Device &m_device;
         uint32_t m_outputAttachmentIndex = 0;
         uint32_t m_outputImageIndex = 0;
         std::optional<uint32_t> m_inFlightImageIndex;

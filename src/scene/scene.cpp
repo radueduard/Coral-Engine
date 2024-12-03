@@ -10,7 +10,7 @@
 #include "components/camera.h"
 
 namespace mgv {
-    Scene::Scene(const Core::Device& device): m_root(std::make_unique<Object>()), m_camera(std::make_unique<Object>()) {
+    Scene::Scene() : m_root(std::make_unique<Object>()), m_camera(std::make_unique<Object>()) {
         auto cameraCreateInfo = Camera::CreateInfo {
             .primary = true,
             .type = Camera::Type::Perspective,

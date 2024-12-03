@@ -131,5 +131,13 @@ namespace Core {
         }
     }
 
+    std::unique_ptr<Window> Window::m_instance = nullptr;
 
+    void Window::Init(const Info &info) {
+        m_instance = std::make_unique<Window>(info);
+    }
+
+    void Window::Destroy() {
+        m_instance.reset();
+    }
 }

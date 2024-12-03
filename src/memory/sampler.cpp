@@ -7,8 +7,8 @@
 namespace Memory {
     std::vector<std::unique_ptr<Sampler>> Sampler::m_samplers;
 
-    Sampler::Sampler(Core::Device &device, const vk::Filter magFilter, const vk::Filter minFilter, const vk::SamplerAddressMode addressMode, const vk::SamplerMipmapMode mipmapMode)
-        : m_device(device), m_magFilter(magFilter), m_minFilter(minFilter), m_addressMode(addressMode), m_mipmapMode(mipmapMode) {
+    Sampler::Sampler(const vk::Filter magFilter, const vk::Filter minFilter, const vk::SamplerAddressMode addressMode, const vk::SamplerMipmapMode mipmapMode)
+        : m_magFilter(magFilter), m_minFilter(minFilter), m_addressMode(addressMode), m_mipmapMode(mipmapMode) {
         const auto samplerInfo = vk::SamplerCreateInfo()
                 .setMagFilter(m_magFilter)
                 .setMinFilter(m_minFilter)
@@ -26,14 +26,14 @@ namespace Memory {
                 .setMinLod(0.0f)
                 .setMaxLod(vk::LodClampNone);
 
-        m_sampler = (*m_device).createSampler(samplerInfo);
+        m_sampler = (*Core::Device::Get()).createSampler(samplerInfo);
     }
 
     Sampler::~Sampler() {
-        (*m_device).destroySampler(m_sampler);
+        (*Core::Device::Get()).destroySampler(m_sampler);
     }
 
-    vk::Sampler Sampler::Get(Core::Device& device, const vk::Filter magFilter, const vk::Filter minFilter,
+    vk::Sampler Sampler::Get(const vk::Filter magFilter, const vk::Filter minFilter,
         const vk::SamplerAddressMode addressMode, const vk::SamplerMipmapMode mipmapMode) {
 
         for (const auto &sampler : m_samplers) {
@@ -43,7 +43,7 @@ namespace Memory {
             }
         }
 
-        auto sampler = std::make_unique<Sampler>(device, magFilter, minFilter, addressMode, mipmapMode);
+        auto sampler = std::make_unique<Sampler>(magFilter, minFilter, addressMode, mipmapMode);
         m_samplers.push_back(std::move(sampler));
         return **m_samplers.back();
     }

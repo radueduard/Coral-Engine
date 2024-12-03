@@ -13,8 +13,7 @@ namespace Memory::Descriptor {
         class Builder {
             friend class Set;
         public:
-            explicit Builder(const Core::Device &device, const Pool &pool, const SetLayout &layout)
-                    : m_device{device}, m_pool{pool}, m_layout{layout} {}
+            explicit Builder(const Pool &pool, const SetLayout &layout) : m_pool{pool}, m_layout{layout} {}
 
             Builder &WriteBuffer(uint32_t binding, const vk::DescriptorBufferInfo& bufferInfo);
             Builder &WriteImage(uint32_t binding, const vk::DescriptorImageInfo& imageInfo);
@@ -22,7 +21,6 @@ namespace Memory::Descriptor {
             [[nodiscard]] std::unique_ptr<Set> Build();
 
         private:
-            const Core::Device &m_device;
             const Pool &m_pool;
             const SetLayout &m_layout;
             std::vector<vk::WriteDescriptorSet> m_writes = {};
@@ -36,7 +34,6 @@ namespace Memory::Descriptor {
         Set &operator=(const Set &) = delete;
 
     private:
-        const Core::Device &m_device;
         const Pool &m_pool;
         const SetLayout &m_layout;
 

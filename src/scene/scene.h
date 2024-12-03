@@ -13,7 +13,7 @@ namespace mgv {
     class Scene final : public GUI::Layer {
         friend class CalculateMVP;
     public:
-        explicit Scene(const Core::Device& device);
+        explicit Scene();
 
         void Update(double deltaTime) const;
 

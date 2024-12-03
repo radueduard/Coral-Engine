@@ -62,6 +62,8 @@ namespace mgv {
         [[nodiscard]] const glm::mat4& InverseProjection() const { return m_inverseProjection; }
         [[nodiscard]] const glm::mat4& View() const { return m_view; }
         [[nodiscard]] const glm::mat4& InverseView() const { return m_inverseView; }
+        [[nodiscard]] const glm::mat4& FlippedView() const { return m_flippedView; }
+        [[nodiscard]] const glm::mat4& FlippedInverseView() const { return m_flippedInverseView; }
         [[nodiscard]] bool Moved() const { return m_moved; }
         [[nodiscard]] Info BufferData() const;
 
@@ -73,6 +75,9 @@ namespace mgv {
         glm::mat4 m_view { 1.0f };
         glm::mat4 m_inverseProjection { 1.0f };
         glm::mat4 m_inverseView { 1.0f };
+
+        glm::mat4 m_flippedView { 1.0f };
+        glm::mat4 m_flippedInverseView { 1.0f };
 
         Type m_type = Perspective;
         ProjectionData m_projectionData {};

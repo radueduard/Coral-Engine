@@ -11,7 +11,7 @@ namespace Memory {
     template<typename T>
     class Buffer {
     public:
-        Buffer(Core::Device &device,
+        Buffer(
             uint32_t instanceCount,
             vk::BufferUsageFlags usage,
             vk::MemoryPropertyFlags properties,
@@ -121,7 +121,6 @@ namespace Memory {
 
 
     private:
-        Core::Device &m_device;
         vk::Buffer m_buffer;
         vk::DeviceMemory m_memory;
 
@@ -145,13 +144,13 @@ static vk::DeviceSize GetAlignment(const vk::DeviceSize size, const vk::DeviceSi
 namespace Memory {
     template<typename T>
     Buffer<T>::Buffer(
-        Core::Device &device,
         const uint32_t instanceCount,
         const vk::BufferUsageFlags usage,
         const vk::MemoryPropertyFlags properties,
         const vk::DeviceSize minOffsetAlignment)
-        : m_device(device), m_instanceCount(instanceCount), m_usageFlags(usage), m_memoryPropertyFlags(properties)
+        : m_instanceCount(instanceCount), m_usageFlags(usage), m_memoryPropertyFlags(properties)
     {
+        const auto& device = Core::Device::Get();
         m_alignmentSize = GetAlignment(sizeof(T), minOffsetAlignment);
         const auto bufferSize = m_alignmentSize * m_instanceCount;
 
@@ -160,10 +159,10 @@ namespace Memory {
             .setUsage(usage)
             .setSharingMode(vk::SharingMode::eExclusive);
 
-        m_buffer = (*m_device).createBuffer(bufferInfo);
+        m_buffer = (*device).createBuffer(bufferInfo);
 
-        const auto memRequirements = (*m_device).getBufferMemoryRequirements(m_buffer);
-        const auto memoryTypeIndex = m_device.FindMemoryType(memRequirements.memoryTypeBits, properties);
+        const auto memRequirements = (*device).getBufferMemoryRequirements(m_buffer);
+        const auto memoryTypeIndex = device.FindMemoryType(memRequirements.memoryTypeBits, properties);
         if (!memoryTypeIndex.has_value()) {
             std::cerr << "Buffer : Failed to find suitable memory type" << std::endl;
         }
@@ -172,16 +171,16 @@ namespace Memory {
             .setAllocationSize(memRequirements.size)
             .setMemoryTypeIndex(memoryTypeIndex.value());
 
-        m_memory = (*m_device).allocateMemory(allocInfo);
-        (*m_device).bindBufferMemory(m_buffer, m_memory, 0);
+        m_memory = (*device).allocateMemory(allocInfo);
+        (*device).bindBufferMemory(m_buffer, m_memory, 0);
     }
 
     template<typename T>
     Buffer<T>::~Buffer()
     {
         Unmap();
-        (*m_device).destroyBuffer(m_buffer);
-        (*m_device).freeMemory(m_memory);
+        (*Core::Device::Get()).destroyBuffer(m_buffer);
+        (*Core::Device::Get()).freeMemory(m_memory);
     }
 
     template<typename T>
@@ -200,7 +199,7 @@ namespace Memory {
             instanceCount *= m_alignmentSize;
         }
 
-        m_mapped = static_cast<T*>((*m_device).mapMemory(
+        m_mapped = static_cast<T*>((*Core::Device::Get()).mapMemory(
             m_memory,
             offset * m_alignmentSize,
             instanceCount,
@@ -215,7 +214,7 @@ namespace Memory {
     template<typename T>
     void Buffer<T>::Unmap() {
         if (m_mapped) {
-            (*m_device).unmapMemory(m_memory);
+            (*Core::Device::Get()).unmapMemory(m_memory);
             m_mapped = nullptr;
         }
     }
@@ -249,7 +248,7 @@ namespace Memory {
         }
 
         if (instanceCount == vk::WholeSize) {
-            (*m_device).flushMappedMemoryRanges(m_mappedRange);
+            (*Core::Device::Get()).flushMappedMemoryRanges(m_mappedRange);
             return;
         }
 
@@ -257,7 +256,7 @@ namespace Memory {
             .setMemory(m_memory)
             .setSize(instanceCount * m_alignmentSize)
             .setOffset(offset * m_alignmentSize);
-        (*m_device).flushMappedMemoryRanges(range);
+        (*Core::Device::Get()).flushMappedMemoryRanges(range);
     }
 
     template<typename T>
@@ -285,14 +284,14 @@ namespace Memory {
             return;
         }
         if (instanceCount == vk::WholeSize) {
-            (*m_device).invalidateMappedMemoryRanges(m_mappedRange);
+            (*Core::Device::Get()).invalidateMappedMemoryRanges(m_mappedRange);
             return;
         }
         const auto range = vk::MappedMemoryRange()
             .setMemory(m_memory)
             .setSize(instanceCount * m_alignmentSize)
             .setOffset(offset * m_alignmentSize);
-        (*m_device).invalidateMappedMemoryRanges(range);
+        (*Core::Device::Get()).invalidateMappedMemoryRanges(range);
     }
 
     template<typename T>
@@ -361,7 +360,7 @@ namespace Memory {
             dstOffset = 0;
         }
 
-        m_device.RunSingleTimeCommand([this, srcOffset, dstOffset, &srcBuffer, size](const vk::CommandBuffer &commandBuffer) {
+        Core::Device::Get().RunSingleTimeCommand([this, srcOffset, dstOffset, &srcBuffer, size](const vk::CommandBuffer &commandBuffer) {
             const auto copyRegion = vk::BufferCopy()
                 .setSrcOffset(srcOffset)
                 .setDstOffset(dstOffset)

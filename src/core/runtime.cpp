@@ -32,17 +32,19 @@ namespace Core {
         .deviceFeatures = vk::PhysicalDeviceFeatures()
             .setSamplerAnisotropy(true)
             .setFragmentStoresAndAtomics(true)
+            .setFillModeNonSolid(true)
             .setVertexPipelineStoresAndAtomics(true)
         ,
         .instanceLayers = {
             "VK_LAYER_KHRONOS_validation",
         },
         .instanceExtensions = {
-            VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+            VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         },
         .deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             VK_EXT_MESH_SHADER_EXTENSION_NAME,
+            VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
         },
         .deviceLayers = {
             "VK_LAYER_KHRONOS_validation",
@@ -54,11 +56,10 @@ namespace Core {
         },
     };
 
-    Runtime::Runtime(const Window &window) : m_window(window) {
+    Runtime::Runtime() {
         createInstance();
-
-        Ext::DebugUtils::importFunctions(m_instance);
-        Ext::MeshShader::importFunctions(m_instance);
+        Ext::DebugUtils::importFunctions(m_vkInstance);
+        Ext::MeshShader::importFunctions(m_vkInstance);
 
         setupDebugMessenger();
         selectPhysicalDevice();
@@ -66,9 +67,9 @@ namespace Core {
 
     Runtime::~Runtime() {
         m_physicalDevice.reset();
-        m_instance.destroySurfaceKHR(m_surface);
+        m_vkInstance.destroySurfaceKHR(m_surface);
         destroyDebugMessenger();
-        m_instance.destroy();
+        m_vkInstance.destroy();
     }
 
     void Runtime::createInstance() {
@@ -87,7 +88,7 @@ namespace Core {
             .setPEnabledExtensionNames(settings.instanceExtensions)
             .setPEnabledLayerNames(settings.instanceLayers);;
 
-        m_instance = vk::createInstance(createInfo);
+        m_vkInstance = vk::createInstance(createInfo);
     }
 
     void Runtime::setupDebugMessenger() {
@@ -103,21 +104,33 @@ namespace Core {
                 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
             .setPfnUserCallback(debugCallback);
 
-        Ext::DebugUtils::createDebugUtilsMessengerEXT(m_instance, debugCreateInfo, nullptr, &m_debugMessenger);
+        Ext::DebugUtils::createDebugUtilsMessengerEXT(m_vkInstance, debugCreateInfo, nullptr, &m_debugMessenger);
     }
 
     void Runtime::destroyDebugMessenger() const {
-        Ext::DebugUtils::destroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
+        Ext::DebugUtils::destroyDebugUtilsMessengerEXT(m_vkInstance, m_debugMessenger, nullptr);
     }
 
     void Runtime::selectPhysicalDevice() {
-        m_surface = m_window.CreateSurface(m_instance);
-        for (const auto devices = m_instance.enumeratePhysicalDevices(); const auto &device : devices) {
+        m_surface = Core::Window::Get().CreateSurface(m_vkInstance);
+        for (const auto devices = m_vkInstance.enumeratePhysicalDevices(); const auto &device : devices) {
             if (auto physicalDevice = std::make_unique<Core::PhysicalDevice>(device, m_surface); physicalDevice->isSuitable()) {
                 m_physicalDevice = std::move(physicalDevice);
-                break;
+                return;
             }
+        }
+        if (!m_physicalDevice) {
+            throw std::runtime_error("Failed to find a suitable physical device!");
         }
     }
 
-} // namespace Core
+    std::unique_ptr<Runtime> Runtime::m_instance = nullptr;
+
+    void Runtime::Init() {
+        m_instance = std::make_unique<Runtime>();
+    }
+
+    void Runtime::Destroy() {
+        m_instance.reset();
+    }
+}

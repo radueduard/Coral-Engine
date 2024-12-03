@@ -44,7 +44,7 @@ namespace Asset {
 
         static mgv::Mesh* GetRandomMesh();
 
-        static void Init(Core::Device& device);
+        static void Init();
         static void Destroy();
 
     private:

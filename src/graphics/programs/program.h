@@ -18,7 +18,7 @@ namespace Graphics {
 
         virtual void Init() = 0;
         virtual void Update(double deltaTime) = 0;
-        virtual void Draw(const vk::CommandBuffer& commandBuffer) = 0;
+        virtual void Draw(const vk::CommandBuffer& commandBuffer, bool reflected = false) = 0;
     protected:
         RenderPass& m_renderPass;
         uint32_t m_subpassIndex = 0;

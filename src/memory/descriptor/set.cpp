@@ -50,16 +50,16 @@ namespace Memory::Descriptor {
     }
 
 
-    Set::Set(Builder &builder) : m_device(builder.m_device), m_pool{builder.m_pool}, m_layout{builder.m_layout} {
+    Set::Set(Builder &builder) : m_pool{builder.m_pool}, m_layout{builder.m_layout} {
         m_set = m_pool.Allocate(m_layout);
         for (auto &write: builder.m_writes) {
             write.setDstSet(m_set);
         }
-        (*m_device).updateDescriptorSets(builder.m_writes, {});
+        (*Core::Device::Get()).updateDescriptorSets(builder.m_writes, {});
     }
 
     Set::~Set() {
-        (*m_device).waitIdle();
+        (*Core::Device::Get()).waitIdle();
         m_pool.Free(m_set);
     }
 }

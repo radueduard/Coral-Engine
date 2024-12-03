@@ -90,7 +90,7 @@ namespace Asset {
         return it->second.get();
     }
 
-    void Manager::Init(Core::Device &device) {
+    void Manager::Init() {
         constexpr uint8_t black[4] {0, 0, 0, 255};
         constexpr uint8_t white[4] {255, 255, 255, 255};
         constexpr uint8_t normal[4] {127, 127, 255, 255};
@@ -99,14 +99,14 @@ namespace Asset {
             .Name("black")
             .Size(1)
             .Data(black);
-        const auto blackId = AddTexture(builder.Build(device));
+        const auto blackId = AddTexture(builder.Build());
         Texture::s_blackTextureId = blackId;
 
         builder = mgv::Texture::Builder()
             .Name("white")
             .Size(1)
             .Data(white);
-        const auto whiteId = AddTexture(builder.Build(device));
+        const auto whiteId = AddTexture(builder.Build());
         Texture::s_whiteTextureId = whiteId;
 
         builder = mgv::Texture::Builder()
@@ -114,7 +114,7 @@ namespace Asset {
             .Size(1)
             .Format(vk::Format::eR8G8B8A8Unorm)
             .Data(normal);
-        const auto normalId = AddTexture(builder.Build(device));
+        const auto normalId = AddTexture(builder.Build());
         Texture::s_normalTextureId = normalId;
     }
 

@@ -10,7 +10,7 @@ namespace Memory {
 
 class Sampler {
     public:
-        explicit Sampler(Core::Device& device, vk::Filter magFilter, vk::Filter minFilter, vk::SamplerAddressMode addressMode, vk::SamplerMipmapMode mipmapMode);
+        explicit Sampler(vk::Filter magFilter, vk::Filter minFilter, vk::SamplerAddressMode addressMode, vk::SamplerMipmapMode mipmapMode);
         ~Sampler();
 
         [[nodiscard]] vk::Filter MagFilter() const { return m_magFilter; }
@@ -21,11 +21,10 @@ class Sampler {
 
         [[nodiscard]] const vk::Sampler& operator*() const { return m_sampler; }
 
-        static vk::Sampler Get(Core::Device &device, vk::Filter magFilter, vk::Filter minFilter, vk::SamplerAddressMode addressMode, vk::SamplerMipmapMode mipmapMode);
+        static vk::Sampler Get(vk::Filter magFilter, vk::Filter minFilter, vk::SamplerAddressMode addressMode, vk::SamplerMipmapMode mipmapMode);
 
         static void FreeAllSamplers();
     private:
-        Core::Device& m_device;
         vk::Sampler m_sampler;
 
         vk::Filter m_magFilter = vk::Filter::eLinear;

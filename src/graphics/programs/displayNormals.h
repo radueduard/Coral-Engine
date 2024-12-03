@@ -26,12 +26,12 @@ public:
         uint32_t normalId;
     };
 
-    DisplayNormals(const Core::Device &device, Graphics::RenderPass& renderPass, const Memory::Descriptor::Pool& pool, const CreateInfo& createInfo);
+    DisplayNormals(Graphics::RenderPass& renderPass, const Memory::Descriptor::Pool& pool, const CreateInfo& createInfo);
     ~DisplayNormals() override = default;
 
     void Init() override;
     void Update(double deltaTime) override;
-    void Draw(const vk::CommandBuffer& commandBuffer) override;
+    void Draw(const vk::CommandBuffer& commandBuffer, bool reflected = false) override;
 
     void DrawUI() override {}
     void UpdateUI() override {}

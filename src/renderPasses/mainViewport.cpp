@@ -9,8 +9,8 @@
 #include "graphics/renderer.h"
 #include "memory/sampler.h"
 
-MainViewport::MainViewport(Core::Device &device)
-    : m_device(device), m_imageCount(mgv::Renderer::SwapChain().ImageCount()), m_extent(mgv::Renderer::SwapChain().Extent()) {
+MainViewport::MainViewport()
+    : m_imageCount(mgv::Renderer::SwapChain().ImageCount()), m_extent(mgv::Renderer::SwapChain().Extent()) {
     auto colorAttachment = Graphics::RenderPass::Attachment {
         .description = vk::AttachmentDescription()
             .setFormat(vk::Format::eR8G8B8A8Srgb)
@@ -68,7 +68,7 @@ MainViewport::MainViewport(Core::Device &device)
             .LayersCount(1)
             .SampleCount(vk::SampleCountFlagBits::e4)
             .InitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
-            .Build(device));
+            .Build());
 
         depthAttachment.images.emplace_back(Memory::Image::Builder()
             .Format(vk::Format::eD32SfloatS8Uint)
@@ -78,7 +78,7 @@ MainViewport::MainViewport(Core::Device &device)
             .LayersCount(1)
             .SampleCount(vk::SampleCountFlagBits::e4)
             .InitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-            .Build(device));
+            .Build());
 
         resolveAttachment.images.emplace_back(Memory::Image::Builder()
             .Format(vk::Format::eR8G8B8A8Srgb)
@@ -88,7 +88,7 @@ MainViewport::MainViewport(Core::Device &device)
             .LayersCount(1)
             .SampleCount(vk::SampleCountFlagBits::e1)
             .InitialLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-            .Build(device));
+            .Build());
     }
 
     auto colorAttachments = std::array {
@@ -127,12 +127,12 @@ MainViewport::MainViewport(Core::Device &device)
         .Dependency(dependency1)
         .Dependency(dependency2)
         .Extent(m_extent)
-        .Build(device);
+        .Build();
 }
 
 void MainViewport::Run(const vk::CommandBuffer &commandBuffer) const {
     m_renderPass->Begin(commandBuffer, mgv::Renderer::CurrentFrame().imageIndex);
-    m_renderPass->Draw(commandBuffer);
+    m_renderPass->Draw(commandBuffer, false);
     m_renderPass->End(commandBuffer);
 }
 
@@ -141,7 +141,7 @@ void MainViewport::InitUI() {
     for (uint32_t i = 0; i < m_imageCount; i++) {
         const auto& outputImage = m_renderPass->OutputImage(i);
         m_descriptorSets[i] = ImGui_ImplVulkan_AddTexture(
-            Memory::Sampler::Get(m_device, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear),
+            Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear),
             outputImage.ImageView(),
             static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
     }
@@ -149,7 +149,7 @@ void MainViewport::InitUI() {
 
 void MainViewport::UpdateUI() {
     if (m_resized) {
-        (*m_device).waitIdle();
+        (*Core::Device::Get()).waitIdle();
 
         for (uint32_t i = 0; i < m_imageCount; i++) {
             ImGui_ImplVulkan_RemoveTexture(m_descriptorSets[i]);
@@ -160,7 +160,7 @@ void MainViewport::UpdateUI() {
         for (uint32_t i = 0; i < m_imageCount; i++) {
             const auto& outputImage = m_renderPass->OutputImage(i);
             m_descriptorSets[i] = ImGui_ImplVulkan_AddTexture(
-                Memory::Sampler::Get(m_device, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear),
+                Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear),
                 outputImage.ImageView(),
                 static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
         }

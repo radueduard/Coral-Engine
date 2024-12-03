@@ -65,8 +65,8 @@ namespace mgv {
                 return *this;
             }
 
-            [[nodiscard]] std::unique_ptr<TextureArray> Build(Core::Device& device) {
-                return std::make_unique<TextureArray>(device, *this);
+            [[nodiscard]] std::unique_ptr<TextureArray> Build() {
+                return std::make_unique<TextureArray>(*this);
             }
 
         private:
@@ -79,7 +79,7 @@ namespace mgv {
             std::vector<void*> m_data;
         };
 
-        TextureArray(Core::Device& device, const Builder& builder);
+        TextureArray(const Builder& builder);
 
         [[nodiscard]] const vk::DescriptorImageInfo& DescriptorInfo() const { return m_descriptorInfo; }
         [[nodiscard]] uint32_t Id(const std::string& name) const {
@@ -92,7 +92,6 @@ namespace mgv {
     private:
         void LoadTexture(const ThreadPayload& threadPayload);
 
-        Core::Device &m_device;
         std::string m_name;
         vk::Format m_format;
         uint32_t m_width;

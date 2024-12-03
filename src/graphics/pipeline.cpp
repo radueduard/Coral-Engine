@@ -195,13 +195,13 @@ namespace Graphics {
         }
     }
 
-    std::unique_ptr<Pipeline> Pipeline::Builder::Build(const Core::Device &device)
+    std::unique_ptr<Pipeline> Pipeline::Builder::Build()
     {
         const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
             .setSetLayouts(m_descriptorSetLayouts)
             .setPushConstantRanges(m_pushConstantRanges);
 
-        m_pipelineLayout = (*device).createPipelineLayout(pipelineLayoutInfo);
+        m_pipelineLayout = (*Core::Device::Get()).createPipelineLayout(pipelineLayoutInfo);
 
         CheckShaderStagesValidity();
 
@@ -230,11 +230,11 @@ namespace Graphics {
             .setLogicOp(vk::LogicOp::eCopy)
             .setAttachments(m_colorBlendAttachments);
 
-        return std::make_unique<Pipeline>(device, *this);
+        return std::make_unique<Pipeline>(*this);
     }
 
-    Pipeline::Pipeline(const Core::Device &device, const Builder &builder)
-        : m_device(device), m_pipelineLayout(builder.m_pipelineLayout)
+    Pipeline::Pipeline(const Builder &builder)
+        : m_pipelineLayout(builder.m_pipelineLayout)
     {
         const auto m_createInfo = vk::GraphicsPipelineCreateInfo()
             .setStages(builder.m_stages)
@@ -253,7 +253,7 @@ namespace Graphics {
             .setBasePipelineHandle(builder.m_basePipeline)
             .setBasePipelineIndex(builder.m_basePipelineIndex);
 
-        const auto pipeline = (*device).createGraphicsPipeline(nullptr, m_createInfo);
+        const auto pipeline = (*Core::Device::Get()).createGraphicsPipeline(nullptr, m_createInfo);
         if (pipeline.result != vk::Result::eSuccess) {
             std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
         }
@@ -264,9 +264,10 @@ namespace Graphics {
 
     Pipeline::~Pipeline()
     {
-        (*m_device).waitIdle();
-        (*m_device).destroyPipeline(m_pipeline);
-        (*m_device).destroyPipelineLayout(m_pipelineLayout);
+        const auto &device = Core::Device::Get();
+        (*device).waitIdle();
+        (*device).destroyPipeline(m_pipeline);
+        (*device).destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer& commandBuffer) const {

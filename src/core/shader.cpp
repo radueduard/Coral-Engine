@@ -38,8 +38,7 @@ static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage
 }
 
 namespace Core {
-    Shader::Shader(const Device &device, const std::string &path, const vk::ShaderStageFlagBits &stage)
-        : m_device(device), m_path(path), m_stage(stage) {
+    Shader::Shader(const std::string &path, const vk::ShaderStageFlagBits &stage) : m_path(path), m_stage(stage) {
         auto extension = path.substr(path.find_last_of('.') + 1);
 
         const auto glslExtensions = std::unordered_map<std::string, vk::ShaderStageFlagBits> {
@@ -63,30 +62,30 @@ namespace Core {
             const auto code = Utils::ReadBinaryFile(path);
             std::vector<uint32_t> buffer(code.size() / sizeof(uint32_t));
             std::memcpy(buffer.data(), code.data(), code.size());
-            m_shaderModule = LoadSpirVShader(device, buffer);
+            m_shaderModule = LoadSpirVShader(buffer);
         } else if (glslExtensions.contains(extension)) {
             m_stage = glslExtensions.at(extension);
             const auto code = Utils::ReadTextFile(path);
-            m_shaderModule = LoadGLSLShader(device, code, m_stage);
+            m_shaderModule = LoadGLSLShader(code, m_stage);
         } else {
             throw std::runtime_error("Unsupported shader extension: " + extension);
         }
     }
 
     Shader::~Shader() {
-        (*m_device).destroyShaderModule(m_shaderModule);
+        (*Core::Device::Get()).destroyShaderModule(m_shaderModule);
     }
 
-    vk::ShaderModule Shader::LoadGLSLShader(const Device &device, const std::string &code, const vk::ShaderStageFlagBits & stage) {
+    vk::ShaderModule Shader::LoadGLSLShader(const std::string &code, const vk::ShaderStageFlagBits & stage) {
         const auto spirVCode = CompileGLSLToSpirV(code, stage);
-        return LoadSpirVShader(device, spirVCode);
+        return LoadSpirVShader(spirVCode);
     }
 
-    vk::ShaderModule Shader::LoadSpirVShader(const Device &device, const std::vector<uint32_t> &buffer) {
+    vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) {
         const auto createInfo = vk::ShaderModuleCreateInfo()
             .setCode(buffer);
 
-        return (*device).createShaderModule(createInfo);
+        return (*Device::Get()).createShaderModule(createInfo);
     }
 
     std::vector<uint32_t> Shader::CompileGLSLToSpirV(const std::string &source, const vk::ShaderStageFlagBits & stage) {

@@ -201,7 +201,7 @@ namespace Asset {
             builder.AddImagePath(m_path + "/" + texture);
         }
 
-        auto textureArray =  builder.Build(m_device);
+        auto textureArray =  builder.Build();
         Asset::Manager::AddTextureArray("baseColor", std::move(textureArray));
     }
 
@@ -223,7 +223,7 @@ namespace Asset {
             builder.AddImagePath(m_path + "/" + texture);
         }
 
-        auto textureArray =  builder.Build(m_device);
+        auto textureArray =  builder.Build();
         Asset::Manager::AddTextureArray("normal", std::move(textureArray));
     }
 
@@ -248,7 +248,7 @@ namespace Asset {
             builder.AddImagePath(m_path + "/" + texture);
         }
 
-        auto textureArray = builder.Build(m_device);
+        auto textureArray = builder.Build();
         Asset::Manager::AddTextureArray("metallicRoughness", std::move(textureArray));
     }
 
@@ -275,7 +275,7 @@ namespace Asset {
             builder.AddImagePath(m_path + "/" + texture);
         }
 
-        auto textureArray =  builder.Build(m_device);
+        auto textureArray =  builder.Build();
         Asset::Manager::AddTextureArray("occlusion", std::move(textureArray));
     }
 
@@ -297,7 +297,7 @@ namespace Asset {
             builder.AddImagePath(m_path + "/" + texture);
         }
 
-        auto textureArray =  builder.Build(m_device);
+        auto textureArray =  builder.Build();
         Asset::Manager::AddTextureArray("emissive", std::move(textureArray));
     }
 
@@ -310,7 +310,7 @@ namespace Asset {
     }
 
     std::unique_ptr<mgv::Scene> Importer::LoadScene() const {
-        auto scene = std::make_unique<mgv::Scene>(m_device);
+        auto scene = std::make_unique<mgv::Scene>();
 
         const auto rootNode = m_scene->mRootNode;
         auto& root = scene->Root();

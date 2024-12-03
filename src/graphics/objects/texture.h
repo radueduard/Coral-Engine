@@ -54,8 +54,8 @@ namespace mgv {
                 return *this;
             }
 
-            [[nodiscard]] std::unique_ptr<Texture> Build(Core::Device& device) {
-                return std::make_unique<Texture>(device, *this);
+            [[nodiscard]] std::unique_ptr<Texture> Build() {
+                return std::make_unique<Texture>(*this);
             }
 
         private:
@@ -67,7 +67,7 @@ namespace mgv {
             bool m_createMipmaps = false;
         };
 
-        Texture(Core::Device& device, const Builder& builder);
+        explicit Texture(const Builder& builder);
 
         Texture(const Texture&) = delete;
         Texture& operator=(const Texture&) = delete;

@@ -24,7 +24,7 @@ namespace Graphics {
             std::vector<uint32_t> queueFamilyIndices;
         };
 
-        SwapChain(Core::Device &device, vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain = nullptr);
+        SwapChain(vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain = nullptr);
         ~SwapChain();
 
         vk::SwapchainKHR operator *() const { return m_swapChain; }
@@ -38,7 +38,6 @@ namespace Graphics {
 
         vk::Result Present(const mgv::Frame &frame);
     private:
-        Core::Device &m_device;
         vk::SwapchainKHR m_swapChain;
         vk::Extent2D m_extent;
         uint32_t m_imageCount;

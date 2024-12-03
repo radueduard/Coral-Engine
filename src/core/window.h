@@ -5,12 +5,8 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
-
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-
-#include <glm/glm.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -36,6 +32,11 @@ namespace Core {
             bool fullscreen;
         };
 
+        static void Init(const Info&);
+        static void Destroy();
+
+        static Window& Get() { return *m_instance; }
+
         explicit Window(const Info&);
         ~Window();
 
@@ -59,6 +60,7 @@ namespace Core {
 
         void UpdateDeltaTime();
         [[nodiscard]] float DeltaTime() const { return static_cast<float>(m_deltaTime); }
+        [[nodiscard]] float TimeElapsed() const { return static_cast<float>(glfwGetTime()); }
 
         void SetTitle(const std::string &title) {
             m_info.title = title;
@@ -76,6 +78,8 @@ namespace Core {
             static void scrollCallback(GLFWwindow*, double, double);
             static void framebufferResize(GLFWwindow*, int, int);
         };
+
+        static std::unique_ptr<Window> m_instance;
 
         GLFWwindow* m_window;
         GLFWmonitor* m_monitor;

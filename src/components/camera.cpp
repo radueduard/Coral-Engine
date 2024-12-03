@@ -109,9 +109,23 @@ namespace mgv {
         const glm::vec3 position = Owner().position;
         const auto rotation = glm::quat(glm::radians(Owner().rotation));
         const glm::vec3 forwardDirection = rotation * glm::vec3(0, 0, -1);
-
         m_view = glm::lookAt(position, position + forwardDirection, m_up);
         m_inverseView = glm::inverse(m_view);
+
+        if (forwardDirection.y > 0) {
+            const auto flippedPosition = glm::vec3(position.x, -position.y, position.z);
+            m_flippedView = glm::lookAt(flippedPosition, flippedPosition + forwardDirection, m_up);
+            m_flippedInverseView = glm::inverse(m_flippedView);
+        } else {
+            const float distanceToXOZ = - position.y / glm::dot(forwardDirection, m_up);
+            const glm::vec3 intersection = position + forwardDirection * distanceToXOZ;
+            const auto flippedPosition = glm::vec3(position.x, 2 * intersection.y - position.y, position.z);
+            m_flippedView = glm::lookAt(flippedPosition, intersection, m_up);
+            m_flippedInverseView = glm::inverse(m_flippedView);
+        }
+
+        // Calculate the flipped view from the opposite side of the xOz plane
+
     }
 
     void Camera::Rotate(float yaw, float pitch) {

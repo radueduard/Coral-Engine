@@ -4,6 +4,9 @@
 
 #include "mesh.h"
 
+#include "assets/importer.h"
+#include "assets/manager.h"
+
 namespace mgv {
     Mesh::Builder &Mesh::Builder::AddVertex(const Vertex &vertex) {
         m_vertices.emplace_back(vertex);
@@ -34,7 +37,6 @@ namespace mgv {
 
     void Mesh::CreateVertexBuffer(const std::vector<Vertex> &vertices) {
         const auto stagingBuffer = std::make_unique<Memory::Buffer<Vertex>>(
-            m_device,
             static_cast<uint32_t>(vertices.size()),
             vk::BufferUsageFlagBits::eTransferSrc,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -45,7 +47,6 @@ namespace mgv {
         stagingBuffer->Unmap();
 
         m_vertexBuffer = std::make_unique<Memory::Buffer<Vertex>>(
-            m_device,
             static_cast<uint32_t>(vertices.size()),
             vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -54,7 +55,6 @@ namespace mgv {
 
     void Mesh::CreateIndexBuffer(const std::vector<uint32_t> &indices) {
         const auto stagingBuffer = std::make_unique<Memory::Buffer<uint32_t>>(
-            m_device,
             static_cast<uint32_t>(indices.size()),
             vk::BufferUsageFlagBits::eTransferSrc,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -65,7 +65,6 @@ namespace mgv {
         stagingBuffer->Unmap();
 
         m_indexBuffer = std::make_unique<Memory::Buffer<uint32_t>>(
-            m_device,
             static_cast<uint32_t>(indices.size()),
             vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);

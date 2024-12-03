@@ -11,9 +11,9 @@
 #include "components/renderMesh.h"
 #include "core/input.h"
 
-DisplayNormals::DisplayNormals(const Core::Device &device, Graphics::RenderPass &renderPass, const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo)
+DisplayNormals::DisplayNormals(Graphics::RenderPass &renderPass, const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo)
     : Program(renderPass), m_object(createInfo.object), m_modelBuffer(createInfo.modelBuffer), m_mvpBuffer(createInfo.mvpBuffer) {
-    m_setLayout = Memory::Descriptor::SetLayout::Builder(device)
+    m_setLayout = Memory::Descriptor::SetLayout::Builder()
             .AddBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex)
             .AddBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex)
             .AddBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
@@ -31,7 +31,7 @@ DisplayNormals::DisplayNormals(const Core::Device &device, Graphics::RenderPass 
             .setAlphaToCoverageEnable(vk::False)
             .setAlphaToOneEnable(vk::False);
 
-    m_descriptorSet = Memory::Descriptor::Set::Builder(device, pool, *m_setLayout)
+    m_descriptorSet = Memory::Descriptor::Set::Builder(pool, *m_setLayout)
         .WriteBuffer(0, m_modelBuffer.DescriptorInfo().value())
         .WriteBuffer(1, m_mvpBuffer.DescriptorInfo().value())
         .WriteImage(2, Asset::Manager::GetTextureArray("baseColor").DescriptorInfo())
@@ -54,8 +54,8 @@ DisplayNormals::DisplayNormals(const Core::Device &device, Graphics::RenderPass 
     const auto bindingDescriptions = mgv::Mesh::Vertex::GetBindingDescriptions();
 
     m_pipeline = Graphics::Pipeline::Builder()
-            .AddShader(Core::Shader(device, "shaders/parameterShow/normal.vert"))
-            .AddShader(Core::Shader(device, "shaders/parameterShow/normal.frag"))
+            .AddShader(Core::Shader("shaders/parameterShow/normal.vert"))
+            .AddShader(Core::Shader("shaders/parameterShow/normal.frag"))
             .ColorBlendAttachment(vk::PipelineColorBlendAttachmentState()
                 .setBlendEnable(VK_FALSE)
                 .setColorWriteMask(
@@ -70,14 +70,14 @@ DisplayNormals::DisplayNormals(const Core::Device &device, Graphics::RenderPass 
                 .setVertexAttributeDescriptions(attributeDescriptions))
             .Subpass(0)
             .Multisampling(multisampleState)
-            .Build(device);
+            .Build();
 }
 
 void DisplayNormals::Init() {}
 
 void DisplayNormals::Update(double deltaTime) {}
 
-void DisplayNormals::Draw(const vk::CommandBuffer &commandBuffer) {
+void DisplayNormals::Draw(const vk::CommandBuffer &commandBuffer, bool reflected) {
     m_pipeline->Bind(commandBuffer);
     m_pipeline->BindDescriptorSet(0, commandBuffer, *m_descriptorSet);
 
