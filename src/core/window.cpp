@@ -66,9 +66,9 @@ namespace Core {
         return extensions;
     }
 
-    vk::SurfaceKHR Window::CreateSurface(const vk::Instance& instance) const {
+    vk::SurfaceKHR Window::CreateSurface(const vk::Instance& instance) {
         VkSurfaceKHR surface;
-        if (const auto result = glfwCreateWindowSurface(instance, m_window, nullptr, &surface); result != VK_SUCCESS) {
+        if (const auto result = glfwCreateWindowSurface(instance, m_instance->m_window, nullptr, &surface); result != VK_SUCCESS) {
             std::cerr << "Failed to create window surface: " << vk::to_string(static_cast<vk::Result>(result)) << std::endl;
         }
 
@@ -77,8 +77,8 @@ namespace Core {
 
     void Window::UpdateDeltaTime() {
         const double currentTime = glfwGetTime();
-        m_deltaTime = currentTime - m_lastTime;
-        m_lastTime = currentTime;
+        m_instance->m_deltaTime = currentTime - m_instance->m_lastTime;
+        m_instance->m_lastTime = currentTime;
     }
 
     void Window::Callbacks::keyCallback(GLFWwindow *window, int key, int _, const int action, int mods) {

@@ -23,17 +23,17 @@ namespace GUI {
         static void AddLayer(Layer* layer);
         static void RemoveLayer(Layer* layer);
 
-        explicit Manager();
-        ~Manager();
     private:
-        static std::unique_ptr<Manager> m_instance;
+        explicit Manager() = default;
+        ~Manager() = default;
+        inline static Manager* m_instance;
 
         Manager(const Manager &) = delete;
         Manager &operator=(const Manager &) = delete;
 
-        void CreateDescriptorPool();
-        void CreateContext() const;
-        void DestroyContext();
+        static void CreateDescriptorPool();
+        static void CreateContext();
+        static void DestroyContext();
 
         std::unique_ptr<Memory::Descriptor::Pool> m_descriptorPool;
         std::vector<Layer*> m_layers;

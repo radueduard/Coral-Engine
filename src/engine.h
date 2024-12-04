@@ -15,7 +15,7 @@ namespace mgv {
         Engine();
         ~Engine();
 
-        void Run() const;
+        static void Run();
     };
 
 }

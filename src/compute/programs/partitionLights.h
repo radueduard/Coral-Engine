@@ -19,9 +19,6 @@ public:
     PartitionLights(const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo);
     ~PartitionLights() override = default;
 
-    [[nodiscard]] const Memory::Buffer<Indices>& LightIndicesBuffer() const { return *m_lightIndicesBuffer; }
-    [[nodiscard]] uint32_t ChunksPerAxis() const { return m_chunksPerAxis; }
-
     // Compute::Program
     void Init() override;
     void Update() override;

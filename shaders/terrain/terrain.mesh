@@ -62,7 +62,7 @@ void main() {
 
             v_out[index].position = vec4(position, 1.0);
             v_out[index].normal = ComputeNormal(uv);
-            v_out[index].uv = positionInInstance.xz;
+            v_out[index].uv = uv;
         }
     }
 

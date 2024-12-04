@@ -42,21 +42,21 @@ layout(location = 0) out vec4 FragColor;
 vec3 DiffuseLighting(uint lightIndex) {
     Light light = lights.data[lightIndex];
     float distance = length(light.position.xyz - f_in.position.xyz);
+    float diff = max(dot(normalize(f_in.normal), normalize(light.position.xyz - f_in.position.xyz)), 0.0);
     float attenuation = 1.0 / (1 + distance);
-    vec3 direction = normalize(light.position.xyz - f_in.position.xyz);
-    float diff = max(dot(f_in.normal, direction), 0.0);
     return vec3(light.color.rgb) / 16.0 * attenuation * diff;
 }
 
 void main() {
     vec4 worldPos = f_in.position;
+    uvec2 chunk = uvec2(floor(f_in.position.x + 15), floor(f_in.position.z + 15));
+
     vec4 reflectionPosition = cameraData.projection * cameraData.flippedView * worldPos;
     reflectionPosition.z = 0.0;
     reflectionPosition = reflectionPosition / reflectionPosition.w;
     reflectionPosition = 0.5 * reflectionPosition + 0.5;
     vec4 reflectionColor = texture(reflectionTexture, reflectionPosition.xy);
 
-    uvec2 chunk = uvec2(floor(f_in.position.x + 15), floor(f_in.position.z + 15));
 
     vec4 lightColor = vec4(0.0, 0.0, 0.0, 1.0);
     Indices indices = lightIndices.data[chunk.x * 30 + chunk.y];
@@ -68,5 +68,6 @@ void main() {
         vec3 light = DiffuseLighting(index);
         lightColor += vec4(light, 0.0);
     }
-    FragColor = reflectionColor + lightColor;
+    FragColor = reflectionColor * 0.7 + lightColor;
+    FragColor.a = 1.0;
 }

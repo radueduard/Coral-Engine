@@ -112,7 +112,7 @@ namespace Core {
     }
 
     void Runtime::selectPhysicalDevice() {
-        m_surface = Core::Window::Get().CreateSurface(m_vkInstance);
+        m_surface = Window::CreateSurface(m_vkInstance);
         for (const auto devices = m_vkInstance.enumeratePhysicalDevices(); const auto &device : devices) {
             if (auto physicalDevice = std::make_unique<Core::PhysicalDevice>(device, m_surface); physicalDevice->isSuitable()) {
                 m_physicalDevice = std::move(physicalDevice);

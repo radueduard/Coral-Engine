@@ -13,13 +13,6 @@
 
 class Fireflies final : public Compute::Program {
 public:
-    struct CreateInfo {
-        uint32_t count = 1024;
-        Graphics::AABB bounds;
-        const mgv::Camera &camera;
-        const Memory::Image *heightMap;
-    };
-
     struct Particle {
         glm::vec4 position;
         glm::vec4 velocity;
@@ -36,11 +29,13 @@ public:
         }
     };
 
+    struct CreateInfo {
+        const Memory::Image *heightMap;
+        const Memory::Buffer<Particle> &particlesBuffer;
+    };
+
     Fireflies(const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo);
     ~Fireflies() override = default;
-
-    [[nodiscard]] const Memory::Buffer<Particle>& ParticlesBuffer() const { return *m_particlesBuffer; }
-    [[nodiscard]] uint32_t Count() const { return m_count; }
 
     // Compute::Program
     void Init() override;
@@ -53,9 +48,7 @@ public:
     void DrawUI() override;
     void DestroyUI() override;
 private:
-    uint32_t m_count;
-    Graphics::AABB m_bounds;
+    const Memory::Buffer<Particle> &m_particlesBuffer;
 
-    std::unique_ptr<Memory::Buffer<Particle>> m_particlesBuffer;
     std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };

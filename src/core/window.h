@@ -35,7 +35,7 @@ namespace Core {
         static void Init(const Info&);
         static void Destroy();
 
-        static Window& Get() { return *m_instance; }
+        static GLFWwindow* Get() { return m_instance->m_window; }
 
         explicit Window(const Info&);
         ~Window();
@@ -43,28 +43,26 @@ namespace Core {
         Window(const Window &) = delete;
         Window &operator=(const Window &) = delete;
 
-        GLFWwindow* operator*() const { return m_window; }
-
-        [[nodiscard]] bool ShouldClose() const { return glfwWindowShouldClose(m_window); }
-        void Close() const { glfwSetWindowShouldClose(m_window, GLFW_TRUE); }
+        [[nodiscard]] static bool ShouldClose() { return glfwWindowShouldClose(m_instance->m_window); }
+        static void Close() { glfwSetWindowShouldClose(m_instance->m_window, GLFW_TRUE); }
         static void PollEvents() { glfwPollEvents(); }
 
-        [[nodiscard]] vk::Extent2D Extent() const { return m_info.extent; }
+        [[nodiscard]] static vk::Extent2D Extent() { return m_instance->m_info.extent; }
         [[nodiscard]] static std::vector<const char*> GetRequiredExtensions() ;
-        [[nodiscard]] vk::SurfaceKHR CreateSurface(const vk::Instance&) const;
+        [[nodiscard]] static vk::SurfaceKHR CreateSurface(const vk::Instance&);
 
-        [[nodiscard]] bool IsPaused() const { return m_paused; }
+        [[nodiscard]] static bool IsPaused() { return m_instance->m_paused; }
 
-        void Pause() { m_paused = true; }
-        void UnPause() { m_paused = false; }
+        static void Pause() { m_instance->m_paused = true; }
+        static void UnPause() { m_instance->m_paused = false; }
 
-        void UpdateDeltaTime();
-        [[nodiscard]] float DeltaTime() const { return static_cast<float>(m_deltaTime); }
-        [[nodiscard]] float TimeElapsed() const { return static_cast<float>(glfwGetTime()); }
+        static void UpdateDeltaTime();
+        [[nodiscard]] static float DeltaTime() { return static_cast<float>(m_instance->m_deltaTime); }
+        [[nodiscard]] static float TimeElapsed() { return static_cast<float>(glfwGetTime()); }
 
-        void SetTitle(const std::string &title) {
-            m_info.title = title;
-            glfwSetWindowTitle(m_window, title.c_str());
+        static void SetTitle(const std::string &title) {
+            m_instance->m_info.title = title;
+            glfwSetWindowTitle(m_instance->m_window, title.c_str());
         }
     private:
         /**

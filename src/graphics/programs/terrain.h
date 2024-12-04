@@ -16,7 +16,9 @@ class Terrain final : public Graphics::Program {
 public:
     struct CreateInfo {
         const mgv::Camera &camera;
-        const Memory::Image* heightMap;
+        const Memory::Image& heightMap;
+        const Memory::Image& albedo;
+        const Memory::Image& normal;
         const Memory::Buffer<Fireflies::Particle>& particlesBuffer;
         const Memory::Buffer<Indices>& lightIndicesBuffer;
     };
@@ -37,7 +39,5 @@ private:
     const mgv::Camera &m_camera;
 
     glm::ivec2 patchCount = { 100, 100 };
-    std::unique_ptr<mgv::TextureArray> m_albedoTextures;
-    // std::unique_ptr<mgv::TextureArray> m_normalTextures;
 };
 

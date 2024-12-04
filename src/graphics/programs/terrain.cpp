@@ -24,8 +24,9 @@ Terrain::Terrain(Graphics::RenderPass &renderPass, const Memory::Descriptor::Poo
     m_setLayout = Memory::Descriptor::SetLayout::Builder()
         .AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
         .AddBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
-        .AddBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+        .AddBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
         .AddBinding(3, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+        .AddBinding(4, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
         .Build();
 
     const auto multisampleState = vk::PipelineMultisampleStateCreateInfo()
@@ -62,27 +63,27 @@ Terrain::Terrain(Graphics::RenderPass &renderPass, const Memory::Descriptor::Poo
         .Rasterizer(rasterizationInfo)
         .Build();
 
-    m_albedoTextures = mgv::TextureArray::Builder()
-        .Name("Albedo")
-        .Format(vk::Format::eR8G8B8A8Srgb)
-        .ImageSize(2048)
-        .AddImagePath("models/textures/wavy_sand/wavy-sand_albedo.png")
-        .AddImagePath("models/textures/stylized_grass/stylized-grass1_albedo.png")
-        .AddImagePath("models/textures/stylized_cliff/stylized-cliff1-albedo.png")
-        .AddImagePath("models/textures/snow_packed/snow-packed12-Base_Color.png")
-        .CreateMipmaps()
-        .Build();
-
     const auto heightMapDescriptorImage = vk::DescriptorImageInfo()
         .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
-        .setImageView(createInfo.heightMap->ImageView())
+        .setImageView(createInfo.heightMap.ImageView())
+        .setImageLayout(vk::ImageLayout::eGeneral);
+
+    const auto albedoDescriptorImage = vk::DescriptorImageInfo()
+        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
+        .setImageView(createInfo.albedo.ImageView())
+        .setImageLayout(vk::ImageLayout::eGeneral);
+
+    const auto normalDescriptorImage = vk::DescriptorImageInfo()
+        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
+        .setImageView(createInfo.normal.ImageView())
         .setImageLayout(vk::ImageLayout::eGeneral);
 
     m_descriptorSet = Memory::Descriptor::Set::Builder(pool, *m_setLayout)
         .WriteImage(0, heightMapDescriptorImage)
-        .WriteImage(1, m_albedoTextures->DescriptorInfo())
-        .WriteBuffer(2, createInfo.particlesBuffer.DescriptorInfo().value())
-        .WriteBuffer(3, createInfo.lightIndicesBuffer.DescriptorInfo().value())
+        .WriteImage(1, albedoDescriptorImage)
+        .WriteImage(2, normalDescriptorImage)
+        .WriteBuffer(3, createInfo.particlesBuffer.DescriptorInfo().value())
+        .WriteBuffer(4, createInfo.lightIndicesBuffer.DescriptorInfo().value())
         .Build();
 }
 

@@ -19,7 +19,7 @@ namespace mgv {
         CreateDescriptorPool();
 
         m_swapChain = std::make_unique<Graphics::SwapChain>(
-            Core::Window::Get().Extent(),
+            Core::Window::Extent(),
             m_swapChainSettings);
     }
 
@@ -108,7 +108,7 @@ namespace mgv {
             return false;
         }
 
-        if (Core::Window::Get().IsPaused()) {
+        if (Core::Window::IsPaused()) {
             return false;
         }
 
@@ -136,7 +136,7 @@ namespace mgv {
         if (const auto result = m_instance->m_swapChain->Acquire(currentFrame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             auto newSwapChain = std::make_unique<Graphics::SwapChain>(
-                Core::Window::Get().Extent(),
+                Core::Window::Extent(),
                 m_instance->m_swapChainSettings,
                 std::move(m_instance->m_swapChain));
             m_instance->m_swapChain = std::move(newSwapChain);
@@ -203,7 +203,7 @@ namespace mgv {
             return false;
         }
 
-        if (Core::Window::Get().IsPaused()) {
+        if (Core::Window::IsPaused()) {
             return false;
         }
 
@@ -228,7 +228,7 @@ namespace mgv {
         if (const auto result = m_instance->m_swapChain->Present(currentFrame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_instance->m_swapChain = std::make_unique<Graphics::SwapChain>(
-                Core::Window::Get().Extent(),
+                Core::Window::Extent(),
                 m_instance->m_swapChainSettings,
                 std::move(m_instance->m_swapChain));
             m_instance->m_frameStarted = false;

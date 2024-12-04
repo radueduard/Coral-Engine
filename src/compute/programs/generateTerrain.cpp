@@ -18,6 +18,10 @@ GenerateTerrain::GenerateTerrain(const Memory::Descriptor::Pool &pool, const Cre
         .AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eCompute)
         .AddBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
         .AddBinding(2, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(3, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(4, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(5, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(6, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute)
         .Build();
 
     m_pipeline = Compute::Pipeline::Builder()
@@ -49,6 +53,26 @@ GenerateTerrain::GenerateTerrain(const Memory::Descriptor::Pool &pool, const Cre
         .InitialLayout(vk::ImageLayout::eGeneral)
         .Build();
 
+    m_albedo = Memory::Image::Builder()
+        .LayersCount(1)
+        .MipLevels(1)
+        .Format(vk::Format::eR32G32B32A32Sfloat)
+        .Extent({ createInfo.size, createInfo.size, 1 })
+        .UsageFlags(vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled)
+        .SampleCount(vk::SampleCountFlagBits::e1)
+        .InitialLayout(vk::ImageLayout::eGeneral)
+        .Build();
+
+    m_normal = Memory::Image::Builder()
+        .LayersCount(1)
+        .MipLevels(1)
+        .Format(vk::Format::eR8G8B8A8Unorm)
+        .Extent({ createInfo.size, createInfo.size, 1 })
+        .UsageFlags(vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled)
+        .SampleCount(vk::SampleCountFlagBits::e1)
+        .InitialLayout(vk::ImageLayout::eGeneral)
+        .Build();
+
     const auto noiseDescriptorInfo = vk::DescriptorImageInfo()
         .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear))
         .setImageView(m_noiseTextures->ImageView())
@@ -59,10 +83,24 @@ GenerateTerrain::GenerateTerrain(const Memory::Descriptor::Pool &pool, const Cre
         .setImageView(m_heightMap->ImageView())
         .setImageLayout(vk::ImageLayout::eGeneral);
 
+    const auto albedoDescriptorInfo = vk::DescriptorImageInfo()
+        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
+        .setImageView(m_albedo->ImageView())
+        .setImageLayout(vk::ImageLayout::eGeneral);
+
+    const auto normalDescriptorInfo = vk::DescriptorImageInfo()
+        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
+        .setImageView(m_normal->ImageView())
+        .setImageLayout(vk::ImageLayout::eGeneral);
+
     m_descriptorSet = Memory::Descriptor::Set::Builder(pool, *m_setLayout)
         .WriteBuffer(0, m_settingsBuffer->DescriptorInfo().value())
         .WriteImage(1, noiseDescriptorInfo)
         .WriteImage(2, heightMapDescriptorInfo)
+        .WriteImage(3, createInfo.albedoTextures.DescriptorInfo())
+        .WriteImage(4, albedoDescriptorInfo)
+        .WriteImage(5, createInfo.normalTextures.DescriptorInfo())
+        .WriteImage(6, normalDescriptorInfo)
         .Build();
 }
 
@@ -135,6 +173,16 @@ void GenerateTerrain::InitUI() {
         Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear),
         m_heightMap->ImageView(),
         static_cast<VkImageLayout>(vk::ImageLayout::eGeneral));
+
+    m_albedoDescriptorSet = ImGui_ImplVulkan_AddTexture(
+        Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear),
+        m_albedo->ImageView(),
+        static_cast<VkImageLayout>(vk::ImageLayout::eGeneral));
+
+    m_normalDescriptorSet = ImGui_ImplVulkan_AddTexture(
+        Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear),
+        m_normal->ImageView(),
+        static_cast<VkImageLayout>(vk::ImageLayout::eGeneral));
 }
 
 void GenerateTerrain::UpdateUI() {
@@ -161,6 +209,14 @@ void GenerateTerrain::DrawUI() {
     ImGui::Text("Height Map:");
     ImGui::Image(m_heightMapDescriptorSet, ImVec2(size.x, size.x), ImVec2(0, 1), ImVec2(1, 0));
 
+    ImGui::Separator();
+    ImGui::Text("Albedo:");
+    ImGui::Image(m_albedoDescriptorSet, ImVec2(size.x, size.x), ImVec2(0, 1), ImVec2(1, 0));
+
+    ImGui::Separator();
+    ImGui::Text("Normal:");
+    ImGui::Image(m_normalDescriptorSet, ImVec2(size.x, size.x), ImVec2(0, 1), ImVec2(1, 0));
+
     ImGui::End();
 }
 
@@ -172,4 +228,6 @@ void GenerateTerrain::DestroyUI() {
         (*Core::Device::Get()).destroyImageView(view);
     }
     ImGui_ImplVulkan_RemoveTexture(m_heightMapDescriptorSet);
+    ImGui_ImplVulkan_RemoveTexture(m_albedoDescriptorSet);
+    ImGui_ImplVulkan_RemoveTexture(m_normalDescriptorSet);
 }

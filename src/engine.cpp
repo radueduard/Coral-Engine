@@ -45,7 +45,7 @@ namespace mgv {
         Core::Device::Destroy();
     }
 
-    void Engine::Run() const {
+    void Engine::Run() {
         Core::Input::Setup();
 
         const auto scene = std::make_unique<Scene>();
@@ -57,6 +57,7 @@ namespace mgv {
         Renderer::SetMainViewport(mainViewport.get());
         Renderer::SetReflectionPass(reflectionPass.get());
 
+        // Resources
         const auto skyBox = Graphics::CubeMap::Builder()
             .PositiveX("models/textures/cubeMapNight/pos_x.png")
             .NegativeX("models/textures/cubeMapNight/neg_x.png")
@@ -66,6 +67,47 @@ namespace mgv {
             .NegativeZ("models/textures/cubeMapNight/neg_z.png")
             .Build();
 
+        const auto albedoTextures = TextureArray::Builder()
+            .Name("Albedo")
+            .Format(vk::Format::eR8G8B8A8Srgb)
+            .ImageSize(2048)
+            .AddImagePath("models/textures/wavy_sand/wavy-sand_albedo.png")
+            .AddImagePath("models/textures/stylized_grass/stylized-grass1_albedo.png")
+            .AddImagePath("models/textures/stylized_cliff/stylized-cliff1-albedo.png")
+            .AddImagePath("models/textures/snow_packed/snow-packed12-Base_Color.png")
+            .CreateMipmaps()
+            .Build();
+
+        const auto normalTextures = TextureArray::Builder()
+            .Name("Normal")
+            .Format(vk::Format::eR8G8B8A8Unorm)
+            .ImageSize(2048)
+            .AddImagePath("models/textures/wavy_sand/wavy-sand_normal-dx.png")
+            .AddImagePath("models/textures/stylized_grass/stylized-grass1_normal-dx.png")
+            .AddImagePath("models/textures/stylized_cliff/stylized-cliff1-normal-dx.png")
+            .AddImagePath("models/textures/snow_packed/snow-packed12-Normal-dx.png")
+            .CreateMipmaps()
+            .Build();
+
+        const auto particlesBuffer = std::make_unique<Memory::Buffer<Fireflies::Particle>>(
+            1024,
+            vk::BufferUsageFlagBits::eStorageBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+        const auto bounds = Graphics::AABB ({ -15.0f, 0.0f, -15.0f }, { 15.0f, 10.0f, 15.0f });
+        particlesBuffer->Map();
+        for (uint32_t i = 0; i < 1024; i++) {
+            particlesBuffer->WriteAt(i, Fireflies::Particle::Random(bounds));
+        }
+        particlesBuffer->Flush();
+        particlesBuffer->Unmap();
+
+        const auto lightIndicesBuffer = std::make_unique<Memory::Buffer<Indices>>(
+            30 * 30,
+            vk::BufferUsageFlagBits::eStorageBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+        // Programs
         SkyBox::CreateInfo skyBoxCreateInfo {
             .camera = *scene->Camera().Get<Camera>().value(),
             .cubeMap = *skyBox
@@ -74,18 +116,21 @@ namespace mgv {
         const auto skyBoxReflection = std::make_unique<SkyBox>(reflectionPass->RenderPass(), Renderer::DescriptorPool(), skyBoxCreateInfo);
 
         GenerateTerrain::CreateInfo generateTerrainCreateInfo {
-            .size = 1024
+            .size = 1024,
+            .albedoTextures = *albedoTextures,
+            .normalTextures = *normalTextures
         };
 
         const auto generateTerrain = std::make_unique<GenerateTerrain>(Renderer::DescriptorPool(), generateTerrainCreateInfo);
         generateTerrain->Init();
         generateTerrain->InitUI();
 
-        const auto firefliesCreateInfo = Fireflies::CreateInfo {
-            .count = 1024,
-            .bounds = Graphics::AABB ({ -15.0f, 0.0f, -15.0f }, { 15.0f, 10.0f, 15.0f }),
+
+        const auto firefliesCreateInfo = FirefliesDisplay::CreateInfo {
             .camera = *scene->Camera().Get<Camera>().value(),
-            .heightMap = generateTerrain->HeightMap()
+            .heightMap = generateTerrain->HeightMap(),
+            .particlesBuffer = *particlesBuffer,
+            .lightIndicesBuffer = *lightIndicesBuffer
         };
 
         const auto fireflies = std::make_unique<FirefliesDisplay>(mainViewport->RenderPass(), Renderer::DescriptorPool(), firefliesCreateInfo);
@@ -93,9 +138,11 @@ namespace mgv {
 
         const Terrain::CreateInfo terrainCreateInfo {
             .camera = *scene->Camera().Get<Camera>().value(),
-            .heightMap = generateTerrain->HeightMap(),
-            .particlesBuffer = fireflies->ParticlesBuffer(),
-            .lightIndicesBuffer = fireflies->LightIndicesBuffer()
+            .heightMap = *generateTerrain->HeightMap(),
+            .albedo = *generateTerrain->Albedo(),
+            .normal = *generateTerrain->Normal(),
+            .particlesBuffer = *particlesBuffer,
+            .lightIndicesBuffer = *lightIndicesBuffer
         };
         const auto terrain = std::make_unique<Terrain>(mainViewport->RenderPass(), Renderer::DescriptorPool(), terrainCreateInfo);
         terrain->Init();
@@ -108,35 +155,35 @@ namespace mgv {
         const Lake::CreateInfo lakeCreateInfo {
             .camera = *scene->Camera().Get<Camera>().value(),
             .reflectionPass = reflectionPass->RenderPass(),
-            .particlesBuffer = fireflies->ParticlesBuffer(),
-            .lightIndicesBuffer = fireflies->LightIndicesBuffer()
+            .particlesBuffer = *particlesBuffer,
+            .lightIndicesBuffer = *lightIndicesBuffer
         };
 
         const auto lake = std::make_unique<Lake>(mainViewport->RenderPass(), Renderer::DescriptorPool(), lakeCreateInfo);
         lake->Init();
         lake->InitUI();
 
-        while (!Core::Window::Get().ShouldClose()) {
+        while (!Core::Window::ShouldClose()) {
             Core::Window::PollEvents();
-            Core::Window::Get().UpdateDeltaTime();
-            if (!Core::Window::Get().IsPaused()) {
+            Core::Window::UpdateDeltaTime();
+            if (!Core::Window::IsPaused()) {
                 const double start = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 const auto viewportSize = mainViewport->RenderPass().Extent();
                 Camera::mainCamera->Resize({ viewportSize.width, viewportSize.height });
-                scene->Update(Core::Window::Get().DeltaTime());
+                scene->Update(Core::Window::DeltaTime());
                 GUI::Manager::Update();
 
                 if (Renderer::BeginFrame()) {
-                    Renderer::Update(Core::Window::Get().DeltaTime());
+                    Renderer::Update(Core::Window::DeltaTime());
                     Renderer::Draw();
                     Renderer::EndFrame();
                 }
                 const double end = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-                Core::Window::Get().SetTitle("Mgv - " + std::to_string(1.0 / (end - start)) + " fps");
+                Core::Window::SetTitle("Mgv - " + std::to_string(1.0 / (end - start)) + " fps");
             }
 
             if (Core::Input::IsKeyPressed(Escape)) {
-                Core::Window::Get().Close();
+                Core::Window::Close();
             }
             Core::Input::Update();
         }

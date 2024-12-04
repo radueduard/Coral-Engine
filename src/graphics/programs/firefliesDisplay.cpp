@@ -13,14 +13,19 @@ struct Info {
     glm::mat4 viewProjection;
 };
 
-FirefliesDisplay::FirefliesDisplay(Graphics::RenderPass& renderPass, const Memory::Descriptor::Pool &pool, const Fireflies::CreateInfo &createInfo)
-    : Program(renderPass), m_camera(createInfo.camera) {
+FirefliesDisplay::FirefliesDisplay(Graphics::RenderPass& renderPass, const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo)
+    : Program(renderPass), m_camera(createInfo.camera), m_particlesBuffer(createInfo.particlesBuffer), m_mesh(*mgv::Mesh::Sphere()) {
 
-    m_firefliesProgram = std::make_unique<Fireflies>(pool, createInfo);
+    const auto firefliesCreateInfo = Fireflies::CreateInfo {
+        .heightMap = createInfo.heightMap,
+        .particlesBuffer = createInfo.particlesBuffer
+    };
+
+    m_firefliesProgram = std::make_unique<Fireflies>(pool, firefliesCreateInfo);
 
     const auto partitionLightsCreateInfo = PartitionLights::CreateInfo {
         .chunksPerAxis = 30,
-        .particlesBuffer = m_firefliesProgram->ParticlesBuffer()
+        .particlesBuffer = createInfo.particlesBuffer
     };
 
     m_partitionLightsProgram = std::make_unique<PartitionLights>(pool, partitionLightsCreateInfo);
@@ -53,14 +58,13 @@ FirefliesDisplay::FirefliesDisplay(Graphics::RenderPass& renderPass, const Memor
         .Build();
 
     m_descriptorSet = Memory::Descriptor::Set::Builder(pool, *m_setLayout)
-        .WriteBuffer(0, m_firefliesProgram->ParticlesBuffer().DescriptorInfo().value())
+        .WriteBuffer(0, createInfo.particlesBuffer.DescriptorInfo().value())
         .Build();
 }
 
 void FirefliesDisplay::Init() {
     m_firefliesProgram->Init();
     m_partitionLightsProgram->Init();
-    m_mesh = mgv::Mesh::Sphere();
 }
 
 void FirefliesDisplay::Draw(const vk::CommandBuffer &commandBuffer, bool reflected) {
@@ -73,6 +77,6 @@ void FirefliesDisplay::Draw(const vk::CommandBuffer &commandBuffer, bool reflect
 
     m_pipeline->PushConstants(commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, info);
 
-    m_mesh->Bind(commandBuffer);
-    m_mesh->Draw(commandBuffer, m_firefliesProgram->Count());
+    m_mesh.Bind(commandBuffer);
+    m_mesh.Draw(commandBuffer, m_particlesBuffer.InstanceCount());
 }

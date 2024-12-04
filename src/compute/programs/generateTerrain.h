@@ -6,6 +6,7 @@
 #include "program.h"
 #include "compute/pipeline.h"
 #include "graphics/objects/texture.h"
+#include "graphics/objects/textureArray.h"
 #include "memory/buffer.h"
 #include "memory/image.h"
 
@@ -13,6 +14,8 @@ class GenerateTerrain final : public Compute::Program {
 public:
     struct CreateInfo {
         uint32_t size = 1024;
+        mgv::TextureArray& albedoTextures;
+        mgv::TextureArray& normalTextures;
     };
 
     struct Settings {
@@ -37,6 +40,8 @@ public:
     void Compute(const vk::CommandBuffer &commandBuffer) override;
 
     [[nodiscard]] const Memory::Image* HeightMap() const { return m_heightMap.get(); }
+    [[nodiscard]] const Memory::Image* Albedo() const { return m_albedo.get(); }
+    [[nodiscard]] const Memory::Image* Normal() const { return m_normal.get(); }
 
     // GUI
     void InitUI() override;
@@ -52,6 +57,8 @@ private:
     std::unique_ptr<Memory::Image> m_noiseTextures;
 
     std::unique_ptr<Memory::Image> m_heightMap;
+    std::unique_ptr<Memory::Image> m_albedo;
+    std::unique_ptr<Memory::Image> m_normal;
 
     std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 
@@ -61,4 +68,6 @@ private:
     std::vector<vk::ImageView> m_noiseTextureViews;
 
     vk::DescriptorSet m_heightMapDescriptorSet;
+    vk::DescriptorSet m_albedoDescriptorSet;
+    vk::DescriptorSet m_normalDescriptorSet;
 };
