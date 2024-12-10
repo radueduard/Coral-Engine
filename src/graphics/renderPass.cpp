@@ -4,6 +4,10 @@
 
 #include "renderPass.h"
 
+#include "core/device.h"
+#include "memory/image.h"
+#include "programs/program.h"
+
 namespace Graphics {
 
     void RenderPass::Attachment::Resize(vk::Extent2D extent) const {
@@ -109,23 +113,16 @@ namespace Graphics {
     }
 
     void RenderPass::Update(const float deltaTime) const {
-        for (const auto& subpass : m_programs) {
-            for (const auto& program : subpass) {
+        for (const auto& program : m_programs) {
+            if (program)
                 program->Update(deltaTime);
-            }
         }
     }
 
-    void RenderPass::Draw(const vk::CommandBuffer commandBuffer, const bool reflected) const {
-        uint32_t i = 0;
-        for (const auto& subpass : m_programs) {
-            for (const auto& program : subpass) {
-                program->Draw(commandBuffer, reflected);
-            }
-            if (i + 1 < m_programs.size()) {
-                commandBuffer.nextSubpass(vk::SubpassContents::eInline);
-            }
-            i++;
+    void RenderPass::Draw(const vk::CommandBuffer commandBuffer) const {
+        for (const auto& program : m_programs) {
+            if (program)
+                program->Draw(commandBuffer, this);
         }
     }
 
@@ -159,6 +156,11 @@ namespace Graphics {
             attachment.Resize(extent);
         }
         CreateFrameBuffers();
+
+        for (const auto &program : m_programs) {
+            if (program)
+                program->ResetDescriptorSets();
+        }
         return true;
     }
 }

@@ -5,15 +5,24 @@
 layout(local_size_x = 3, local_size_y = 1, local_size_z = 3) in;
 layout(triangles, max_vertices = 128, max_primitives = 256) out;
 
-layout (push_constant) uniform PushConstants {
-    mat4 View;
-    mat4 Projection;
-} pushConstants;
+layout (set = 0, binding = 0) uniform Camera {
+    mat4 view;
+    mat4 projection;
+    mat4 inverseView;
+    mat4 inverseProjection;
+    mat4 flippedView;
+    mat4 inverseFlippedView;
+} camera;
 
-layout (set = 0, binding = 0) uniform sampler2D heightMap;
+layout (set = 1, binding = 0) uniform sampler2D heightMap;
+
+layout(push_constant) uniform Settings {
+    uint flipped;
+} settings;
 
 layout (location = 0) out PerVertexData {
     vec4 position;
+    vec4 ndcPosition;
     vec3 normal;
     vec2 uv;
 } v_out[];
@@ -43,6 +52,8 @@ vec3 ComputeNormal(vec2 uv) {
 }
 
 void main() {
+    mat4 view = settings.flipped == 1 ? camera.flippedView : camera.view;
+
     const vec3 anchor = -vec3(
         float(gl_NumWorkGroups.x * gl_WorkGroupSize.x),
         0.0,
@@ -61,6 +72,8 @@ void main() {
             position.y = textureLod(heightMap, uv, 0).r;
 
             v_out[index].position = vec4(position, 1.0);
+            vec4 ndc = vec4(camera.projection * camera.view * vec4(position, 1.0));
+            v_out[index].ndcPosition = ndc / ndc.w;
             v_out[index].normal = ComputeNormal(uv);
             v_out[index].uv = uv;
         }
@@ -88,7 +101,7 @@ void main() {
     }
 
     for (uint i = vertexPerInstance * gl_LocalInvocationIndex; i < vertexPerInstance * (gl_LocalInvocationIndex + 1); i++) {
-        gl_MeshVerticesEXT[i].gl_Position = pushConstants.Projection * pushConstants.View * v_out[i].position;
+        gl_MeshVerticesEXT[i].gl_Position = camera.projection * view * v_out[i].position;
     }
 
     SetMeshOutputsEXT(vertexPerPatch, trianglePerPatch * 2);

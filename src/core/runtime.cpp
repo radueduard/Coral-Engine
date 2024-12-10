@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include "physicalDevice.h"
+#include "window.h"
 #include "../extensions/debugUtils.h"
 #include "../extensions/meshShader.h"
 

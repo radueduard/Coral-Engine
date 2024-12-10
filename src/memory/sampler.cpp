@@ -4,6 +4,8 @@
 
 #include "sampler.h"
 
+#include "core/device.h"
+
 namespace Memory {
     std::vector<std::unique_ptr<Sampler>> Sampler::m_samplers;
 

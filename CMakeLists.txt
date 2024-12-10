@@ -38,15 +38,19 @@ target_link_libraries(MotorGraficVulkan PRIVATE
         glslang::SPIRV
         glslang::SPVRemapper)
 
-set(Stb_INCLUDE_DIR editorAssets/external/stb)
-target_include_directories(MotorGraficVulkan PRIVATE ${Stb_INCLUDE_DIR})
-
 # imgui
 set(IMGUI_DIR external/imgui)
-add_subdirectory(${IMGUI_DIR})
+add_subdirectory(${IMGUI_DIR} imgui)
 
 target_link_libraries(MotorGraficVulkan PRIVATE imgui)
-target_include_directories(MotorGraficVulkan PRIVATE ${IMGUI_DIR})
+target_include_directories(MotorGraficVulkan PRIVATE ${IMGUI_DIR}/Include)
+
+## imgui-node-editor
+#set(IMGUI_NODE_EDITOR_DIR external/imgui-node-editor)
+#add_subdirectory(${IMGUI_NODE_EDITOR_DIR} imgui-node-editor)
+#
+#target_link_libraries(MotorGraficVulkan PRIVATE imgui-node-editor)
+#target_include_directories(MotorGraficVulkan PRIVATE ${IMGUI_NODE_EDITOR_DIR}/Include)
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 

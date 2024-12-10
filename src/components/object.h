@@ -31,20 +31,17 @@ namespace mgv {
         }
     };
 
-    class Component : public GUI::Layer {
+    class Component : public GUI::SubLayer {
         friend class Object;
     public:
         explicit Component(const Object& owner);
-
         ~Component() override = default;
+
         virtual void Update(double deltaTime) = 0;
 
         [[nodiscard]] Object& Owner() const;
 
-        void InitUI() override;
-        void UpdateUI() override;
-        void DrawUI() override;
-        void DestroyUI() override;
+        void OnUIRender() override {}
 
     protected:
         boost::uuids::uuid m_ownerId;
@@ -101,7 +98,6 @@ namespace mgv {
             }
             m_components[type] = std::make_unique<T>(*this, std::forward<Args>(args)...);
             auto component = static_cast<T*>(m_components[type].get());
-            component->InitUI();
             return component;
         }
 
@@ -111,7 +107,6 @@ namespace mgv {
             if (!m_components.contains(type)) {
                 return;
             }
-            m_components[type]->DestroyUI();
             m_components.erase(type);
         }
 

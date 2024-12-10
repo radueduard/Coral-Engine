@@ -3,14 +3,24 @@
 //
 
 #pragma once
-#include "program.h"
-#include "compute/pipeline.h"
-#include "graphics/objects/texture.h"
-#include "graphics/objects/textureArray.h"
-#include "memory/buffer.h"
-#include "memory/image.h"
 
-class GenerateTerrain final : public Compute::Program {
+#include "program.h"
+#include "gui/layer.h"
+
+namespace mgv {
+    class TextureArray;
+}
+
+namespace Memory {
+    class Image;
+    class Buffer;
+    namespace Descriptor {
+        class Set;
+    }
+}
+
+
+class GenerateTerrain final : public Compute::Program, public GUI::Layer {
 public:
     struct CreateInfo {
         uint32_t size = 1024;
@@ -31,29 +41,34 @@ public:
         float minHeight;
     };
 
-    GenerateTerrain(const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo);
+    explicit GenerateTerrain(const CreateInfo &createInfo);
     ~GenerateTerrain() override = default;
+
+    [[nodiscard]] const Memory::Image& HeightMap() const { return *m_heightMap; }
+    [[nodiscard]] const Memory::Image& Albedo() const { return *m_albedo; }
+    [[nodiscard]] const Memory::Image& Normal() const { return *m_normal; }
 
     // Compute::Program
     void Init() override;
-    void Update() override;
-    void Compute(const vk::CommandBuffer &commandBuffer) override;
-
-    [[nodiscard]] const Memory::Image* HeightMap() const { return m_heightMap.get(); }
-    [[nodiscard]] const Memory::Image* Albedo() const { return m_albedo.get(); }
-    [[nodiscard]] const Memory::Image* Normal() const { return m_normal.get(); }
+    void Update() override {}
+    void Compute() override;
+    void ResetDescriptorSets() override;
 
     // GUI
-    void InitUI() override;
-    void UpdateUI() override;
-    void DrawUI() override;
-    void DestroyUI() override;
+    void OnUIAttach() override;
+    void OnUIUpdate() override;
+    void OnUIRender() override;
+    void OnUIReset() override;
+    void OnUIDetach() override;
 private:
     uint32_t m_noiseTextureCount;
-
     bool m_changed = true;
     Settings m_settings;
-    std::unique_ptr<Memory::Buffer<Settings>> m_settingsBuffer;
+
+    const mgv::TextureArray& m_albedoTextures;
+    const mgv::TextureArray& m_normalTextures;
+
+    std::unique_ptr<Memory::Buffer> m_settingsBuffer;
     std::unique_ptr<Memory::Image> m_noiseTextures;
 
     std::unique_ptr<Memory::Image> m_heightMap;

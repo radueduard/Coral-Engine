@@ -8,16 +8,27 @@
 
 #include "assets/manager.h"
 #include "core/input.h"
-#include "compute/programs/calculateMvp.h"
 #include "compute/programs/fireflies.h"
 #include "compute/programs/generateTerrain.h"
-#include "graphics/renderer.h"
+#include "renderer.h"
+#include "components/camera.h"
+#include "components/object.h"
+#include "compute/programs/partitionLights.h"
+#include "core/runtime.h"
+#include "core/window.h"
+#include "graphics/objects/cubeMap.h"
+#include "graphics/objects/textureArray.h"
 #include "graphics/programs/firefliesDisplay.h"
 #include "graphics/programs/lake.h"
 #include "graphics/programs/skyBox.h"
 #include "graphics/programs/terrain.h"
-#include "renderPasses/mainViewport.h"
+#include "memory/buffer.h"
+#include "memory/manager.h"
+#include "memory/sampler.h"
+#include "memory/descriptor/setLayout.h"
+#include "renderPasses/depthPrepass.h"
 #include "renderPasses/reflectionPass.h"
+#include "scene/scene.h"
 
 boost::random::mt19937 Utils::Random::m_rng = boost::random::mt19937(std::random_device()());
 
@@ -25,7 +36,7 @@ namespace mgv {
     Engine::Engine() {
         const auto windowInfo = Core::Window::Info {
             .title = "Mgv",
-            .extent = { 1920, 1080 },
+            .extent = { 2560, 1440 },
             .resizable = true,
             .fullscreen = false
         };
@@ -35,6 +46,7 @@ namespace mgv {
         Core::Device::Init();
         Renderer::Init();
         GUI::Manager::Init();
+        Memory::Manager::Init();
         Asset::Manager::Init();
     }
 
@@ -49,13 +61,9 @@ namespace mgv {
         Core::Input::Setup();
 
         const auto scene = std::make_unique<Scene>();
-        scene->InitUI();
-        const auto mainViewport = std::make_unique<MainViewport>();
-        mainViewport->InitUI();
-        const auto reflectionPass = std::make_unique<ReflectionPass>();
+        scene->OnUIAttach();
 
-        Renderer::SetMainViewport(mainViewport.get());
-        Renderer::SetReflectionPass(reflectionPass.get());
+        Renderer::SetMainCamera(scene->Camera().Get<Camera>().value());
 
         // Resources
         const auto skyBox = Graphics::CubeMap::Builder()
@@ -89,91 +97,109 @@ namespace mgv {
             .CreateMipmaps()
             .Build();
 
-        const auto particlesBuffer = std::make_unique<Memory::Buffer<Fireflies::Particle>>(
-            1024,
+        const auto frustumsBuffer = std::make_unique<Memory::Buffer>(
+            sizeof(Fireflies::Frustum), 64 * 64,
+            vk::BufferUsageFlagBits::eStorageBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+        // const auto camera = scene->Camera().Get<Camera>().value();
+        // frustumsBuffer->Map<Fireflies::Frustum>();
+        // for (uint32_t i = 0; i < 64 * 64; i++) {
+        //
+        // }
+
+        const auto particlesBuffer = std::make_unique<Memory::Buffer>(
+            sizeof(Fireflies::Particle), 1024,
             vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
         const auto bounds = Graphics::AABB ({ -15.0f, 0.0f, -15.0f }, { 15.0f, 10.0f, 15.0f });
-        particlesBuffer->Map();
+        particlesBuffer->Map<Fireflies::Particle>();
         for (uint32_t i = 0; i < 1024; i++) {
             particlesBuffer->WriteAt(i, Fireflies::Particle::Random(bounds));
         }
         particlesBuffer->Flush();
         particlesBuffer->Unmap();
 
-        const auto lightIndicesBuffer = std::make_unique<Memory::Buffer<Indices>>(
-            30 * 30,
+        const auto lightIndicesBuffer = std::make_unique<Memory::Buffer>(
+            sizeof(Indices), 64 * 64,
             vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-        // Programs
+        lightIndicesBuffer->Map<Indices>();
+        for (uint32_t i = 0; i < 64 * 64; i++) {
+            Indices indices{};
+            for (uint32_t j = 0; j < 64; j++) {
+                indices.indices[j] = j;
+            }
+            lightIndicesBuffer->WriteAt(i, indices);
+        }
+        lightIndicesBuffer->Flush();
+        lightIndicesBuffer->Unmap();
+
+        auto cameraDescriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
+            .AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+            .Build();
+
+        const auto cameraBuffer = std::make_unique<Memory::Buffer>(
+            sizeof(mgv::Camera::Info), 1,
+            vk::BufferUsageFlagBits::eUniformBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
         SkyBox::CreateInfo skyBoxCreateInfo {
-            .camera = *scene->Camera().Get<Camera>().value(),
             .cubeMap = *skyBox
         };
-        const auto skyBoxProgram = std::make_unique<SkyBox>(mainViewport->RenderPass(), Renderer::DescriptorPool(), skyBoxCreateInfo);
-        const auto skyBoxReflection = std::make_unique<SkyBox>(reflectionPass->RenderPass(), Renderer::DescriptorPool(), skyBoxCreateInfo);
+        const auto skyBoxProgram = std::make_unique<SkyBox>(skyBoxCreateInfo);
 
         GenerateTerrain::CreateInfo generateTerrainCreateInfo {
-            .size = 1024,
+            .size = 2048,
             .albedoTextures = *albedoTextures,
             .normalTextures = *normalTextures
         };
 
-        const auto generateTerrain = std::make_unique<GenerateTerrain>(Renderer::DescriptorPool(), generateTerrainCreateInfo);
+        const auto generateTerrain = std::make_unique<GenerateTerrain>(generateTerrainCreateInfo);
         generateTerrain->Init();
-        generateTerrain->InitUI();
-
 
         const auto firefliesCreateInfo = FirefliesDisplay::CreateInfo {
-            .camera = *scene->Camera().Get<Camera>().value(),
             .heightMap = generateTerrain->HeightMap(),
+            .frustumsBuffer = *frustumsBuffer,
             .particlesBuffer = *particlesBuffer,
             .lightIndicesBuffer = *lightIndicesBuffer
         };
 
-        const auto fireflies = std::make_unique<FirefliesDisplay>(mainViewport->RenderPass(), Renderer::DescriptorPool(), firefliesCreateInfo);
+        const auto fireflies = std::make_unique<FirefliesDisplay>(firefliesCreateInfo);
         fireflies->Init();
 
-        const Terrain::CreateInfo terrainCreateInfo {
-            .camera = *scene->Camera().Get<Camera>().value(),
-            .heightMap = *generateTerrain->HeightMap(),
-            .albedo = *generateTerrain->Albedo(),
-            .normal = *generateTerrain->Normal(),
+        Terrain::CreateInfo terrainCreateInfo {
+            .heightMap = generateTerrain->HeightMap(),
+            .albedo = generateTerrain->Albedo(),
+            .normal = generateTerrain->Normal(),
             .particlesBuffer = *particlesBuffer,
             .lightIndicesBuffer = *lightIndicesBuffer
         };
-        const auto terrain = std::make_unique<Terrain>(mainViewport->RenderPass(), Renderer::DescriptorPool(), terrainCreateInfo);
+        const auto terrain = std::make_unique<Terrain>(terrainCreateInfo);
         terrain->Init();
-        terrain->InitUI();
 
-        const auto reflectedTerrain = std::make_unique<Terrain>(reflectionPass->RenderPass(), Renderer::DescriptorPool(), terrainCreateInfo);
-        reflectedTerrain->Init();
-        reflectedTerrain->InitUI();
-
-        const Lake::CreateInfo lakeCreateInfo {
-            .camera = *scene->Camera().Get<Camera>().value(),
-            .reflectionPass = reflectionPass->RenderPass(),
+        Lake::CreateInfo lakeCreateInfo {
             .particlesBuffer = *particlesBuffer,
             .lightIndicesBuffer = *lightIndicesBuffer
         };
 
-        const auto lake = std::make_unique<Lake>(mainViewport->RenderPass(), Renderer::DescriptorPool(), lakeCreateInfo);
+        const auto lake = std::make_unique<Lake>(lakeCreateInfo);
         lake->Init();
-        lake->InitUI();
 
         while (!Core::Window::ShouldClose()) {
             Core::Window::PollEvents();
             Core::Window::UpdateDeltaTime();
             if (!Core::Window::IsPaused()) {
                 const double start = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-                const auto viewportSize = mainViewport->RenderPass().Extent();
+                const auto viewportSize = Renderer::Extent();
                 Camera::mainCamera->Resize({ viewportSize.width, viewportSize.height });
                 scene->Update(Core::Window::DeltaTime());
                 GUI::Manager::Update();
 
                 if (Renderer::BeginFrame()) {
+                    generateTerrain->Compute();
                     Renderer::Update(Core::Window::DeltaTime());
                     Renderer::Draw();
                     Renderer::EndFrame();
@@ -188,12 +214,9 @@ namespace mgv {
             Core::Input::Update();
         }
         (*Core::Device::Get()).waitIdle();
-        terrain->DestroyUI();
-        reflectedTerrain->DestroyUI();
-        lake->DestroyUI();
-        generateTerrain->DestroyUI();
-        scene->DestroyUI();
-        mainViewport->DestroyUI();
+
+        GUI::Manager::Destroy();
+
         Memory::Sampler::FreeAllSamplers();
     }
 }

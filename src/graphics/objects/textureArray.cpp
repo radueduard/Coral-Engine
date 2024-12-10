@@ -15,6 +15,13 @@
 #include "memory/sampler.h"
 
 namespace mgv {
+    uint32_t TextureArray::Id(const std::string &name) const {
+        if (!m_imageIndices.contains(name)) {
+            return -1;
+        }
+        return m_imageIndices.at(name);
+    }
+
     void TextureArray::LoadTexture(const ThreadPayload& threadPayload) {
         auto [tid, numThreads, paths] = threadPayload;
         const auto size = static_cast<uint32_t>(paths.size());
@@ -29,18 +36,23 @@ namespace mgv {
             uint32_t width, height, channels;
             stbi_uc* image = stbi_load(path.c_str(), reinterpret_cast<int*>(&width), reinterpret_cast<int*>(&height), reinterpret_cast<int*>(&channels), STBI_rgb_alpha);
 
-            auto stagingBuffer = Memory::Buffer<glm::u8vec4>(
-                width * height,
+            auto stagingBuffer = Memory::Buffer(
+                sizeof(glm::u8vec4), width * height,
                 vk::BufferUsageFlagBits::eTransferSrc,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-            stagingBuffer.Map();
-            stagingBuffer.Write(reinterpret_cast<const glm::u8vec4*>(image));
+            stagingBuffer.Map<glm::u8vec4>();
+            const auto copy = std::span(reinterpret_cast<glm::u8vec4*>(image), width * height);
+            stagingBuffer.Write(copy);
             stagingBuffer.Unmap();
 
             m_image->Copy(*stagingBuffer, 0, i, tid);
             stbi_image_free(image);
         }
+    }
+
+    std::unique_ptr<TextureArray> TextureArray::Builder::Build() {
+        return std::make_unique<TextureArray>(*this);
     }
 
     TextureArray::TextureArray(const Builder &builder)
@@ -78,13 +90,14 @@ namespace mgv {
         }
 
         for (uint32_t i = 0; i < builder.m_data.size(); i++) {
-            const auto stagingBuffer = std::make_unique<Memory::Buffer<glm::u8vec4>>(
-                builder.m_width * builder.m_height,
+            const auto stagingBuffer = std::make_unique<Memory::Buffer>(
+                sizeof(glm::u8vec4), builder.m_width * builder.m_height,
                 vk::BufferUsageFlagBits::eTransferSrc,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-            stagingBuffer->Map();
-            stagingBuffer->Write(static_cast<const glm::u8vec4*>(builder.m_data[i]));
+            stagingBuffer->Map<glm::u8vec4>();
+            const auto copy = std::span(static_cast<const glm::u8vec4*>(builder.m_data[i]), builder.m_width * builder.m_height);
+            stagingBuffer->Write(copy);
             stagingBuffer->Unmap();
 
             m_image->Copy(**stagingBuffer, 0, i + static_cast<uint32_t>(builder.m_images.size()));

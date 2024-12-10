@@ -9,6 +9,7 @@
 #include <thread>
 #include <unordered_map>
 
+#include "physicalDevice.h"
 #include "runtime.h"
 
 namespace Core {

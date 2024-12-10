@@ -4,10 +4,11 @@
 
 #include "texture.h"
 
-#include <boost/uuid/random_generator.hpp>
+#include <glm/glm.hpp>
 
 #include "assets/manager.h"
 #include "memory/buffer.h"
+#include "memory/image.h"
 #include "memory/sampler.h"
 
 namespace mgv {
@@ -25,13 +26,14 @@ namespace mgv {
             .Build();
 
         if (builder.m_data) {
-            auto stagingBuffer = Memory::Buffer<glm::u8vec4>(
-                builder.m_width * builder.m_height,
+            auto stagingBuffer = Memory::Buffer(
+                sizeof(glm::u8vec4), builder.m_width * builder.m_height,
                 vk::BufferUsageFlagBits::eTransferSrc,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-            stagingBuffer.Map();
-            stagingBuffer.Write(reinterpret_cast<const glm::u8vec4*>(builder.m_data));
+            stagingBuffer.Map<glm::u8vec4>();
+            const auto copy = std::span(reinterpret_cast<const glm::u8vec4*>(builder.m_data), builder.m_width * builder.m_height);
+            stagingBuffer.Write(copy);
             stagingBuffer.Flush();
             stagingBuffer.Unmap();
 

@@ -6,11 +6,16 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
-#include "../core/device.h"
-#include "../core/shader.h"
-#include "memory/descriptor/pool.h"
-#include "memory/descriptor/set.h"
+#include <vulkan/vulkan.hpp>
+
+#include "core/shader.h"
+
+namespace Memory::Descriptor {
+    class Set;
+    class SetLayout;
+}
 
 namespace Graphics {
     class Pipeline {
@@ -28,7 +33,7 @@ namespace Graphics {
             Builder(const Builder &) = delete;
             Builder &operator=(const Builder &) = delete;
 
-            Builder &AddShader(const Core::Shader &);
+            Builder &AddShader(const std::string& path);
             Builder &VertexInputState(const vk::PipelineVertexInputStateCreateInfo &);
             Builder &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
             Builder &Viewport(const vk::Viewport &);
@@ -65,7 +70,7 @@ namespace Graphics {
         private:
             void CheckShaderStagesValidity() const;
 
-            std::unordered_map<vk::ShaderStageFlagBits, vk::ShaderModule> m_shaders;
+            std::unordered_map<vk::ShaderStageFlagBits, std::unique_ptr<Core::Shader>> m_shaders;
             std::unordered_set<Type> m_yetPossibleTypes;
 
             std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
@@ -101,7 +106,7 @@ namespace Graphics {
             std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
         };
 
-        Pipeline(const Builder &);
+        explicit Pipeline(const Builder &);
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
@@ -125,6 +130,5 @@ namespace Graphics {
         Type m_type;
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
-        std::unordered_map<vk::ShaderStageFlagBits, vk::ShaderModule> m_shaders;
     };
 }

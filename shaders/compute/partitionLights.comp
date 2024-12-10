@@ -1,6 +1,8 @@
 #version 460 core
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+const uint elementsPerInvocation = 1024 / (gl_WorkGroupSize.x * gl_WorkGroupSize.y);
 
 struct Particle {
     vec4 position;
@@ -9,36 +11,79 @@ struct Particle {
     vec4 color;
 };
 
-layout(set = 0, binding = 0) readonly buffer Particles {
+layout(set = 0, binding = 0) uniform Camera {
+    mat4 view;
+    mat4 projection;
+    mat4 inverseView;
+    mat4 inverseProjection;
+    mat4 flippedView;
+    mat4 inverseFlippedView;
+} camera;
+
+struct Frustum {
+    vec4 planes[4];
+};
+
+layout(set = 1, binding = 0) readonly buffer FrustumBuffer {
+    Frustum frustum;
+} frustumBuffer;
+
+layout(set = 1, binding = 1) readonly buffer Particles {
     Particle data[];
 } particles;
 
 struct Indices {
-    uint data[16];
+    uint data[64];
 };
 
-layout(set = 0, binding = 1, std430) buffer IndexBuffer {
+layout(set = 1, binding = 2, std430) writeonly buffer IndexBuffer {
     Indices data[];
 } indexBuffer;
 
-void main() {
-    uint index = gl_WorkGroupID.x * gl_NumWorkGroups.y + gl_WorkGroupID.y;
-    vec2 chunkCenter = vec2(-15.0, -15.0) + vec2(gl_WorkGroupID.xy) + vec2(0.5);
+layout(set = 1, binding = 3) writeonly uniform image2D debugImage;
+layout(set = 1, binding = 4) uniform sampler2D depthSampler;
 
-    uint lightIndex = 0;
-    Indices indices;
-    for (uint i = 0; i < 1024; i++) {
-        if (lightIndex >= 16) {
+shared uint lightIndex;
+shared Indices indices;
+
+void main() {
+    vec2 chunkCenter = vec2(gl_WorkGroupID) + vec2(0.5);
+
+    if (gl_LocalInvocationIndex == 0) {
+        lightIndex = 1;
+    }
+    barrier();
+
+    uint start = gl_LocalInvocationIndex * elementsPerInvocation;
+    uint end = start + elementsPerInvocation;
+    for (uint i = start; i < end; i++) {
+        if (lightIndex >= 64) {
             break;
         }
         Particle particle = particles.data[i];
-        if (length(particle.position.xz - chunkCenter) < 2.0) {
-            indices.data[lightIndex++] = i;
+
+        vec4 ndc = vec4(camera.projection * camera.view * vec4(particle.position.xyz, 1.0));
+        vec2 screenPosition = ndc.xy / ndc.w;
+        screenPosition = (screenPosition + 1.0) / 2.0 * vec2(gl_NumWorkGroups);
+        float depth = ndc.z / ndc.w;
+        if (depth > texture(depthSampler, screenPosition).r) {
+            continue;
+        }
+
+        if (length(screenPosition - chunkCenter) < depth) {
+            uint id = atomicAdd(lightIndex, 1);
+            indices.data[id] = i;
         }
     }
-    while (lightIndex < 16) {
-        indices.data[lightIndex++] = 0xFFFFFFFF;
-        lightIndex++;
+    barrier();
+
+    if (gl_LocalInvocationIndex == 0) {
+        indices.data[0] = lightIndex - 1;
+
+        uint index = gl_WorkGroupID.x * gl_NumWorkGroups.y + gl_WorkGroupID.y;
+        indexBuffer.data[index] = indices;
+
+        float debugColor = float(lightIndex - 1) / (gl_WorkGroupSize.x * gl_WorkGroupSize.y);
+        imageStore(debugImage, ivec2(gl_WorkGroupID.xy), vec4(debugColor, 0, 0, 1.0));
     }
-    indexBuffer.data[index] = indices;
 }

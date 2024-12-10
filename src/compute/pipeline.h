@@ -4,9 +4,16 @@
 
 #pragma once
 
-#include "core/device.h"
+#include <memory>
+
+#include <vulkan/vulkan.hpp>
+
 #include "core/shader.h"
-#include "memory/descriptor/set.h"
+
+namespace Memory::Descriptor {
+    class SetLayout;
+    class Set;
+}
 
 namespace Compute {
 
@@ -21,7 +28,7 @@ namespace Compute {
             Builder(const Builder &) = delete;
             Builder &operator=(const Builder &) = delete;
 
-            Builder &Shader(const Core::Shader &shader);
+            Builder &Shader(const std::string &path);
             Builder &BasePipeline(const vk::Pipeline &, int32_t);
 
             template<typename T>
@@ -45,7 +52,7 @@ namespace Compute {
             std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
 
             vk::PipelineLayout m_pipelineLayout;
-            vk::ShaderModule m_shaderModule;
+            std::unique_ptr<Core::Shader> m_shaderModule;
             vk::PipelineShaderStageCreateInfo m_shaderStage;
 
             vk::Pipeline m_basePipeline = nullptr;
@@ -73,6 +80,5 @@ namespace Compute {
     private:
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
-        vk::ShaderModule m_shaderModule;
     };
 }

@@ -7,15 +7,30 @@
 #include <glm/glm.hpp>
 
 #include "object.h"
+#include "graphics/objects/mesh.h"
+
+namespace Memory {
+    class Buffer;
+}
 
 namespace mgv {
     class Camera final : public Component
     {
     public:
-        static Camera* mainCamera;
+        inline static Camera* mainCamera;
+
+        struct Frustum {
+            glm::vec4 left;
+            glm::vec4 right;
+            glm::vec4 top;
+            glm::vec4 bottom;
+
+            Frustum(float fov, float aspectRatio, float near, float far);
+        };
+
         enum Type {
-            Perspective,
-            Orthographic
+            Perspective = 0,
+            Orthographic = 1
         };
 
         union ProjectionData {
@@ -29,8 +44,8 @@ namespace mgv {
                 float right = 1.0f;
                 float top = 1.0f;
                 float bottom = -1.0f;
-                float near = 0.1f;
-                float far = 100.0f;
+                float near = 100.0f;
+                float far = 0.1f;
             } orthographic;
 
             ProjectionData() : perspective() {}
@@ -50,6 +65,8 @@ namespace mgv {
             glm::mat4 projection;
             glm::mat4 inverseView;
             glm::mat4 inverseProjection;
+            glm::mat4 flippedView;
+            glm::mat4 flippedInverseView;
         };
 
         explicit Camera(const Object& object, const CreateInfo &createInfo);
@@ -65,11 +82,16 @@ namespace mgv {
         [[nodiscard]] const glm::mat4& FlippedView() const { return m_flippedView; }
         [[nodiscard]] const glm::mat4& FlippedInverseView() const { return m_flippedInverseView; }
         [[nodiscard]] bool Moved() const { return m_moved; }
+        [[nodiscard]] glm::uvec2 Resolution() const { return m_viewportSize; }
         [[nodiscard]] Info BufferData() const;
+
+        void OnUIRender() override;
 
     private:
         void RecalculateProjection();
         void RecalculateView();
+
+        void CalculateScreenFrustums(uint32_t chunksOnX, uint32_t chunksOnY);
 
         glm::mat4 m_projection { 1.0f };
         glm::mat4 m_view { 1.0f };
@@ -85,7 +107,11 @@ namespace mgv {
 
         bool m_primary = true;
         bool m_moved = true;
+        bool m_changed = false;
         const glm::vec3 m_up = glm::vec3(0, 1, 0);
+
+        std::unique_ptr<Memory::Buffer> m_frustumBuffer = nullptr;
+        std::unique_ptr<Mesh> m_mesh;
 
         void Rotate(float yaw, float pitch);
         void MoveForward(float amount);

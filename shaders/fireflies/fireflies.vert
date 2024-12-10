@@ -11,13 +11,22 @@ struct Particle {
     vec4 color;
 };
 
-layout(set = 0, binding = 0) readonly buffer Particles {
+layout (set = 0, binding = 0) uniform Camera {
+    mat4 view;
+    mat4 projection;
+    mat4 inverseView;
+    mat4 inverseProjection;
+    mat4 flippedView;
+    mat4 inverseFlippedView;
+} camera;
+
+layout(set = 1, binding = 0) readonly buffer Particles {
     Particle data[];
 } particles;
 
-layout(push_constant) uniform PushConstants {
-    mat4 ViewProjection;
-} pushConstants;
+layout(push_constant) uniform Settings {
+    uint flipped;
+} settings;
 
 void main() {
     Particle particle = particles.data[gl_InstanceIndex];
@@ -25,6 +34,7 @@ void main() {
     mat4 model = mat4(0.01);
     model[3] = vec4(particle.position.xyz, 1.0);
 
-    gl_Position = pushConstants.ViewProjection * model * vec4(inPosition, 1.0);
+    mat4 view = settings.flipped == 1 ? camera.flippedView : camera.view;
+    gl_Position = camera.projection * view * model * vec4(inPosition, 1.0);
     color = particle.color.rgb;
 }

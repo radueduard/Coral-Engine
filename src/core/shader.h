@@ -7,16 +7,18 @@
 #include <string>
 
 #include <vulkan/vulkan.hpp>
-#include "device.h"
 
 namespace Core {
     class Shader {
     public:
-        Shader(const std::string &, const vk::ShaderStageFlagBits & = vk::ShaderStageFlagBits::eAllGraphics);
+        explicit Shader(const std::string &, const vk::ShaderStageFlagBits & = vk::ShaderStageFlagBits::eAllGraphics);
         ~Shader();
 
+        Shader(const Shader &) = delete;
+        Shader &operator=(const Shader &) = delete;
+
         const vk::ShaderModule &operator*() const { return m_shaderModule; }
-        const vk::ShaderStageFlagBits &Stage() const { return m_stage; }
+        [[nodiscard]] const vk::ShaderStageFlagBits &Stage() const { return m_stage; }
     private:
         std::string m_path;
         vk::ShaderStageFlagBits m_stage;

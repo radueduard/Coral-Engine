@@ -4,6 +4,7 @@
 
 #include "importer.h"
 
+#include <iostream>
 #include <queue>
 #include <set>
 #include <stb_image.h>
@@ -17,13 +18,15 @@
 #include "components/renderMesh.h"
 #include "graphics/objects/mesh.h"
 #include "graphics/objects/textureArray.h"
+#include "metadata.h"
+#include "graphics/objects/material.h"
+#include "scene/scene.h"
 
 namespace Asset {
-    boost::uuids::string_generator Importer::_stringToUuid;
-    Assimp::Importer Importer::_importer;
-
-    Importer::Importer(Core::Device &device, const std::string &path) : m_device(device), m_metadata(path)
+    Importer::Importer(const std::string &path)
     {
+        m_metadata = Metadata::Create(path);
+
         m_path = path.substr(0, path.find_last_of('/'));
         m_name = path.substr(path.find_last_of('/') + 1);
 
@@ -44,7 +47,6 @@ namespace Asset {
                 m_textureSize = std::max(m_textureSize, std::max(static_cast<uint32_t>(width), static_cast<uint32_t>(height)));
             }
         }
-
     }
 
     void Importer::LoadMeshes() {
@@ -93,8 +95,8 @@ namespace Asset {
                 }
             }
 
-            auto meshId = Manager::AddMesh(builder.Build(m_device));
-            m_metadata.AddMeshMapping(to_string(meshId), i);
+            auto meshId = Manager::AddMesh(builder.Build());
+            m_metadata->AddMeshMapping(to_string(meshId), i);
         }
     }
 
@@ -121,8 +123,8 @@ namespace Asset {
                     const auto meshId = childNode->mMeshes[j];
                     const auto materialIndex = m_scene->mMeshes[meshId]->mMaterialIndex;
 
-                    const auto meshUUID = _stringToUuid(m_metadata.GetMeshUUID(meshId));
-                    const auto materialUUID = _stringToUuid(m_metadata.GetMaterialUUID(materialIndex));
+                    const auto meshUUID = _stringToUuid(m_metadata->GetMeshUUID(meshId));
+                    const auto materialUUID = _stringToUuid(m_metadata->GetMaterialUUID(materialIndex));
 
                     const auto mesh = Manager::GetMesh(meshUUID);
                     const auto material = Manager::GetMaterial(materialUUID);
@@ -179,7 +181,7 @@ namespace Asset {
                 .Build(name.C_Str());
 
             const auto matId = Manager::AddMaterial(std::move(mat));
-            m_metadata.AddMaterialMapping(to_string(matId), i);
+            m_metadata->AddMaterialMapping(to_string(matId), i);
         }
     }
 
@@ -333,8 +335,8 @@ namespace Asset {
                 const auto meshId = rootNode->mMeshes[j];
                 const auto aiMesh = m_scene->mMeshes[meshId];
 
-                const auto meshUUID = _stringToUuid(m_metadata.GetMeshUUID(meshId));
-                const auto materialUUID = _stringToUuid(m_metadata.GetMaterialUUID(aiMesh->mMaterialIndex));
+                const auto meshUUID = _stringToUuid(m_metadata->GetMeshUUID(meshId));
+                const auto materialUUID = _stringToUuid(m_metadata->GetMaterialUUID(aiMesh->mMaterialIndex));
 
                 const auto mesh = Manager::GetMesh(meshUUID);
                 const auto material = Manager::GetMaterial(materialUUID);

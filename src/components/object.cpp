@@ -15,18 +15,6 @@ namespace mgv {
         return *Object::objects.at(m_ownerId);
     }
 
-    void Component::InitUI() {}
-
-    void Component::UpdateUI() {}
-
-    void Component::DrawUI() {
-        ImGui::Begin("Component");
-        ImGui::Text("Component - UI not implemented");
-        ImGui::End();
-    }
-
-    void Component::DestroyUI() {}
-
     boost::uuids::random_generator Object::generator = boost::uuids::random_generator();
     boost::unordered_map<boost::uuids::uuid, Object*> Object::objects;
 

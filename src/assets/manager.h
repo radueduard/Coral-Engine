@@ -7,8 +7,8 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
 
-#include "graphics/objects/material.h"
 #include "graphics/objects/mesh.h"
+#include "graphics/objects/material.h"
 #include "graphics/objects/texture.h"
 #include "graphics/objects/textureArray.h"
 
@@ -21,9 +21,9 @@ namespace Asset {
             static boost::uuids::uuid s_whiteTextureId;
             static boost::uuids::uuid s_normalTextureId;
         public:
-            static const mgv::Texture& Black() { return *textures[s_blackTextureId]; }
-            static const mgv::Texture& White() { return *textures[s_whiteTextureId]; }
-            static const mgv::Texture& Normal() { return *textures[s_normalTextureId]; }
+            static const mgv::Texture& Black();
+            static const mgv::Texture& White();
+            static const mgv::Texture& Normal();
         };
 
         static boost::uuids::uuid AddMesh(std::unique_ptr<mgv::Mesh> mesh);

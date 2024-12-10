@@ -4,10 +4,14 @@
 
 #pragma once
 
+#include <memory>
+#include <unordered_set>
+
 #include <vulkan/vulkan.hpp>
 
-#include "physicalDevice.h"
-#include "window.h"
+namespace Core {
+    class PhysicalDevice;
+}
 
 namespace Core {
     /**

@@ -3,9 +3,15 @@
 //
 
 #include "swapChain.h"
-#include "renderer.h"
+#include "../renderer.h"
 
 #include <iostream>
+
+#include "renderPass.h"
+#include "core/physicalDevice.h"
+#include "core/runtime.h"
+#include "gui/manager.h"
+#include "memory/image.h"
 
 namespace Graphics {
     vk::SurfaceFormatKHR SwapChain::ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) {
@@ -39,7 +45,7 @@ namespace Graphics {
     }
 
     SwapChain::SwapChain(const vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain)
-        : m_imageCount(settings.imageCount)
+        : m_minImageCount(settings.minImageCount), m_imageCount(settings.imageCount)
     {
         const auto &m_device = Core::Device::Get();
         (*m_device).waitIdle();
@@ -206,12 +212,8 @@ namespace Graphics {
                 .Build();
 
             if (oldSwapChain) {
-                uint32_t i = 0;
-                for (auto& subpassPrograms : oldSwapChain->m_renderPass->Programs()) {
-                    for (auto program : subpassPrograms) {
-                        m_renderPass->AddProgram(program, i);
-                    }
-                    i++;
+                for (auto& program : oldSwapChain->m_renderPass->Programs()) {
+                    m_renderPass->AddProgram(program);
                 }
             }
         }
@@ -223,6 +225,8 @@ namespace Graphics {
             (*Core::Device::Get()).destroySwapchainKHR(m_swapChain);
         }
     }
+
+    vk::SampleCountFlagBits SwapChain::SampleCount() const { return m_renderPass->SampleCount(); }
 
     vk::Result SwapChain::Acquire(const mgv::Frame &frame) {
         try {

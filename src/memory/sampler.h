@@ -4,7 +4,10 @@
 
 #pragma once
 
-#include "core/device.h"
+#include <vector>
+#include <memory>
+
+#include <vulkan/vulkan.hpp>
 
 namespace Memory {
 

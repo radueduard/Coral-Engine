@@ -4,21 +4,26 @@
 
 #pragma once
 #include <string>
+#include <memory>
+#include <boost/uuid/uuid_generators.hpp>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 
-#include "metadata.h"
-#include "core/device.h"
-#include "graphics/objects/texture.h"
-#include "scene/scene.h"
+namespace mgv {
+    class Object;
+    class Scene;
+}
+
+namespace Asset {
+    class Metadata;
+    class Importer;
+}
 
 namespace Asset {
     class Importer {
-        static boost::uuids::string_generator _stringToUuid;
-        static Assimp::Importer _importer;
     public:
-        explicit Importer(Core::Device &device, const std::string& path);
+        explicit Importer(const std::string& path);
 
         void LoadChildren(const aiNode* parentNode, const std::unique_ptr<mgv::Object>& parentObject) const;
 
@@ -35,11 +40,13 @@ namespace Asset {
 
         [[nodiscard]] std::unique_ptr<mgv::Scene> LoadScene() const;
     private:
-        Core::Device &m_device;
         std::string m_path;
         std::string m_name;
-        Metadata m_metadata;
+        std::unique_ptr<Metadata> m_metadata;
         const aiScene *m_scene;
         uint32_t m_textureSize;
+
+        inline static boost::uuids::string_generator _stringToUuid;
+        inline static Assimp::Importer _importer;
     };
 }

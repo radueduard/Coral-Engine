@@ -3,40 +3,70 @@
 //
 
 #include "manager.h"
+#include "memory/manager.h"
 
 #include <iostream>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
+#include "imnodes.h"
+#include "layer.h"
 #include "core/runtime.h"
-#include "graphics/renderer.h"
+#include "renderer.h"
+#include "core/window.h"
+#include "memory/descriptor/pool.h"
+#include "graphics/renderPass.h"
+#include "core/physicalDevice.h"
 
 namespace GUI {
-
     void Manager::Init() {
         m_instance = new Manager();
         CreateDescriptorPool();
         CreateContext();
+
+        mgv::Renderer::InitUI();
     }
 
     void Manager::Destroy() {
+        for (auto* layer : m_instance->m_layers) {
+            layer->OnUIDetach();
+        }
+        mgv::Renderer::DestroyUI();
+
         DestroyContext();
         delete m_instance;
     }
 
     void Manager::AddLayer(Layer* layer) {
-        m_instance->m_layers.push_back(layer);
+        m_instance->m_layersToAdd.emplace_back(layer);
     }
 
     void Manager::RemoveLayer(Layer* layer) {
-        std::erase(m_instance->m_layers, layer);
+        if (m_instance) {
+            layer->OnUIReset();
+            m_instance->m_layersToRemove.emplace_back(layer);
+        }
     }
 
     void Manager::Update() {
-        for (auto* layer : m_instance->m_layers) {
-            layer->UpdateUI();
+        for (auto* layer : m_instance->m_layersToAdd) {
+            m_instance->m_layers.emplace_back(layer);
+            layer->OnUIAttach();
         }
+        m_instance->m_layersToAdd.clear();
+
+        for (auto* layer : m_instance->m_layersToRemove) {
+            layer->OnUIDetach();
+            std::erase(m_instance->m_layers, layer);
+        }
+        m_instance->m_layersToRemove.clear();
+
+        for (auto* layer : m_instance->m_layers) {
+            layer->OnUIUpdate();
+        }
+
+        mgv::Renderer::UpdateUI();
     }
 
     void Manager::Render(const vk::CommandBuffer& commandBuffer) {
@@ -54,7 +84,6 @@ namespace GUI {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-        window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
         if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
             window_flags |= ImGuiWindowFlags_NoBackground;
@@ -70,8 +99,9 @@ namespace GUI {
         }
 
         for (auto* layer : m_instance->m_layers) {
-            layer->DrawUI();
+            layer->OnUIRender();
         }
+        mgv::Renderer::DrawUI();
 
         ImGui::End();
         ImGui::Render();
@@ -117,6 +147,7 @@ namespace GUI {
     void Manager::CreateContext() {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImNodes::CreateContext();
         ImGuiIO &io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -131,20 +162,19 @@ namespace GUI {
         }
 
         const auto &device = Core::Device::Get();
-        const auto &renderer = mgv::Renderer::Get();
-        const auto msaaSamples = static_cast<VkSampleCountFlagBits>(renderer.m_swapChainSettings.sampleCount);
+        const auto msaaSamples = static_cast<VkSampleCountFlagBits>(mgv::Renderer::SwapChain().SampleCount());
 
         ImGui_ImplGlfw_InitForVulkan(Core::Window::Get(), true);
         ImGui_ImplVulkan_InitInfo init_info = {
             .Instance = Core::Runtime::Get().Instance(),
             .PhysicalDevice = *Core::Runtime::Get().PhysicalDevice(),
             .Device = *device,
-            .QueueFamily = renderer.m_queues.at(vk::QueueFlagBits::eGraphics)->familyIndex,
-            .Queue = renderer.m_queues.at(vk::QueueFlagBits::eGraphics)->queue,
+            .QueueFamily = mgv::Renderer::Queue(vk::QueueFlagBits::eGraphics).familyIndex,
+            .Queue = mgv::Renderer::Queue(vk::QueueFlagBits::eGraphics).queue,
             .DescriptorPool = **m_instance->m_descriptorPool,
-            .RenderPass = *(renderer.m_swapChain->RenderPass()),
-            .MinImageCount = renderer.m_swapChainSettings.minImageCount,
-            .ImageCount = renderer.m_swapChainSettings.imageCount,
+            .RenderPass = *mgv::Renderer::SwapChain().RenderPass(),
+            .MinImageCount = mgv::Renderer::SwapChain().MinImageCount(),
+            .ImageCount = mgv::Renderer::SwapChain().ImageCount(),
             .MSAASamples = msaaSamples,
             .PipelineCache = nullptr,
             .Subpass = 0,
@@ -157,6 +187,7 @@ namespace GUI {
     void Manager::DestroyContext() {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
+        ImNodes::DestroyContext();
         ImGui::DestroyContext();
     }
 }

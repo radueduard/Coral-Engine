@@ -7,8 +7,13 @@
 #include <unordered_map>
 #include <glm/glm.hpp>
 
-#include "engine.h"
-#include "window.h"
+namespace Window {
+    struct Callbacks;
+}
+
+namespace mgv {
+    class Engine;
+}
 
 enum Key {
     Space = 32,

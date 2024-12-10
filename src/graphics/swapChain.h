@@ -6,12 +6,17 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "../core/device.h"
-#include "renderPass.h"
-
 namespace mgv {
     struct Frame;
     class Renderer;
+}
+
+namespace Core {
+    struct Queue;
+}
+
+namespace Graphics {
+    class RenderPass;
 }
 
 namespace Graphics {
@@ -29,7 +34,10 @@ namespace Graphics {
 
         vk::SwapchainKHR operator *() const { return m_swapChain; }
         [[nodiscard]] const vk::Extent2D &Extent() const { return m_extent; }
+        [[nodiscard]] uint32_t MinImageCount() const { return m_minImageCount; }
         [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
+        [[nodiscard]] vk::SampleCountFlagBits SampleCount() const;
+
         [[nodiscard]] RenderPass &RenderPass() const { return *m_renderPass; }
 
         vk::Result Acquire(const mgv::Frame &frame);
@@ -40,6 +48,7 @@ namespace Graphics {
     private:
         vk::SwapchainKHR m_swapChain;
         vk::Extent2D m_extent;
+        uint32_t m_minImageCount;
         uint32_t m_imageCount;
         Core::Queue *m_presentQueue;
 

@@ -8,8 +8,7 @@
 #include <optional>
 #include <unordered_map>
 
-#include "physicalDevice.h"
-#include "runtime.h"
+#include <vulkan/vulkan.hpp>
 
 namespace Core {
     class Device;
@@ -26,6 +25,30 @@ namespace Core {
     };
 
     struct CommandBuffer {
+        enum class Usage {
+            DepthPrePass,
+            Updates,
+            Graphics,
+            PostProcess,
+            Present,
+        };
+
+        static std::string UsageToString(const Usage usage) {
+            switch (usage) {
+                case Usage::DepthPrePass:
+                    return "DepthPrePass";
+                case Usage::Updates:
+                    return "Updates";
+                case Usage::Graphics:
+                    return "Graphics";
+                case Usage::PostProcess:
+                    return "PostProcess";
+                case Usage::Present:
+                    return "Present";
+            }
+            return "Unknown";
+        }
+
         uint32_t familyIndex;
         vk::CommandBuffer commandBuffer;
 

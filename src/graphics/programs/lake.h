@@ -4,58 +4,54 @@
 
 #pragma once
 
+#include <glm/vec2.hpp>
 
-#include "components/camera.h"
-#include "compute/programs/fireflies.h"
-#include "compute/programs/partitionLights.h"
-#include "graphics/objects/texture.h"
-#include "graphics/objects/textureArray.h"
-#include "graphics/programs/program.h"
-#include "memory/buffer.h"
+#include "program.h"
 
-struct CameraData {
-    glm::mat4 view;
-    glm::mat4 projection;
-    glm::mat4 inverseView;
-    glm::mat4 inverseProjection;
-    glm::mat4 flippedView;
-    glm::mat4 flippedInverseView;
-};
+namespace Memory {
+    class Buffer;
+    class Image;
+    namespace Descriptor {
+        class Set;
+    }
+}
 
 class Lake final : public Graphics::Program {
 public:
     struct CreateInfo {
-        const mgv::Camera &camera;
-        const Graphics::RenderPass &reflectionPass;
-        const Memory::Buffer<Fireflies::Particle>& particlesBuffer;
-        const Memory::Buffer<Indices>& lightIndicesBuffer;
+        bool depthOnly = false;
+        const Memory::Buffer& particlesBuffer;
+        const Memory::Buffer& lightIndicesBuffer;
     };
 
-    explicit Lake(Graphics::RenderPass &renderPass, const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo);
+    explicit Lake(const CreateInfo &createInfo);
     ~Lake() override = default;
 
     void Init() override;
-    void Update(double deltaTime) override;
-    void Draw(const vk::CommandBuffer &commandBuffer, bool reflected) override;
+    void Update(double deltaTime) override {}
+    void Draw(const vk::CommandBuffer &commandBuffer, const Graphics::RenderPass *renderPass) const override;
+    void ResetDescriptorSets() override;
 
-    void InitUI() override;
-    void UpdateUI() override;
-    void DrawUI() override;
-    void DestroyUI() override;
+    void OnUIAttach() override;
+    void OnUIUpdate() override {}
+    void OnUIRender() override;
+    void OnUIReset() override;
+    void OnUIDetach() override;
 
 private:
-    const mgv::Camera &m_camera;
-    std::vector<const Memory::Image*> m_reflectionTextures;
+    bool m_depthOnly = false;
+    const Memory::Buffer& m_particlesBuffer;
+    const Memory::Buffer& m_lightIndicesBuffer;
 
-    std::unique_ptr<Memory::Buffer<CameraData>> m_cameraBuffer;
-
+    std::unique_ptr<Memory::Buffer> m_cameraBuffer;
     std::vector<std::unique_ptr<Memory::Descriptor::Set>> m_descriptorSets;
-
     std::unique_ptr<Memory::Image> m_spectrum;
 
     glm::ivec2 patchCount = { 100, 100 };
 
     vk::DescriptorSet spectrumDescriptorSet;
     std::vector<vk::DescriptorSet> reflectionDescriptorSets;
+
+    std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };
 

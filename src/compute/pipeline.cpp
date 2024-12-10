@@ -6,9 +6,14 @@
 
 #include <iostream>
 
+#include "core/device.h"
+
+#include "memory/descriptor/setLayout.h"
+#include "memory/descriptor/set.h"
+
 namespace Compute {
-    Pipeline::Builder & Pipeline::Builder::Shader(const Core::Shader &shader) {
-        m_shaderModule = *shader;
+    Pipeline::Builder & Pipeline::Builder::Shader(const std::string& path) {
+        m_shaderModule = std::make_unique<Core::Shader>(path, vk::ShaderStageFlagBits::eCompute);
         return *this;
     }
 
@@ -43,13 +48,13 @@ namespace Compute {
 
         m_shaderStage = vk::PipelineShaderStageCreateInfo()
             .setStage(vk::ShaderStageFlagBits::eCompute)
-            .setModule(m_shaderModule)
+            .setModule(**m_shaderModule)
             .setPName("main");
 
         return std::make_unique<Pipeline>(*this);
     }
 
-    Pipeline::Pipeline(const Builder& builder) : m_pipelineLayout(builder.m_pipelineLayout), m_shaderModule(builder.m_shaderModule)
+    Pipeline::Pipeline(const Builder& builder) : m_pipelineLayout(builder.m_pipelineLayout)
     {
         const auto createInfo = vk::ComputePipelineCreateInfo()
             .setLayout(m_pipelineLayout)

@@ -6,7 +6,10 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#include <vulkan/vulkan.hpp>
 
 #include "memory/image.h"
 
@@ -65,9 +68,7 @@ namespace mgv {
                 return *this;
             }
 
-            [[nodiscard]] std::unique_ptr<TextureArray> Build() {
-                return std::make_unique<TextureArray>(*this);
-            }
+            [[nodiscard]] std::unique_ptr<TextureArray> Build();
 
         private:
             std::string m_name;
@@ -79,15 +80,10 @@ namespace mgv {
             std::vector<void*> m_data;
         };
 
-        TextureArray(const Builder& builder);
+        explicit TextureArray(const Builder& builder);
 
         [[nodiscard]] const vk::DescriptorImageInfo& DescriptorInfo() const { return m_descriptorInfo; }
-        [[nodiscard]] uint32_t Id(const std::string& name) const {
-            if (!m_imageIndices.contains(name)) {
-                return -1;
-            }
-            return m_imageIndices.at(name);
-        }
+        [[nodiscard]] uint32_t Id(const std::string& name) const;
 
     private:
         void LoadTexture(const ThreadPayload& threadPayload);

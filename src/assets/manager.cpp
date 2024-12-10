@@ -4,6 +4,9 @@
 
 #include "manager.h"
 
+#include "graphics/objects/texture.h"
+#include "graphics/objects/textureArray.h"
+
 namespace Asset {
     boost::uuids::uuid Manager::Texture::s_blackTextureId;
     boost::uuids::uuid Manager::Texture::s_whiteTextureId;
@@ -14,6 +17,12 @@ namespace Asset {
     boost::unordered_map<boost::uuids::uuid, std::unique_ptr<mgv::Material>> Manager::materials;
     boost::unordered_map<boost::uuids::uuid, std::unique_ptr<mgv::Texture>> Manager::textures;
     boost::unordered_map<std::string, std::unique_ptr<mgv::TextureArray>> Manager::textureArrays;
+
+    const mgv::Texture & Manager::Texture::Black() { return *textures[s_blackTextureId]; }
+
+    const mgv::Texture & Manager::Texture::White() { return *textures[s_whiteTextureId]; }
+
+    const mgv::Texture & Manager::Texture::Normal() { return *textures[s_normalTextureId]; }
 
     boost::uuids::uuid Manager::AddMesh(std::unique_ptr<mgv::Mesh> mesh) {
         const auto id = idProvider();

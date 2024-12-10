@@ -8,8 +8,11 @@
 #include <vector>
 #include <boost/uuid/uuid.hpp>
 #include <glm/glm.hpp>
+#include <unordered_set>
+#include <unordered_map>
 
-#include "core/device.h"
+#include <vulkan/vulkan.hpp>
+
 #include "memory/buffer.h"
 
 namespace mgv {
@@ -44,7 +47,7 @@ namespace mgv {
             Builder& AddIndex(uint32_t index);
             Builder& AddVertex(const Vertex &vertex);
 
-            std::unique_ptr<Mesh> Build(Core::Device &device);
+            std::unique_ptr<Mesh> Build();
         private:
             std::string m_name;
 
@@ -52,7 +55,7 @@ namespace mgv {
             std::vector<Vertex> m_vertices;
         };
 
-        explicit Mesh(Core::Device &device, const Builder &builder);
+        explicit Mesh(const Builder &builder);
         ~Mesh();
 
         Mesh(const Mesh &) = delete;
@@ -64,19 +67,20 @@ namespace mgv {
         void Draw(const vk::CommandBuffer &commandBuffer, uint32_t instanceCount) const;
 
     private:
-        Core::Device &m_device;
         std::string m_name;
 
-        std::unique_ptr<Memory::Buffer<uint32_t>> m_indexBuffer;
-        std::unique_ptr<Memory::Buffer<Vertex>> m_vertexBuffer;
+        std::unique_ptr<Memory::Buffer> m_indexBuffer;
+        std::unique_ptr<Memory::Buffer> m_vertexBuffer;
 
         void CreateVertexBuffer(const std::vector<Vertex> &vertices);
         void CreateIndexBuffer(const std::vector<uint32_t> &indices);
 
     public:
-        static const mgv::Mesh *Cube();
-        static const mgv::Mesh *Sphere();
+        static const Mesh *Cube();
+        static const Mesh *Sphere();
+        static std::unique_ptr<Mesh> Frustum(float fov, float aspect, float near, float far);
+        static std::unique_ptr<Mesh> Cuboid(float left, float right, float bottom, float top, float near, float far);
     private:
-        static std::unordered_map<std::string, boost::uuids::uuid> m_meshes;
+        inline static std::unordered_map<std::string, boost::uuids::uuid> m_meshes;
     };
 }

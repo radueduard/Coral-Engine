@@ -4,15 +4,25 @@
 #pragma once
 
 #include "program.h"
-#include "components/camera.h"
-#include "graphics/objects/aabb.h"
-#include "graphics/programs/program.h"
-#include "memory/buffer.h"
-#include "memory/image.h"
+
+#include <glm/glm.hpp>
+
 #include "utils/random.h"
+#include "graphics/objects/aabb.h"
+
+#include "memory/descriptor/set.h"
+
+namespace Memory {
+    class Image;
+    class Buffer;
+}
 
 class Fireflies final : public Compute::Program {
 public:
+    struct Frustum {
+        glm::vec4 planes[4];
+    };
+
     struct Particle {
         glm::vec4 position;
         glm::vec4 velocity;
@@ -30,25 +40,21 @@ public:
     };
 
     struct CreateInfo {
-        const Memory::Image *heightMap;
-        const Memory::Buffer<Particle> &particlesBuffer;
+        const Memory::Image &heightMap;
+        const Memory::Buffer &particlesBuffer;
     };
 
-    Fireflies(const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo);
+    explicit Fireflies(const CreateInfo &createInfo);
     ~Fireflies() override = default;
 
-    // Compute::Program
-    void Init() override;
-    void Update() override;
-    void Compute(const vk::CommandBuffer &commandBuffer) override;
+    void Init() override {}
+    void Update() override {}
+    void Compute() override;
+    void ResetDescriptorSets() override;
 
-    // GUI
-    void InitUI() override;
-    void UpdateUI() override;
-    void DrawUI() override;
-    void DestroyUI() override;
 private:
-    const Memory::Buffer<Particle> &m_particlesBuffer;
+    const Memory::Image& m_heightMap;
+    const Memory::Buffer &m_particlesBuffer;
 
     std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };

@@ -40,7 +40,7 @@ vec3 GenerateAlbedo(vec2 uv) {
     vec3 N = GenerateNormal(uv);
     float slope = dot(N, vec3(0, 1, 0));
 
-    vec2 sampleUV = uv * 90;
+    vec2 sampleUV = uv * 2048;
     vec4 sand = texture(albedoTextures, vec3(sampleUV, 0));
     vec4 grass = texture(albedoTextures, vec3(sampleUV, 1));
     vec4 rock = texture(albedoTextures, vec3(sampleUV, 2));

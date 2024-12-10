@@ -8,10 +8,21 @@
 #include <glm/glm.hpp>
 
 #include "imgui_impl_vulkan.h"
-#include "graphics/renderer.h"
+#include "imnodes.h"
+#include "renderer.h"
+#include "compute/pipeline.h"
+#include "core/shader.h"
+#include "graphics/objects/textureArray.h"
+#include "memory/buffer.h"
+#include "memory/image.h"
 #include "memory/sampler.h"
+#include "memory/descriptor/set.h"
+#include "memory/descriptor/setLayout.h"
+#include "utils/random.h"
 
-GenerateTerrain::GenerateTerrain(const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo) {
+GenerateTerrain::GenerateTerrain(const CreateInfo &createInfo)
+    : m_albedoTextures(createInfo.albedoTextures), m_normalTextures(createInfo.normalTextures)
+{
     m_noiseTextureCount = static_cast<uint32_t>(glm::log2(static_cast<float>(createInfo.size))) + 1;
 
     m_setLayout = Memory::Descriptor::SetLayout::Builder()
@@ -25,12 +36,12 @@ GenerateTerrain::GenerateTerrain(const Memory::Descriptor::Pool &pool, const Cre
         .Build();
 
     m_pipeline = Compute::Pipeline::Builder()
-        .Shader(Core::Shader("shaders/compute/generateTerrain.comp"))
+        .Shader("shaders/compute/generateTerrain.comp")
         .DescriptorSetLayout(0, *m_setLayout)
         .Build();
 
-    m_settingsBuffer = std::make_unique<Memory::Buffer<Settings>>(
-        1,
+    m_settingsBuffer = std::make_unique<Memory::Buffer>(
+        sizeof(Settings), 1,
         vk::BufferUsageFlagBits::eUniformBuffer,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
@@ -73,54 +84,24 @@ GenerateTerrain::GenerateTerrain(const Memory::Descriptor::Pool &pool, const Cre
         .InitialLayout(vk::ImageLayout::eGeneral)
         .Build();
 
-    const auto noiseDescriptorInfo = vk::DescriptorImageInfo()
-        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear))
-        .setImageView(m_noiseTextures->ImageView())
-        .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
-
-    const auto heightMapDescriptorInfo = vk::DescriptorImageInfo()
-        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
-        .setImageView(m_heightMap->ImageView())
-        .setImageLayout(vk::ImageLayout::eGeneral);
-
-    const auto albedoDescriptorInfo = vk::DescriptorImageInfo()
-        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
-        .setImageView(m_albedo->ImageView())
-        .setImageLayout(vk::ImageLayout::eGeneral);
-
-    const auto normalDescriptorInfo = vk::DescriptorImageInfo()
-        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
-        .setImageView(m_normal->ImageView())
-        .setImageLayout(vk::ImageLayout::eGeneral);
-
-    m_descriptorSet = Memory::Descriptor::Set::Builder(pool, *m_setLayout)
-        .WriteBuffer(0, m_settingsBuffer->DescriptorInfo().value())
-        .WriteImage(1, noiseDescriptorInfo)
-        .WriteImage(2, heightMapDescriptorInfo)
-        .WriteImage(3, createInfo.albedoTextures.DescriptorInfo())
-        .WriteImage(4, albedoDescriptorInfo)
-        .WriteImage(5, createInfo.normalTextures.DescriptorInfo())
-        .WriteImage(6, normalDescriptorInfo)
-        .Build();
+    ResetDescriptorSets();
 }
 
 void GenerateTerrain::Init() {
     m_noiseTextures->TransitionLayout(vk::ImageLayout::eTransferDstOptimal);
 
-    boost::random::mt19937 rng;
-    const boost::random::uniform_int_distribution<uint32_t> dist(0, 255);
-
     auto size = m_noiseTextures->Extent().width;
     for (uint32_t i = 0; i < m_noiseTextureCount; i++) {
-        const auto stagingBuffer = std::make_unique<Memory::Buffer<glm::u8vec4>>(
-            size * size,
+        const auto stagingBuffer = std::make_unique<Memory::Buffer>(
+            sizeof(glm::u8vec4), size * size,
             vk::BufferUsageFlagBits::eTransferSrc,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-        stagingBuffer->Map();
+        stagingBuffer->Map<glm::u8vec4>();
         for (uint32_t j = 0; j < size * size; j++) {
-            uint32_t value = dist(rng);
-            stagingBuffer->WriteAt(j, { value, value, value, 255 });
+            const uint8_t value = Utils::Random::UniformIntegralValue<uint8_t>(0, 255);
+            glm::u8vec4 color = { value, value, value, 255 };
+            stagingBuffer->WriteAt(j, color);
         }
         stagingBuffer->Flush();
         stagingBuffer->Unmap();
@@ -137,17 +118,13 @@ void GenerateTerrain::Init() {
         m_settings.noiseWeights[i] = 1.f / pow(2.f, static_cast<float>(m_noiseTextureCount - i - 2));
     }
 
-    m_settingsBuffer->Map();
-    m_settingsBuffer->Write(&m_settings);
+    m_settingsBuffer->Map<Settings>();
+    m_settingsBuffer->WriteAt(0, m_settings);
     m_settingsBuffer->Unmap();
-
-
 }
 
-void GenerateTerrain::Update() {
-}
-
-void GenerateTerrain::Compute(const vk::CommandBuffer &commandBuffer) {
+void GenerateTerrain::Compute() {
+    const auto commandBuffer = *mgv::Renderer::CurrentFrame().commandBuffers.at(Core::CommandBuffer::Usage::Updates);
     if (!m_changed) {
         return;
     }
@@ -159,7 +136,39 @@ void GenerateTerrain::Compute(const vk::CommandBuffer &commandBuffer) {
     m_changed = false;
 }
 
-void GenerateTerrain::InitUI() {
+void GenerateTerrain::ResetDescriptorSets() {
+    const auto noiseDescriptorInfo = vk::DescriptorImageInfo()
+            .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear))
+            .setImageView(m_noiseTextures->ImageView())
+            .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    const auto heightMapDescriptorInfo = vk::DescriptorImageInfo()
+        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
+        .setImageView(m_heightMap->ImageView())
+        .setImageLayout(vk::ImageLayout::eGeneral);
+
+    const auto albedoDescriptorInfo = vk::DescriptorImageInfo()
+        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
+        .setImageView(m_albedo->ImageView())
+        .setImageLayout(vk::ImageLayout::eGeneral);
+
+    const auto normalDescriptorInfo = vk::DescriptorImageInfo()
+        .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear))
+        .setImageView(m_normal->ImageView())
+        .setImageLayout(vk::ImageLayout::eGeneral);
+
+    m_descriptorSet = Memory::Descriptor::Set::Builder(mgv::Renderer::DescriptorPool(), *m_setLayout)
+        .WriteBuffer(0, m_settingsBuffer->DescriptorInfo())
+        .WriteImage(1, noiseDescriptorInfo)
+        .WriteImage(2, heightMapDescriptorInfo)
+        .WriteImage(3, m_albedoTextures.DescriptorInfo())
+        .WriteImage(4, albedoDescriptorInfo)
+        .WriteImage(5, m_normalTextures.DescriptorInfo())
+        .WriteImage(6, normalDescriptorInfo)
+        .Build();
+}
+
+void GenerateTerrain::OnUIAttach() {
     m_noiseTextureViews = m_noiseTextures->IndividualMipLevels();
 
     for (uint32_t i = 0; i < m_noiseTextureCount; i++) {
@@ -185,15 +194,15 @@ void GenerateTerrain::InitUI() {
         static_cast<VkImageLayout>(vk::ImageLayout::eGeneral));
 }
 
-void GenerateTerrain::UpdateUI() {
+void GenerateTerrain::OnUIUpdate() {
     if (m_changed) {
-        m_settingsBuffer->Map();
-        m_settingsBuffer->Write(&m_settings);
+        m_settingsBuffer->Map<Settings>();
+        m_settingsBuffer->WriteAt(0, m_settings);
         m_settingsBuffer->Unmap();
     }
 }
 
-void GenerateTerrain::DrawUI() {
+void GenerateTerrain::OnUIRender() {
     ImGui::Begin("Terrain");
 
     m_changed |= ImGui::DragFloat("Max Height", &m_settings.maxHeight, 0.1f, 0.0f, 100.0f);
@@ -220,7 +229,12 @@ void GenerateTerrain::DrawUI() {
     ImGui::End();
 }
 
-void GenerateTerrain::DestroyUI() {
+void GenerateTerrain::OnUIReset() {
+    OnUIDetach();
+    OnUIAttach();
+}
+
+void GenerateTerrain::OnUIDetach() {
     for (const auto &descriptor : m_uiTextureDescriptors) {
         ImGui_ImplVulkan_RemoveTexture(descriptor);
     }

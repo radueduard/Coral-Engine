@@ -7,8 +7,11 @@
 #include <memory>
 #include <boost/uuid/uuid_generators.hpp>
 
-#include "core/device.h"
-#include "memory/image.h"
+#include <vulkan/vulkan.hpp>
+
+namespace Memory {
+    class Image;
+}
 
 namespace mgv {
     class Texture {

@@ -7,11 +7,16 @@
 #include "graphics/renderPass.h"
 
 namespace Graphics {
-    Program::Program(RenderPass &renderPass, const uint32_t subpassIndex): m_renderPass(renderPass), m_subpassIndex(subpassIndex) {
-        m_renderPass.AddProgram(this, subpassIndex);
+    Program::Program(const std::vector<RenderPass*>& renderPasses): m_renderPasses(renderPasses) {
+        for (const auto renderPass: m_renderPasses) {
+            renderPass->AddProgram(this);
+            m_pipelines[renderPass] = nullptr;
+        }
     }
 
     Program::~Program() {
-        m_renderPass.RemoveProgram(this);
+        for (const auto renderPass: m_renderPasses) {
+            renderPass->RemoveProgram(this);
+        }
     }
 }

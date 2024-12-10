@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include "core/device.h"
+
 namespace Memory {
     Image::Image(const Builder &builder)
         : m_format(builder.m_format), m_extent(builder.m_extent),
@@ -133,7 +135,7 @@ namespace Memory {
                     .setBaseArrayLayer(0)
                     .setLayerCount(m_layersCount));
 
-            if (m_format == vk::Format::eD32SfloatS8Uint || m_format == vk::Format::eD24UnormS8Uint) {
+            if (m_format == vk::Format::eD32SfloatS8Uint || m_format == vk::Format::eD24UnormS8Uint || m_format == vk::Format::eD32Sfloat) {
                 barrier.subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eDepth);
                 if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
                     barrier.subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
@@ -168,6 +170,10 @@ namespace Memory {
                         case vk::ImageLayout::eGeneral:
                             barrier.setDstAccessMask(vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite);
                             destinationStage = vk::PipelineStageFlagBits::eAllCommands;
+                        break;
+                        case vk::ImageLayout::eDepthReadOnlyOptimal:
+                            barrier.setDstAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead);
+                            destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
                         break;
                         default:
                             throw std::runtime_error("Unsupported new layout transition");

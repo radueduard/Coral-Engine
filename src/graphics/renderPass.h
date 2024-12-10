@@ -5,12 +5,16 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <vector>
 
-#include <core/device.h>
-#include <memory/image.h>
+#include <vulkan/vulkan.hpp>
 
-#include "programs/program.h"
+#include "memory/image.h"
+
+namespace Graphics {
+    class Program;
+}
 
 namespace Graphics {
     class RenderPass {
@@ -84,16 +88,12 @@ namespace Graphics {
         RenderPass(const RenderPass &) = delete;
         RenderPass &operator=(const RenderPass &) = delete;
 
-        void AddProgram(Program *program, const uint32_t subpass) { m_programs[subpass].emplace_back(program); }
-        void RemoveProgram(Program *program) {
-            for (auto &subpass : m_programs) {
-                std::erase(subpass, program);
-            }
-        }
+        void AddProgram(Program *program) { m_programs.emplace_back(program); }
+        void RemoveProgram(Program *program) { std::erase(m_programs, program); }
 
         void Begin(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
         void Update(float deltaTime) const;
-        void Draw(vk::CommandBuffer commandBuffer, bool reflected = false) const;
+        void Draw(vk::CommandBuffer commandBuffer) const;
         void End(vk::CommandBuffer commandBuffer);
 
         const vk::RenderPass& operator*() const { return m_renderPass; }
@@ -112,7 +112,7 @@ namespace Graphics {
         [[nodiscard]] Memory::Image& OutputImage(uint32_t index) const;
         [[nodiscard]] Memory::Image& CurrentOutputImage() const;
 
-        [[nodiscard]] std::vector<std::vector<Program*>>& Programs() { return m_programs; }
+        [[nodiscard]] std::vector<Program*>& Programs() { return m_programs; }
 
         void CreateRenderPass();
         void DestroyRenderPass();
@@ -136,7 +136,6 @@ namespace Graphics {
         std::vector<vk::SubpassDependency> m_dependencies;
 
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
-
-        std::vector<std::vector<Program*>> m_programs;
+        std::vector<Program*> m_programs;
     };
 }

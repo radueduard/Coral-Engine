@@ -8,6 +8,8 @@
 #include <glm/glm.hpp>
 
 #include "memory/buffer.h"
+#include "memory/image.h"
+#include "memory/sampler.h"
 
 Graphics::CubeMap::CubeMap(const Builder &builder) {
     int width, height;
@@ -43,18 +45,26 @@ Graphics::CubeMap::CubeMap(const Builder &builder) {
         .InitialLayout(vk::ImageLayout::eTransferDstOptimal)
         .Build();
 
-    const auto stagingBuffer = std::make_unique<Memory::Buffer<glm::u8vec4>>(
-        m_size * m_size,
+    const auto stagingBuffer = std::make_unique<Memory::Buffer>(
+        sizeof(glm::u8vec4), m_size * m_size,
         vk::BufferUsageFlagBits::eTransferSrc,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
     for (uint32_t i = 0; i < 6; i++) {
-        stagingBuffer->Map();
-        stagingBuffer->Write(reinterpret_cast<const glm::u8vec4*>(colors[i]));
+        stagingBuffer->Map<glm::u8vec4>();
+        std::span data(reinterpret_cast<glm::u8vec4*>(colors[i]), m_size * m_size);
+        stagingBuffer->Write(data);
         stagingBuffer->Unmap();
 
         m_image->Copy(**stagingBuffer, 0, i);
     }
 
     m_image->TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+}
+
+vk::DescriptorImageInfo Graphics::CubeMap::DescriptorInfo() const {
+    return vk::DescriptorImageInfo()
+            .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            .setImageView(m_image->ImageView())
+            .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear));
 }

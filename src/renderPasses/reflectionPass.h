@@ -4,14 +4,20 @@
 
 #pragma once
 
-#include "graphics/renderPass.h"
+#include <memory>
+
+#include <vulkan/vulkan.hpp>
+
+namespace Graphics {
+    class RenderPass;
+}
 
 class ReflectionPass final {
 public:
     explicit ReflectionPass();
     ~ReflectionPass() = default;
 
-    [[nodiscard]] Graphics::RenderPass &RenderPass() const { return *m_renderPass; }
+    [[nodiscard]] Graphics::RenderPass *RenderPass() const { return m_renderPass.get(); }
     void Run(const vk::CommandBuffer &commandBuffer) const;
 
 private:
@@ -19,6 +25,4 @@ private:
     uint32_t m_imageCount;
     vk::Extent2D m_extent;
     bool m_resized = false;
-
-    std::vector<vk::DescriptorSet> m_descriptorSets;
 };

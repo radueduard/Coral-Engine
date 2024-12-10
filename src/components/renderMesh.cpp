@@ -5,6 +5,8 @@
 #include "renderMesh.h"
 
 #include "imgui.h"
+#include "graphics/objects/material.h"
+#include "graphics/objects/mesh.h"
 
 namespace mgv {
     RenderMesh::RenderMesh(const Object &owner)
@@ -14,7 +16,7 @@ namespace mgv {
         m_targets.emplace_back(mesh, material);
     }
 
-    void RenderMesh::DrawUI() {
+    void RenderMesh::OnUIRender() {
         ImGui::BeginListBox("Meshes");
         for (const auto &[mesh, material]: m_targets) {
             ImGui::Text("%s - %s", mesh->Name().c_str(), material->Name().c_str());

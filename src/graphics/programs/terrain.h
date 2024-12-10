@@ -4,40 +4,58 @@
 
 #pragma once
 
-#include "components/camera.h"
-#include "compute/programs/generateTerrain.h"
-#include "graphics/objects/textureArray.h"
-#include "graphics/programs/program.h"
+#include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
 
-#include "compute/programs/fireflies.h"
-#include "compute/programs/partitionLights.h"
+#include "program.h"
+
+namespace Graphics {
+    class Program;
+    class RenderPass;
+}
+
+namespace Memory {
+    class Image;
+    class Buffer;
+    namespace Descriptor {
+        class Set;
+    }
+}
 
 class Terrain final : public Graphics::Program {
 public:
     struct CreateInfo {
-        const mgv::Camera &camera;
         const Memory::Image& heightMap;
         const Memory::Image& albedo;
         const Memory::Image& normal;
-        const Memory::Buffer<Fireflies::Particle>& particlesBuffer;
-        const Memory::Buffer<Indices>& lightIndicesBuffer;
+        const Memory::Buffer& particlesBuffer;
+        const Memory::Buffer& lightIndicesBuffer;
     };
 
-    explicit Terrain(Graphics::RenderPass &renderPass, const Memory::Descriptor::Pool &pool, const CreateInfo &createInfo);
-    ~Terrain() override;
+    explicit Terrain(const CreateInfo &createInfo);
+    ~Terrain() override = default;
 
-    void Init() override;
-    void Update(double deltaTime) override;
-    void Draw(const vk::CommandBuffer &commandBuffer, bool reflected) override;
+    void Init() override {}
+    void Update(double deltaTime) override {}
+    void Draw(const vk::CommandBuffer &commandBuffer, const Graphics::RenderPass *renderPass) const override;
+    void ResetDescriptorSets() override;
 
-    void InitUI() override;
-    void UpdateUI() override;
-    void DrawUI() override;
-    void DestroyUI() override;
+    void OnUIAttach() override {}
+    void OnUIUpdate() override {}
+    void OnUIRender() override {}
+    void OnUIReset() override {}
+    void OnUIDetach() override {}
 
 private:
-    const mgv::Camera &m_camera;
-
     glm::ivec2 patchCount = { 100, 100 };
+
+    const Memory::Image& m_heightMap;
+    const Memory::Image& m_albedo;
+    const Memory::Image& m_normal;
+
+    const Memory::Buffer& m_particlesBuffer;
+    const Memory::Buffer& m_lightIndicesBuffer;
+
+    std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };
 

@@ -8,7 +8,7 @@
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/random/uniform_real_distribution.hpp>
 #include <boost/random/normal_distribution.hpp>
-#include <glm/detail/type_vec1.hpp>
+#include <glm/glm.hpp>
 
 namespace Utils {
     class Random {

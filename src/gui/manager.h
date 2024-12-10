@@ -3,7 +3,14 @@
 //
 
 #pragma once
-#include "memory/descriptor/pool.h"
+
+#include <memory>
+
+#include <vulkan/vulkan.hpp>
+
+namespace Memory::Descriptor {
+    class Pool;
+}
 
 namespace mgv {
     class Renderer;
@@ -23,19 +30,22 @@ namespace GUI {
         static void AddLayer(Layer* layer);
         static void RemoveLayer(Layer* layer);
 
+        Manager(const Manager &) = delete;
+        Manager &operator=(const Manager &) = delete;
     private:
         explicit Manager() = default;
         ~Manager() = default;
         inline static Manager* m_instance;
 
-        Manager(const Manager &) = delete;
-        Manager &operator=(const Manager &) = delete;
 
         static void CreateDescriptorPool();
         static void CreateContext();
         static void DestroyContext();
 
         std::unique_ptr<Memory::Descriptor::Pool> m_descriptorPool;
+
         std::vector<Layer*> m_layers;
+        std::vector<Layer*> m_layersToAdd;
+        std::vector<Layer*> m_layersToRemove;
     };
 }

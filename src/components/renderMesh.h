@@ -4,8 +4,11 @@
 
 #pragma once
 #include "object.h"
-#include "graphics/objects/mesh.h"
-#include "graphics/objects/material.h"
+
+namespace mgv {
+    class Mesh;
+    class Material;
+}
 
 namespace mgv {
     class RenderMesh final : public Component {
@@ -15,7 +18,7 @@ namespace mgv {
 
         void Add(const Mesh *mesh, const Material *material);
 
-        void DrawUI() override;
+        void OnUIRender() override;
 
         void Update(double deltaTime) override;
 

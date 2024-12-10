@@ -6,9 +6,11 @@
 #include <memory>
 #include <string>
 
-#include "core/device.h"
-#include "memory/image.h"
-#include "memory/sampler.h"
+#include <vulkan/vulkan.hpp>
+
+namespace Memory {
+    class Image;
+}
 
 namespace Graphics {
     class CubeMap {
@@ -70,12 +72,7 @@ namespace Graphics {
 
         [[nodiscard]] const Memory::Image* Image() const { return m_image.get(); }
         [[nodiscard]] uint32_t Size() const { return m_size; }
-        [[nodiscard]] vk::DescriptorImageInfo DescriptorInfo() const {
-            return vk::DescriptorImageInfo()
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-                .setImageView(m_image->ImageView())
-                .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge, vk::SamplerMipmapMode::eLinear));
-        }
+        [[nodiscard]] vk::DescriptorImageInfo DescriptorInfo() const;
 
     private:
         uint32_t m_size;

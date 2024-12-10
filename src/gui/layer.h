@@ -3,19 +3,29 @@
 //
 
 #pragma once
+
 #include "manager.h"
 
 namespace GUI {
-
     class Layer {
+        friend class Manager;
     public:
         Layer() { Manager::AddLayer(this); }
         virtual ~Layer() { Manager::RemoveLayer(this); }
 
-        virtual void InitUI() = 0;
-        virtual void UpdateUI() = 0;
-        virtual void DrawUI() = 0;
-        virtual void DestroyUI() = 0;
+    private:
+        virtual void OnUIAttach() = 0;
+        virtual void OnUIUpdate() = 0;
+        virtual void OnUIRender() = 0;
+        virtual void OnUIReset() = 0;
+        virtual void OnUIDetach() = 0;
     };
 
+    class SubLayer {
+    public:
+        virtual ~SubLayer() = default;
+
+    private:
+        virtual void OnUIRender() = 0;
+    };
 }

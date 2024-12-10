@@ -4,7 +4,12 @@
 
 #pragma once
 
-#include "core/device.h"
+#include <optional>
+#include <vulkan/vulkan.hpp>
+
+namespace Core {
+    class Device;
+}
 
 namespace Memory {
     class Image {

@@ -3,13 +3,8 @@
 //
 
 #pragma once
-#include <memory>
-
-#include "core/window.h"
-#include "core/runtime.h"
 
 namespace mgv {
-
     class Engine {
     public:
         Engine();

@@ -4,7 +4,7 @@ layout (location = 0) in PerVertexData {
     vec4 position;
 } v_in;
 
-layout (set = 0, binding = 0) uniform samplerCube skybox;
+layout (set = 1, binding = 0) uniform samplerCube skybox;
 
 layout (location = 0) out vec4 FragColor;
 

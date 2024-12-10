@@ -7,6 +7,7 @@
 #include <iostream>
 #include <ranges>
 
+#include "core/shader.h"
 #include "memory/descriptor/pool.h"
 #include "memory/descriptor/set.h"
 
@@ -36,11 +37,9 @@ namespace Graphics {
             .setStencilTestEnable(vk::False);
     }
 
-    Pipeline::Builder &Pipeline::Builder::AddShader(const Core::Shader &shader)
-    {
-        const auto stage = shader.Stage();
-        const auto module = *shader;
-
+    Pipeline::Builder &Pipeline::Builder::AddShader(const std::string& path) {
+        auto shader = std::make_unique<Core::Shader>(path);
+        const auto stage = shader->Stage();
         const auto vtgStages = std::unordered_set {
             vk::ShaderStageFlagBits::eVertex,
             vk::ShaderStageFlagBits::eTessellationControl,
@@ -53,7 +52,7 @@ namespace Graphics {
             vk::ShaderStageFlagBits::eMeshEXT,
         };
 
-        if ((!m_yetPossibleTypes.contains(VTG) && vtgStages.contains(stage)) &&
+        if (!m_yetPossibleTypes.contains(VTG) && vtgStages.contains(stage) &&
             (!m_yetPossibleTypes.contains(TM) && tmStages.contains(stage)))
         {
             const std::string errorMessage =
@@ -70,7 +69,7 @@ namespace Graphics {
             m_yetPossibleTypes.erase(VTG);
         }
 
-        m_shaders[stage] = module;
+        m_shaders[stage] = std::move(shader);
         return *this;
     }
 
@@ -181,15 +180,13 @@ namespace Graphics {
         }
         switch (*m_yetPossibleTypes.begin()) {
             case VTG:
-                if (!m_shaders.contains(vk::ShaderStageFlagBits::eVertex) ||
-                    !m_shaders.contains(vk::ShaderStageFlagBits::eFragment)) {
-                    throw std::runtime_error("VTG pipeline: At least Vertex and Fragment shaders are required");
+                if (!m_shaders.contains(vk::ShaderStageFlagBits::eVertex)) {
+                    throw std::runtime_error("VTG pipeline: At least Vertex shader is required");
                 }
             break;
             case TM:
-                if (!m_shaders.contains(vk::ShaderStageFlagBits::eMeshEXT) ||
-                    !m_shaders.contains(vk::ShaderStageFlagBits::eFragment)) {
-                    throw std::runtime_error("TM pipeline: At least Mesh and Fragment shaders are required");
+                if (!m_shaders.contains(vk::ShaderStageFlagBits::eMeshEXT)) {
+                    throw std::runtime_error("TM pipeline: At least Mesh shader is required");
                 }
             break;
         }
@@ -205,10 +202,11 @@ namespace Graphics {
 
         CheckShaderStagesValidity();
 
+        m_stages.clear();
         for (const auto &[stage, shader] : m_shaders) {
-            m_stages.push_back(vk::PipelineShaderStageCreateInfo()
+            m_stages.emplace_back(vk::PipelineShaderStageCreateInfo()
                 .setStage(stage)
-                .setModule(shader)
+                .setModule(**shader)
                 .setPName("main"));
         }
 
@@ -254,12 +252,12 @@ namespace Graphics {
             .setBasePipelineIndex(builder.m_basePipelineIndex);
 
         const auto pipeline = (*Core::Device::Get()).createGraphicsPipeline(nullptr, m_createInfo);
+
         if (pipeline.result != vk::Result::eSuccess) {
             std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
         }
         m_pipeline = pipeline.value;
         m_type = *builder.m_yetPossibleTypes.begin();
-        m_shaders = builder.m_shaders;
     }
 
     Pipeline::~Pipeline()

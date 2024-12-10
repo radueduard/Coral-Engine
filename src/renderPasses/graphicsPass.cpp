@@ -2,19 +2,19 @@
 // Created by radue on 11/5/2024.
 //
 
-#include "mainViewport.h"
+#include "graphicsPass.h"
 
-#include "imgui.h"
 #include "imgui_impl_vulkan.h"
-#include "graphics/renderer.h"
-#include "memory/sampler.h"
+#include "renderer.h"
+#include "graphics/renderPass.h"
+#include "memory/image.h"
 
-MainViewport::MainViewport()
+GraphicsPass::GraphicsPass()
     : m_imageCount(mgv::Renderer::SwapChain().ImageCount()), m_extent(mgv::Renderer::SwapChain().Extent()) {
     auto colorAttachment = Graphics::RenderPass::Attachment {
         .description = vk::AttachmentDescription()
             .setFormat(vk::Format::eR8G8B8A8Srgb)
-            .setSamples(vk::SampleCountFlagBits::e4)
+            .setSamples(vk::SampleCountFlagBits::e2)
             .setLoadOp(vk::AttachmentLoadOp::eClear)
             .setStoreOp(vk::AttachmentStoreOp::eStore)
             .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
@@ -30,7 +30,7 @@ MainViewport::MainViewport()
     auto depthAttachment = Graphics::RenderPass::Attachment {
         .description = vk::AttachmentDescription()
             .setFormat(vk::Format::eD32SfloatS8Uint)
-            .setSamples(vk::SampleCountFlagBits::e4)
+            .setSamples(vk::SampleCountFlagBits::e2)
             .setLoadOp(vk::AttachmentLoadOp::eClear)
             .setStoreOp(vk::AttachmentStoreOp::eDontCare)
             .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
@@ -66,7 +66,7 @@ MainViewport::MainViewport()
             .UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
             .MipLevels(1)
             .LayersCount(1)
-            .SampleCount(vk::SampleCountFlagBits::e4)
+            .SampleCount(vk::SampleCountFlagBits::e2)
             .InitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
             .Build());
 
@@ -76,7 +76,7 @@ MainViewport::MainViewport()
             .UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
             .MipLevels(1)
             .LayersCount(1)
-            .SampleCount(vk::SampleCountFlagBits::e4)
+            .SampleCount(vk::SampleCountFlagBits::e2)
             .InitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
             .Build());
 
@@ -130,68 +130,8 @@ MainViewport::MainViewport()
         .Build();
 }
 
-void MainViewport::Run(const vk::CommandBuffer &commandBuffer) const {
+void GraphicsPass::Run(const vk::CommandBuffer &commandBuffer) const {
     m_renderPass->Begin(commandBuffer, mgv::Renderer::CurrentFrame().imageIndex);
-    m_renderPass->Draw(commandBuffer, false);
+    m_renderPass->Draw(commandBuffer);
     m_renderPass->End(commandBuffer);
-}
-
-void MainViewport::InitUI() {
-    m_descriptorSets = std::vector<vk::DescriptorSet>(m_imageCount);
-    for (uint32_t i = 0; i < m_imageCount; i++) {
-        const auto& outputImage = m_renderPass->OutputImage(i);
-        m_descriptorSets[i] = ImGui_ImplVulkan_AddTexture(
-            Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear),
-            outputImage.ImageView(),
-            static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
-    }
-}
-
-void MainViewport::UpdateUI() {
-    if (m_resized) {
-        (*Core::Device::Get()).waitIdle();
-
-        for (uint32_t i = 0; i < m_imageCount; i++) {
-            ImGui_ImplVulkan_RemoveTexture(m_descriptorSets[i]);
-        }
-
-        m_renderPass->Resize(m_imageCount, m_extent);
-
-        for (uint32_t i = 0; i < m_imageCount; i++) {
-            const auto& outputImage = m_renderPass->OutputImage(i);
-            m_descriptorSets[i] = ImGui_ImplVulkan_AddTexture(
-                Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear),
-                outputImage.ImageView(),
-                static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
-        }
-
-        m_resized = false;
-    }
-}
-
-void MainViewport::DrawUI() {
-    const uint32_t currentFrame = m_renderPass->OutputImageIndex();
-
-    ImGui::Begin("Main Viewport");
-
-    const vk::Extent2D extent = {
-        static_cast<uint32_t>(ImGui::GetContentRegionAvail().x),
-        static_cast<uint32_t>(ImGui::GetContentRegionAvail().y)
-    };
-
-    if (extent != m_extent) {
-        m_resized = true;
-        m_extent = extent;
-    }
-
-    const auto imageSize = ImVec2(static_cast<float>(extent.width), static_cast<float>(extent.height));
-    ImGui::Image(m_descriptorSets[currentFrame], imageSize, ImVec2(0, 1), ImVec2(1, 0));
-
-    ImGui::End();
-}
-
-void MainViewport::DestroyUI() {
-    for (uint32_t i = 0; i < m_imageCount; i++) {
-        ImGui_ImplVulkan_RemoveTexture(m_descriptorSets[i]);
-    }
 }

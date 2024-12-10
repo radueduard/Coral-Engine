@@ -5,38 +5,54 @@
 #pragma once
 
 #include "program.h"
-#include "components/camera.h"
 
-#include "compute/programs/fireflies.h"
-#include "compute/programs/partitionLights.h"
+namespace mgv {
+    class Mesh;
+}
+
+namespace Memory {
+    class Image;
+    class Buffer;
+    namespace Descriptor {
+        class Set;
+    }
+}
+
+class Fireflies;
+class PartitionLights;
 
 class FirefliesDisplay final : public Graphics::Program {
 public:
     struct CreateInfo {
-        const mgv::Camera &camera;
-        const Memory::Image* heightMap;
-        const Memory::Buffer<Fireflies::Particle>& particlesBuffer;
-        const Memory::Buffer<Indices>& lightIndicesBuffer;
+        const Memory::Image& heightMap;
+        const Memory::Buffer& frustumsBuffer;
+        const Memory::Buffer& particlesBuffer;
+        const Memory::Buffer& lightIndicesBuffer;
     };
 
-    FirefliesDisplay(Graphics::RenderPass& renderPass, const Memory::Descriptor::Pool &pool, const FirefliesDisplay::CreateInfo &createInfo);
+    explicit FirefliesDisplay(const CreateInfo &createInfo);
     ~FirefliesDisplay() override = default;
 
     // Graphics::Program
     void Init() override;
-    void Update(double deltaTime) override {}
-    void Draw(const vk::CommandBuffer &commandBuffer, bool reflected) override;
+    void Update(double deltaTime) override;
+    void Draw(const vk::CommandBuffer &commandBuffer, const Graphics::RenderPass* renderPass) const override;
+    void ResetDescriptorSets() override;
 
     // GUI
-    void InitUI() override {}
-    void UpdateUI() override {}
-    void DrawUI() override {}
-    void DestroyUI() override {}
+    void OnUIAttach() override {}
+    void OnUIUpdate() override {}
+    void OnUIRender() override {}
+    void OnUIReset() override;
+    void OnUIDetach() override {}
 
 private:
-    const mgv::Camera& m_camera;
-    const Memory::Buffer<Fireflies::Particle>& m_particlesBuffer;
+    uint32_t m_count;
     const mgv::Mesh& m_mesh;
+
     std::unique_ptr<Fireflies> m_firefliesProgram;
     std::unique_ptr<PartitionLights> m_partitionLightsProgram;
+
+    const Memory::Buffer& m_particlesBuffer;
+    std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };

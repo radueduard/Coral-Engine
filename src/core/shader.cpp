@@ -7,11 +7,13 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 #include <glslang/Public/ShaderLang.h>
 
+#include "device.h"
 #include "../utils/file.h"
 
 static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage) {

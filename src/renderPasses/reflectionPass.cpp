@@ -4,7 +4,9 @@
 
 #include "reflectionPass.h"
 
-#include "graphics/renderer.h"
+#include "renderer.h"
+#include "graphics/renderPass.h"
+#include "memory/image.h"
 
 ReflectionPass::ReflectionPass()
     : m_imageCount(mgv::Renderer::SwapChain().ImageCount()), m_extent(512, 512) {
@@ -101,6 +103,6 @@ ReflectionPass::ReflectionPass()
 
 void ReflectionPass::Run(const vk::CommandBuffer &commandBuffer) const {
     m_renderPass->Begin(commandBuffer, mgv::Renderer::CurrentFrame().imageIndex);
-    m_renderPass->Draw(commandBuffer, true);
+    m_renderPass->Draw(commandBuffer);
     m_renderPass->End(commandBuffer);
 }
