@@ -17,7 +17,7 @@ namespace GUI {
         virtual void OnUIAttach() = 0;
         virtual void OnUIUpdate() = 0;
         virtual void OnUIRender() = 0;
-        virtual void OnUIReset() = 0;
+        virtual void OnUIReset() { OnUIDetach(); OnUIAttach(); }
         virtual void OnUIDetach() = 0;
     };
 

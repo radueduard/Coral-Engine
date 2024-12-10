@@ -7,6 +7,9 @@
 
 #include "gui/layer.h"
 
+#include "graphics/programs/skyBox.h"
+#include "graphics/programs/debugCamera.h"
+
 namespace mgv {
     class Object;
 }
@@ -16,13 +19,14 @@ namespace mgv {
         friend class CalculateMVP;
     public:
         explicit Scene();
-
-        void Update(double deltaTime) const;
-
         ~Scene() override = default;
 
+        void Init();
+        void Update(double deltaTime) const;
+        void LateUpdate(double deltaTime) const;
+
+
         [[nodiscard]] const std::unique_ptr<Object>& Root() const { return m_root; }
-        [[nodiscard]] Object& Camera() const { return *m_camera; }
 
         void OnUIAttach() override {}
         void OnUIUpdate() override {}
@@ -31,10 +35,13 @@ namespace mgv {
         void OnUIDetach() override {}
 
     private:
-        void NodeRender(Object* object);
+        bool NodeRender(Object* object);
         Object* m_selectedObject = nullptr;
 
         std::unique_ptr<Object> m_root;
-        std::unique_ptr<Object> m_camera;
+
+        std::unique_ptr<SkyBox> m_skyBoxProgram;
+        std::unique_ptr<::DebugCamera> m_debugCamera;
+
     };
 }

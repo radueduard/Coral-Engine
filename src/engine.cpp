@@ -26,8 +26,6 @@
 #include "memory/manager.h"
 #include "memory/sampler.h"
 #include "memory/descriptor/setLayout.h"
-#include "renderPasses/depthPrepass.h"
-#include "renderPasses/reflectionPass.h"
 #include "scene/scene.h"
 
 boost::random::mt19937 Utils::Random::m_rng = boost::random::mt19937(std::random_device()());
@@ -61,20 +59,10 @@ namespace mgv {
         Core::Input::Setup();
 
         const auto scene = std::make_unique<Scene>();
+        scene->Init();
         scene->OnUIAttach();
 
-        Renderer::SetMainCamera(scene->Camera().Get<Camera>().value());
-
         // Resources
-        const auto skyBox = Graphics::CubeMap::Builder()
-            .PositiveX("models/textures/cubeMapNight/pos_x.png")
-            .NegativeX("models/textures/cubeMapNight/neg_x.png")
-            .PositiveY("models/textures/cubeMapNight/pos_y.png")
-            .NegativeY("models/textures/cubeMapNight/neg_y.png")
-            .PositiveZ("models/textures/cubeMapNight/pos_z.png")
-            .NegativeZ("models/textures/cubeMapNight/neg_z.png")
-            .Build();
-
         const auto albedoTextures = TextureArray::Builder()
             .Name("Albedo")
             .Format(vk::Format::eR8G8B8A8Srgb)
@@ -146,11 +134,6 @@ namespace mgv {
             vk::BufferUsageFlagBits::eUniformBuffer,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-        SkyBox::CreateInfo skyBoxCreateInfo {
-            .cubeMap = *skyBox
-        };
-        const auto skyBoxProgram = std::make_unique<SkyBox>(skyBoxCreateInfo);
-
         GenerateTerrain::CreateInfo generateTerrainCreateInfo {
             .size = 2048,
             .albedoTextures = *albedoTextures,
@@ -194,9 +177,9 @@ namespace mgv {
             if (!Core::Window::IsPaused()) {
                 const double start = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 const auto viewportSize = Renderer::Extent();
-                Camera::mainCamera->Resize({ viewportSize.width, viewportSize.height });
-                scene->Update(Core::Window::DeltaTime());
+                Camera::Main()->Resize({ viewportSize.width, viewportSize.height });
                 GUI::Manager::Update();
+                scene->Update(Core::Window::DeltaTime());
 
                 if (Renderer::BeginFrame()) {
                     generateTerrain->Compute();
@@ -204,6 +187,8 @@ namespace mgv {
                     Renderer::Draw();
                     Renderer::EndFrame();
                 }
+
+                scene->LateUpdate(Core::Window::DeltaTime());
                 const double end = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 Core::Window::SetTitle("Mgv - " + std::to_string(1.0 / (end - start)) + " fps");
             }

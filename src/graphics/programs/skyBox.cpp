@@ -14,11 +14,11 @@
 #include "renderPasses/graphicsPass.h"
 #include "renderPasses/reflectionPass.h"
 
-SkyBox::SkyBox(const CreateInfo &createInfo)
+SkyBox::SkyBox(CreateInfo &createInfo)
     : Program({
         mgv::Renderer::ReflectionPass().RenderPass(),
         mgv::Renderer::GraphicsPass().RenderPass()
-    }), m_cubeMap(createInfo.cubeMap)
+    }), m_cubeMap(std::move(createInfo.cubeMap))
 {
     m_setLayout = Memory::Descriptor::SetLayout::Builder()
         .AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
@@ -70,7 +70,7 @@ void SkyBox::Draw(const vk::CommandBuffer &commandBuffer, const Graphics::Render
 
 void SkyBox::ResetDescriptorSets() {
     m_descriptorSet = Memory::Descriptor::Set::Builder(mgv::Renderer::DescriptorPool(), *m_setLayout)
-        .WriteImage(0, m_cubeMap.DescriptorInfo())
+        .WriteImage(0, m_cubeMap->DescriptorInfo())
         .Build();
 
     OnUIReset();

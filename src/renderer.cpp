@@ -229,15 +229,14 @@ namespace mgv {
     }
 
     void Renderer::Update(const float deltaTime) {
-        if (m_instance->m_mainCamera != nullptr) {
-            // if (m_instance->m_mainCamera->Moved()) {
-                auto mapped = m_instance->m_cameraBuffer->Map<Camera::Info>();
-                mapped[0] = m_instance->m_mainCamera->BufferData();
-                m_instance->m_cameraBuffer->Flush();
-                m_instance->m_cameraBuffer->Unmap();
-            // }
+        if (Camera::Main() != nullptr && Camera::Main()->Moved()) {
+            auto mapped = m_instance->m_cameraBuffer->Map<Camera::Info>();
+            mapped[0] = Camera::Main()->BufferData();
+            m_instance->m_cameraBuffer->Flush();
+            m_instance->m_cameraBuffer->Unmap();
         }
 
+        m_instance->m_depthPrepass->RenderPass()->Update(deltaTime);
         m_instance->m_reflectionPass->RenderPass()->Update(deltaTime);
         m_instance->m_graphicsPass->RenderPass()->Update(deltaTime);
     }

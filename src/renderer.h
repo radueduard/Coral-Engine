@@ -19,12 +19,10 @@ namespace Graphics {
     class RenderPass;
 }
 
-namespace Memory {
-    namespace Descriptor {
-        class Pool;
-        class SetLayout;
-        class Set;
-    }
+namespace Memory::Descriptor {
+    class Pool;
+    class SetLayout;
+    class Set;
 }
 
 namespace mgv {
@@ -86,9 +84,6 @@ namespace mgv {
 
         static const Core::Queue& Queue(const vk::QueueFlagBits queueType) { return *m_instance->m_queues.at(queueType); }
 
-        // TODO: Find a better way to handle this
-        static void SetMainCamera(mgv::Camera *camera) { m_instance->m_mainCamera = camera; }
-
         static const DepthPrepass& DepthPrepass() { return *m_instance->m_depthPrepass; }
         static const ReflectionPass& ReflectionPass() { return *m_instance->m_reflectionPass; }
         static const GraphicsPass& GraphicsPass() { return *m_instance->m_graphicsPass; }
@@ -125,7 +120,6 @@ namespace mgv {
         void CreateDescriptorPool();
         std::unique_ptr<Memory::Descriptor::Pool> m_descriptorPool;
 
-        Camera *m_mainCamera = nullptr;
         std::unique_ptr<Memory::Buffer> m_cameraBuffer;
         std::unique_ptr<Memory::Descriptor::SetLayout> m_globalSetLayout;
         std::unique_ptr<Memory::Descriptor::Set> m_globalDescriptorSet;

@@ -7,18 +7,17 @@
 #include <glm/glm.hpp>
 
 #include "object.h"
-#include "graphics/objects/mesh.h"
-
-namespace Memory {
-    class Buffer;
-}
+#include "memory/buffer.h"
 
 namespace mgv {
     class Camera final : public Component
     {
-    public:
-        inline static Camera* mainCamera;
+        friend class DebugCamera;
+        friend class Mesh;
 
+        inline static std::vector<Camera*> cameras;
+        inline static Camera* mainCamera;
+    public:
         struct Frustum {
             glm::vec4 left;
             glm::vec4 right;
@@ -72,6 +71,7 @@ namespace mgv {
         explicit Camera(const Object& object, const CreateInfo &createInfo);
 
         void Update(double deltaTime) override;
+        void LateUpdate(double deltaTime) override;
         void Resize(glm::uvec2 size);
 
         [[nodiscard]] bool Primary() const { return m_primary; }
@@ -84,6 +84,9 @@ namespace mgv {
         [[nodiscard]] bool Moved() const { return m_moved; }
         [[nodiscard]] glm::uvec2 Resolution() const { return m_viewportSize; }
         [[nodiscard]] Info BufferData() const;
+
+        [[nodiscard]] static Camera* Main() { return mainCamera; }
+        [[nodiscard]] static const std::vector<Camera*>& All() { return cameras; }
 
         void OnUIRender() override;
 
@@ -111,7 +114,6 @@ namespace mgv {
         const glm::vec3 m_up = glm::vec3(0, 1, 0);
 
         std::unique_ptr<Memory::Buffer> m_frustumBuffer = nullptr;
-        std::unique_ptr<Mesh> m_mesh;
 
         void Rotate(float yaw, float pitch);
         void MoveForward(float amount);

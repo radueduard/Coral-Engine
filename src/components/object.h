@@ -38,6 +38,7 @@ namespace mgv {
         ~Component() override = default;
 
         virtual void Update(double deltaTime) = 0;
+        virtual void LateUpdate(double deltaTime) {}
 
         [[nodiscard]] Object& Owner() const;
 

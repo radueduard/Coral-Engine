@@ -6,6 +6,8 @@
 
 #include "mesh.h"
 #include "assets/manager.h"
+#include "components/camera.h"
+
 namespace mgv {
     const Mesh *Mesh::Cube() {
         if (!m_meshes.contains("Cube")) {
@@ -71,7 +73,12 @@ namespace mgv {
         return Asset::Manager::GetMesh(m_meshes["Sphere"]);
     }
 
-    std::unique_ptr<Mesh> Mesh::Frustum(float fov, float aspect, float near, float far) {
+    std::unique_ptr<Mesh> Mesh::Frustum(const Camera *camera) {
+        const float near = camera->m_projectionData.perspective.near;
+        const float far = camera->m_projectionData.perspective.near + 5.0f;
+        const float aspect = static_cast<float>(camera->m_viewportSize.x) / static_cast<float>(camera->m_viewportSize.y);
+        const float fov = camera->m_projectionData.perspective.fov;
+
         float tanHalfFov = tan(glm::radians(fov) / 2.0f);
         float nearHeight = tanHalfFov * near;
         float nearWidth = nearHeight * aspect;
@@ -107,25 +114,5 @@ namespace mgv {
             .AddIndex(1).AddIndex(3).AddIndex(7).AddIndex(7).AddIndex(5).AddIndex(1)
             .Build();
     }
-
-    std::unique_ptr<Mesh> Mesh::Cuboid(float left, float right, float bottom, float top, float near, float far) {
-        return Builder("Orthogrphic volume")
-            .AddVertex({{left, top, near}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-            .AddVertex({{right, top, near}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-            .AddVertex({{left, bottom, near}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-            .AddVertex({{right, bottom, near}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-            .AddVertex({{left, top, far}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-            .AddVertex({{right, top, far}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-            .AddVertex({{left, bottom, far}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-            .AddVertex({{right, bottom, far}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-            .AddIndex(0).AddIndex(1).AddIndex(2).AddIndex(2).AddIndex(3).AddIndex(1)
-            .AddIndex(4).AddIndex(5).AddIndex(6).AddIndex(6).AddIndex(7).AddIndex(5)
-            .AddIndex(0).AddIndex(1).AddIndex(5).AddIndex(5).AddIndex(4).AddIndex(0)
-            .AddIndex(2).AddIndex(3).AddIndex(7).AddIndex(7).AddIndex(6).AddIndex(2)
-            .AddIndex(0).AddIndex(2).AddIndex(6).AddIndex(6).AddIndex(4).AddIndex(0)
-            .AddIndex(1).AddIndex(3).AddIndex(7).AddIndex(7).AddIndex(5).AddIndex(1)
-            .Build();
-    }
-
 }
 

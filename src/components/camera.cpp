@@ -68,6 +68,8 @@ namespace mgv {
 
         RecalculateProjection();
         RecalculateView();
+
+        cameras.emplace_back(this);
     }
 
     void Camera::Update(const double deltaTime) {
@@ -98,11 +100,19 @@ namespace mgv {
 
         if (m_moved) {
             RecalculateView();
-            m_moved = false;
         }
 
         if (m_changed) {
             RecalculateProjection();
+        }
+    }
+
+    void Camera::LateUpdate(double deltaTime) {
+        if (m_moved) {
+            m_moved = false;
+        }
+
+        if (m_changed) {
             m_changed = false;
         }
     }
@@ -127,8 +137,6 @@ namespace mgv {
     }
 
     void Camera::OnUIRender() {
-        Component::OnUIRender();
-
         ImGui::Text("Projection details");
         if (const char* items[] = { "Perspective", "Orthographic" }; ImGui::Combo("Type", reinterpret_cast<int *>(&m_type), items, IM_ARRAYSIZE(items))) {
             switch (m_type) {
@@ -176,12 +184,9 @@ namespace mgv {
                     static_cast<float>(m_viewportSize.y),
                     m_projectionData.perspective.near,
                     m_projectionData.perspective.far);
-
-                const float aspect = static_cast<float>(m_viewportSize.x) / static_cast<float>(m_viewportSize.y);
-                m_mesh = Mesh::Frustum(m_projectionData.perspective.fov, aspect, m_projectionData.perspective.near, m_projectionData.perspective.far);
             }
             break;
-            case Orthographic:
+            case Orthographic: {
                 m_projection = glm::ortho(
                     m_projectionData.orthographic.left,
                     m_projectionData.orthographic.right,
@@ -189,11 +194,8 @@ namespace mgv {
                     m_projectionData.orthographic.top,
                     m_projectionData.orthographic.near,
                     m_projectionData.orthographic.far);
-
-                m_mesh = Mesh::Cuboid(m_projectionData.orthographic.left, m_projectionData.orthographic.right,
-                                      m_projectionData.orthographic.bottom, m_projectionData.orthographic.top,
-                                      m_projectionData.orthographic.near, m_projectionData.orthographic.far);
-                break;
+            }
+            break;
         }
         m_inverseProjection = glm::inverse(m_projection);
     }

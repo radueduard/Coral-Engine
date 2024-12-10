@@ -6,22 +6,16 @@
 
 #include "program.h"
 
-namespace Graphics {
-    class CubeMap;
-}
-
-namespace Memory::Descriptor {
-    class Set;
-}
+#include "memory/descriptor/set.h"
+#include "graphics/objects/cubeMap.h"
 
 class SkyBox final : public Graphics::Program {
 public:
     struct CreateInfo {
-        const Graphics::CubeMap &cubeMap;
+        std::unique_ptr<Graphics::CubeMap> cubeMap;
     };
 
-    explicit SkyBox(const CreateInfo &createInfo);
-
+    explicit SkyBox(CreateInfo &createInfo);
     ~SkyBox() override = default;
 
     void Init() override {}
@@ -35,7 +29,6 @@ public:
     void OnUIReset() override {}
     void OnUIDetach() override {}
 private:
-    const Graphics::CubeMap &m_cubeMap;
-
+    std::unique_ptr<Graphics::CubeMap> m_cubeMap;
     std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };

@@ -16,6 +16,8 @@
 #include "memory/buffer.h"
 
 namespace mgv {
+    class Camera;
+
     class Mesh {
     public:
         enum Attribute {
@@ -78,8 +80,7 @@ namespace mgv {
     public:
         static const Mesh *Cube();
         static const Mesh *Sphere();
-        static std::unique_ptr<Mesh> Frustum(float fov, float aspect, float near, float far);
-        static std::unique_ptr<Mesh> Cuboid(float left, float right, float bottom, float top, float near, float far);
+        static std::unique_ptr<Mesh> Frustum(const Camera *camera);
     private:
         inline static std::unordered_map<std::string, boost::uuids::uuid> m_meshes;
     };

@@ -2,8 +2,6 @@
 
 layout(location = 0) in vec3 inPosition;
 
-layout(location = 0) out vec3 outColor;
-
 layout(set = 0, binding = 0) uniform Camera {
     mat4 view;
     mat4 projection;
@@ -13,7 +11,10 @@ layout(set = 0, binding = 0) uniform Camera {
     mat4 inverseFlippedView;
 } camera;
 
+layout(push_constant) uniform PushConstants {
+    mat4 model;
+} push;
+
 void main() {
-    gl_Position = camera.projection * camera.view * vec4(inPosition, 1.0);
-    outColor = vec3(1.0);
+    gl_Position = camera.projection * camera.view * push.model * vec4(inPosition, 1.0);
 }

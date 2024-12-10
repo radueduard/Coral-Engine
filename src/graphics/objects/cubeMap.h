@@ -8,9 +8,7 @@
 
 #include <vulkan/vulkan.hpp>
 
-namespace Memory {
-    class Image;
-}
+#include "memory/image.h"
 
 namespace Graphics {
     class CubeMap {
