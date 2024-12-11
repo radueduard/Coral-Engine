@@ -25,9 +25,9 @@ class FirefliesDisplay final : public Graphics::Program {
 public:
     struct CreateInfo {
         const Memory::Image& heightMap;
-        const Memory::Buffer& frustumsBuffer;
         const Memory::Buffer& particlesBuffer;
         const Memory::Buffer& lightIndicesBuffer;
+        const Memory::Buffer& trajectoriesBuffer;
     };
 
     explicit FirefliesDisplay(const CreateInfo &createInfo);
@@ -47,7 +47,6 @@ public:
     void OnUIDetach() override {}
 
 private:
-    uint32_t m_count;
     const mgv::Mesh& m_mesh;
 
     std::unique_ptr<Fireflies> m_firefliesProgram;

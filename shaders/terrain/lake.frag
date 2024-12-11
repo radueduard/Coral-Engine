@@ -20,8 +20,6 @@ layout (set = 1, binding = 0) uniform sampler2D reflectionTexture;
 
 struct Light {
     vec4 position;
-    vec4 speed;
-    vec4 acceleration;
     vec4 color;
 };
 

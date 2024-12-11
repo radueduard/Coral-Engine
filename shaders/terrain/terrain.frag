@@ -12,8 +12,6 @@ layout (set = 1, binding = 2) uniform sampler2D normal;
 
 struct Light {
     vec4 position;
-    vec4 speed;
-    vec4 acceleration;
     vec4 color;
 };
 

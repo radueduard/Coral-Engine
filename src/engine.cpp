@@ -22,6 +22,7 @@
 #include "graphics/programs/lake.h"
 #include "graphics/programs/skyBox.h"
 #include "graphics/programs/terrain.h"
+#include "graphics/programs/trajectoryDisplay.h"
 #include "memory/buffer.h"
 #include "memory/manager.h"
 #include "memory/sampler.h"
@@ -85,17 +86,6 @@ namespace mgv {
             .CreateMipmaps()
             .Build();
 
-        const auto frustumsBuffer = std::make_unique<Memory::Buffer>(
-            sizeof(Fireflies::Frustum), 64 * 64,
-            vk::BufferUsageFlagBits::eStorageBuffer,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
-        // const auto camera = scene->Camera().Get<Camera>().value();
-        // frustumsBuffer->Map<Fireflies::Frustum>();
-        // for (uint32_t i = 0; i < 64 * 64; i++) {
-        //
-        // }
-
         const auto particlesBuffer = std::make_unique<Memory::Buffer>(
             sizeof(Fireflies::Particle), 1024,
             vk::BufferUsageFlagBits::eStorageBuffer,
@@ -108,6 +98,30 @@ namespace mgv {
         }
         particlesBuffer->Flush();
         particlesBuffer->Unmap();
+
+        const auto lightTrajectoriesBuffer = std::make_unique<Memory::Buffer>(
+            sizeof(Fireflies::BezierTrajectory), 1024,
+            vk::BufferUsageFlagBits::eStorageBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+        auto trajectories = lightTrajectoriesBuffer->Map<Fireflies::BezierTrajectory>();
+        for (uint32_t i = 0; i < 1024; i++) {
+            Fireflies::BezierTrajectory trajectory{};
+            for (uint32_t j = 0; j < 4; j++) {
+                glm::vec3 pos = Utils::Random::Direction();
+                trajectory.onCurvePoints[j] = glm::vec4(pos, 1.0f);
+
+                glm::vec3 center = trajectory.onCurvePoints[j];
+                glm::vec3 tangent = cross(center, Utils::Random::Direction());
+                glm::vec3 controlPoint1 = center + tangent;
+                glm::vec3 controlPoint2 = center - tangent;
+                trajectory.controlPoints[j * 2] = glm::vec4(controlPoint1, 1.0f);
+                trajectory.controlPoints[j * 2 + 1] = glm::vec4(controlPoint2, 1.0f);
+            }
+            trajectories[i] = trajectory;
+        }
+        lightTrajectoriesBuffer->Flush();
+        lightTrajectoriesBuffer->Unmap();
 
         const auto lightIndicesBuffer = std::make_unique<Memory::Buffer>(
             sizeof(Indices), 64 * 64,
@@ -125,15 +139,6 @@ namespace mgv {
         lightIndicesBuffer->Flush();
         lightIndicesBuffer->Unmap();
 
-        auto cameraDescriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
-            .AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-            .Build();
-
-        const auto cameraBuffer = std::make_unique<Memory::Buffer>(
-            sizeof(mgv::Camera::Info), 1,
-            vk::BufferUsageFlagBits::eUniformBuffer,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
         GenerateTerrain::CreateInfo generateTerrainCreateInfo {
             .size = 2048,
             .albedoTextures = *albedoTextures,
@@ -145,10 +150,17 @@ namespace mgv {
 
         const auto firefliesCreateInfo = FirefliesDisplay::CreateInfo {
             .heightMap = generateTerrain->HeightMap(),
-            .frustumsBuffer = *frustumsBuffer,
             .particlesBuffer = *particlesBuffer,
-            .lightIndicesBuffer = *lightIndicesBuffer
+            .lightIndicesBuffer = *lightIndicesBuffer,
+            .trajectoriesBuffer = *lightTrajectoriesBuffer
         };
+
+        const auto trajectoryDisplayCreateInfo = TrajectoryDisplay::CreateInfo {
+            .particlesBuffer = *particlesBuffer,
+            .trajectoriesBuffer = *lightTrajectoriesBuffer
+        };
+
+        const auto trajectoryDisplay = std::make_unique<TrajectoryDisplay>(trajectoryDisplayCreateInfo);
 
         const auto fireflies = std::make_unique<FirefliesDisplay>(firefliesCreateInfo);
         fireflies->Init();

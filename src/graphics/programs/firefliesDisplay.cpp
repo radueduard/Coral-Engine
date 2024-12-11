@@ -23,18 +23,18 @@ FirefliesDisplay::FirefliesDisplay(const CreateInfo &createInfo)
         mgv::Renderer::ReflectionPass().RenderPass(),
         mgv::Renderer::GraphicsPass().RenderPass()
     }),
-    m_count(createInfo.particlesBuffer.InstanceCount()), m_mesh(*mgv::Mesh::Sphere()), m_particlesBuffer(createInfo.particlesBuffer)
+    m_mesh(*mgv::Mesh::Sphere()), m_particlesBuffer(createInfo.particlesBuffer)
 {
     const auto firefliesCreateInfo = Fireflies::CreateInfo {
+        .particlesBuffer = createInfo.particlesBuffer,
+        .trajectoriesBuffer = createInfo.trajectoriesBuffer,
         .heightMap = createInfo.heightMap,
-        .particlesBuffer = createInfo.particlesBuffer
     };
 
     m_firefliesProgram = std::make_unique<Fireflies>(firefliesCreateInfo);
 
     const auto partitionLightsCreateInfo = PartitionLights::CreateInfo {
         .chunksPerAxis = { 64, 64 },
-        .frustumBuffer = createInfo.frustumsBuffer,
         .particlesBuffer = createInfo.particlesBuffer,
         .lightIndicesBuffer = createInfo.lightIndicesBuffer,
     };
@@ -113,7 +113,7 @@ void FirefliesDisplay::Draw(const vk::CommandBuffer &commandBuffer, const Graphi
     pipeline->PushConstants(commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, reflected ? 1u : 0u);
 
     m_mesh.Bind(commandBuffer);
-    m_mesh.Draw(commandBuffer, m_count);
+    m_mesh.Draw(commandBuffer, m_particlesBuffer.InstanceCount());
 }
 
 void FirefliesDisplay::ResetDescriptorSets() {

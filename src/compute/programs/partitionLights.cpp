@@ -17,7 +17,7 @@
 #include "renderPasses/depthPrepass.h"
 
 PartitionLights::PartitionLights(const CreateInfo &createInfo)
-    : m_chunksPerAxis(createInfo.chunksPerAxis), m_frustumBuffer(createInfo.frustumBuffer),
+    : m_chunksPerAxis(createInfo.chunksPerAxis),
     m_particlesBuffer(createInfo.particlesBuffer), m_lightIndicesBuffer(createInfo.lightIndicesBuffer)
 {
     m_debugImage = Memory::Image::Builder()
@@ -33,9 +33,8 @@ PartitionLights::PartitionLights(const CreateInfo &createInfo)
     m_setLayout = Memory::Descriptor::SetLayout::Builder()
         .AddBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
         .AddBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
-        .AddBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
-        .AddBinding(3, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute)
-        .AddBinding(4, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(2, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(3, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
         .Build();
 
     m_pipeline = Compute::Pipeline::Builder()
@@ -73,11 +72,10 @@ void PartitionLights::ResetDescriptorSets() {
             .setImageLayout(vk::ImageLayout::eDepthReadOnlyOptimal);
 
         m_descriptorSets[i] = Memory::Descriptor::Set::Builder(mgv::Renderer::DescriptorPool(), *m_setLayout)
-            .WriteBuffer(0, m_frustumBuffer.DescriptorInfo())
-            .WriteBuffer(1, m_particlesBuffer.DescriptorInfo())
-            .WriteBuffer(2, m_lightIndicesBuffer.DescriptorInfo())
-            .WriteImage(3, debugImageDescriptorInfo)
-            .WriteImage(4, depthDescriptorInfo)
+            .WriteBuffer(0, m_particlesBuffer.DescriptorInfo())
+            .WriteBuffer(1, m_lightIndicesBuffer.DescriptorInfo())
+            .WriteImage(2, debugImageDescriptorInfo)
+            .WriteImage(3, depthDescriptorInfo)
             .Build();
     }
 

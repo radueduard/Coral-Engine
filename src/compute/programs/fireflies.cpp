@@ -6,7 +6,6 @@
 
 #include "renderer.h"
 #include "compute/pipeline.h"
-#include "core/shader.h"
 #include "core/window.h"
 #include "memory/buffer.h"
 #include "memory/image.h"
@@ -15,10 +14,11 @@
 #include "memory/descriptor/setLayout.h"
 
 Fireflies::Fireflies(const CreateInfo &createInfo)
-    : m_heightMap(createInfo.heightMap), m_particlesBuffer(createInfo.particlesBuffer) {
+    : m_particlesBuffer(createInfo.particlesBuffer), m_trajectoriesBuffer(createInfo.trajectoriesBuffer), m_heightMap(createInfo.heightMap) {
     m_setLayout = Memory::Descriptor::SetLayout::Builder()
             .AddBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
-            .AddBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
+            .AddBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
+            .AddBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
             .Build();
 
     m_pipeline = Compute::Pipeline::Builder()
@@ -49,6 +49,7 @@ void Fireflies::ResetDescriptorSets() {
 
     m_descriptorSet = Memory::Descriptor::Set::Builder(mgv::Renderer::DescriptorPool(), *m_setLayout)
         .WriteBuffer(0, m_particlesBuffer.DescriptorInfo())
-        .WriteImage(1, noiseDescriptorInfo)
+        .WriteBuffer(1, m_trajectoriesBuffer.DescriptorInfo())
+        .WriteImage(2, noiseDescriptorInfo)
         .Build();
 }

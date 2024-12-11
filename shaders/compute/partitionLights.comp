@@ -20,15 +20,7 @@ layout(set = 0, binding = 0) uniform Camera {
     mat4 inverseFlippedView;
 } camera;
 
-struct Frustum {
-    vec4 planes[4];
-};
-
-layout(set = 1, binding = 0) readonly buffer FrustumBuffer {
-    Frustum frustum;
-} frustumBuffer;
-
-layout(set = 1, binding = 1) readonly buffer Particles {
+layout(set = 1, binding = 0) readonly buffer Particles {
     Particle data[];
 } particles;
 
@@ -36,12 +28,12 @@ struct Indices {
     uint data[64];
 };
 
-layout(set = 1, binding = 2, std430) writeonly buffer IndexBuffer {
+layout(set = 1, binding = 1, std430) writeonly buffer IndexBuffer {
     Indices data[];
 } indexBuffer;
 
-layout(set = 1, binding = 3) writeonly uniform image2D debugImage;
-layout(set = 1, binding = 4) uniform sampler2D depthSampler;
+layout(set = 1, binding = 2) writeonly uniform image2D debugImage;
+layout(set = 1, binding = 3) uniform sampler2D depthSampler;
 
 shared uint lightIndex;
 shared Indices indices;

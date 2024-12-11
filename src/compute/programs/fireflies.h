@@ -25,23 +25,25 @@ public:
 
     struct Particle {
         glm::vec4 position;
-        glm::vec4 velocity;
-        glm::vec4 acceleration;
         glm::vec4 color;
 
         static Particle Random(const Graphics::AABB &bounds) {
             return {
                 .position = glm::vec4(Utils::Random::UniformRealVector(bounds.Min(), bounds.Max()), 1.0f),
-                .velocity = glm::vec4(0.0f),
-                .acceleration = glm::vec4(0.0f),
                 .color = glm::vec4(Utils::Random::Color(), 1.0f)
             };
         }
     };
 
+    struct BezierTrajectory {
+        glm::vec4 onCurvePoints[4];
+        glm::vec4 controlPoints[8];
+    };
+
     struct CreateInfo {
-        const Memory::Image &heightMap;
         const Memory::Buffer &particlesBuffer;
+        const Memory::Buffer &trajectoriesBuffer;
+        const Memory::Image &heightMap;
     };
 
     explicit Fireflies(const CreateInfo &createInfo);
@@ -53,8 +55,9 @@ public:
     void ResetDescriptorSets() override;
 
 private:
-    const Memory::Image& m_heightMap;
     const Memory::Buffer &m_particlesBuffer;
+    const Memory::Buffer &m_trajectoriesBuffer;
+    const Memory::Image& m_heightMap;
 
     std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };

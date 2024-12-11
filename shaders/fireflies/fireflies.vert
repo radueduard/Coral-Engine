@@ -6,8 +6,6 @@ layout(location = 0) out vec3 color;
 
 struct Particle {
     vec4 position;
-    vec4 velocity;
-    vec4 acceleration;
     vec4 color;
 };
 

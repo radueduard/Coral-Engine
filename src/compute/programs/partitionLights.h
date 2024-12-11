@@ -32,7 +32,6 @@ class PartitionLights final : public Compute::Program, public GUI::Layer {
 public:
     struct CreateInfo {
         glm::uvec2 chunksPerAxis;
-        const Memory::Buffer& frustumBuffer;
         const Memory::Buffer& particlesBuffer;
         const Memory::Buffer& lightIndicesBuffer;
     };
@@ -57,7 +56,6 @@ private:
     glm::uvec2 m_chunksPerAxis;
     std::vector<std::unique_ptr<Memory::Descriptor::Set>> m_descriptorSets;
 
-    const Memory::Buffer& m_frustumBuffer;
     const Memory::Buffer& m_particlesBuffer;
     const Memory::Buffer& m_lightIndicesBuffer;
 
