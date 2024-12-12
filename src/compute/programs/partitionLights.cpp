@@ -6,6 +6,7 @@
 
 #include "imgui_impl_vulkan.h"
 #include "../../renderer.h"
+#include "components/camera.h"
 #include "compute/pipeline.h"
 #include "core/shader.h"
 #include "graphics/renderPass.h"
@@ -18,7 +19,7 @@
 
 PartitionLights::PartitionLights(const CreateInfo &createInfo)
     : m_chunksPerAxis(createInfo.chunksPerAxis),
-    m_particlesBuffer(createInfo.particlesBuffer), m_lightIndicesBuffer(createInfo.lightIndicesBuffer)
+    m_particlesBuffer(createInfo.particlesBuffer), m_lightIndicesBuffer(createInfo.lightIndicesBuffer), m_frustumsBuffer(createInfo.frustumsBuffer)
 {
     m_debugImage = Memory::Image::Builder()
         .LayersCount(1)
@@ -33,14 +34,16 @@ PartitionLights::PartitionLights(const CreateInfo &createInfo)
     m_setLayout = Memory::Descriptor::SetLayout::Builder()
         .AddBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
         .AddBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
-        .AddBinding(2, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute)
-        .AddBinding(3, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(3, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eCompute)
+        .AddBinding(4, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eCompute)
         .Build();
 
     m_pipeline = Compute::Pipeline::Builder()
         .Shader("shaders/compute/partitionLights.comp")
         .DescriptorSetLayout(0, mgv::Renderer::GlobalSetLayout())
         .DescriptorSetLayout(1, *m_setLayout)
+        .PushConstantRange<glm::mat4>(vk::ShaderStageFlagBits::eCompute)
         .Build();
 
     ResetDescriptorSets();
@@ -52,7 +55,7 @@ void PartitionLights::Compute() {
     m_pipeline->Bind(commandBuffer);
     m_pipeline->BindDescriptorSet(0, commandBuffer, mgv::Renderer::GlobalDescriptorSet());
     m_pipeline->BindDescriptorSet(1, commandBuffer, *m_descriptorSets[currentFrame.imageIndex]);
-
+    m_pipeline->PushConstants(commandBuffer, vk::ShaderStageFlagBits::eCompute, 0, mgv::Camera::Main()->Owner().Matrix());
     commandBuffer.dispatch(m_chunksPerAxis.x, m_chunksPerAxis.y, 1);
 }
 
@@ -74,8 +77,9 @@ void PartitionLights::ResetDescriptorSets() {
         m_descriptorSets[i] = Memory::Descriptor::Set::Builder(mgv::Renderer::DescriptorPool(), *m_setLayout)
             .WriteBuffer(0, m_particlesBuffer.DescriptorInfo())
             .WriteBuffer(1, m_lightIndicesBuffer.DescriptorInfo())
-            .WriteImage(2, debugImageDescriptorInfo)
-            .WriteImage(3, depthDescriptorInfo)
+            .WriteBuffer(2, m_frustumsBuffer.DescriptorInfo())
+            .WriteImage(3, debugImageDescriptorInfo)
+            .WriteImage(4, depthDescriptorInfo)
             .Build();
     }
 

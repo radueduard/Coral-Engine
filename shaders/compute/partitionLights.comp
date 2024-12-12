@@ -4,13 +4,6 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 const uint elementsPerInvocation = 1024 / (gl_WorkGroupSize.x * gl_WorkGroupSize.y);
 
-struct Particle {
-    vec4 position;
-    vec4 speed;
-    vec4 acceleration;
-    vec4 color;
-};
-
 layout(set = 0, binding = 0) uniform Camera {
     mat4 view;
     mat4 projection;
@@ -20,6 +13,12 @@ layout(set = 0, binding = 0) uniform Camera {
     mat4 inverseFlippedView;
 } camera;
 
+struct Particle {
+    vec4 origin;    // vec2
+    vec4 position;  // vec3
+    vec4 color;
+};
+
 layout(set = 1, binding = 0) readonly buffer Particles {
     Particle data[];
 } particles;
@@ -28,18 +27,62 @@ struct Indices {
     uint data[64];
 };
 
-layout(set = 1, binding = 1, std430) writeonly buffer IndexBuffer {
+layout(set = 1, binding = 1) writeonly buffer IndexBuffer {
     Indices data[];
 } indexBuffer;
 
-layout(set = 1, binding = 2) writeonly uniform image2D debugImage;
-layout(set = 1, binding = 3) uniform sampler2D depthSampler;
+struct Frustum {
+    vec4 left;
+    vec4 right;
+    vec4 top;
+    vec4 bottom;
+    vec4 near;
+    vec4 far;
+};
+
+layout(set = 1, binding = 2) readonly buffer FrustumBuffer {
+    Frustum[] data;
+} frustums;
+
+layout(set = 1, binding = 3) writeonly uniform image2D debugImage;
+layout(set = 1, binding = 4) uniform sampler2D depthSampler;
+
+layout(push_constant) uniform Model {
+    mat4 matrix;
+} model;
 
 shared uint lightIndex;
 shared Indices indices;
 
+Frustum rotateToCamera(Frustum frustum) {
+    Frustum result = frustum;
+    result.left = vec4(mat3(model.matrix) * frustum.left.xyz, frustum.left.w);
+    result.right = vec4(mat3(model.matrix) * frustum.right.xyz, frustum.right.w);
+    result.top = vec4(mat3(model.matrix) * frustum.top.xyz, frustum.top.w);
+    result.bottom = vec4(mat3(model.matrix) * frustum.bottom.xyz, frustum.bottom.w);
+    result.near = vec4(mat3(model.matrix) * frustum.near.xyz, frustum.near.w);
+    result.far = vec4(mat3(model.matrix) * frustum.far.xyz, frustum.far.w);
+    return result;
+}
+
+bool isBehindPlane(vec4 planeNormal, vec3 positionOfObject, float radiusofObject) {
+    vec3 cameraPosition = vec3(camera.inverseView[3]);
+    vec3 relativePosition = positionOfObject - cameraPosition;
+    return dot(planeNormal.xyz, relativePosition) + planeNormal.w + radiusofObject < 0;
+}
+
+bool isInsideFrustum(Frustum frustum, vec3 positionOfObject, float radiusofObject) {
+    return !isBehindPlane(frustum.left, positionOfObject, radiusofObject) &&
+           !isBehindPlane(frustum.right, positionOfObject, radiusofObject) &&
+           !isBehindPlane(frustum.top, positionOfObject, radiusofObject) &&
+           !isBehindPlane(frustum.bottom, positionOfObject, radiusofObject) &&
+           !isBehindPlane(frustum.near, positionOfObject, radiusofObject) &&
+           !isBehindPlane(frustum.far, positionOfObject, radiusofObject);
+}
+
 void main() {
-    vec2 chunkCenter = vec2(gl_WorkGroupID) + vec2(0.5);
+    Frustum frustum = frustums.data[gl_WorkGroupID.x * gl_NumWorkGroups.y + (gl_NumWorkGroups.y - gl_WorkGroupID.y - 1)];
+    frustum = rotateToCamera(frustum);
 
     if (gl_LocalInvocationIndex == 0) {
         lightIndex = 1;
@@ -56,13 +99,13 @@ void main() {
 
         vec4 ndc = vec4(camera.projection * camera.view * vec4(particle.position.xyz, 1.0));
         vec2 screenPosition = ndc.xy / ndc.w;
-        screenPosition = (screenPosition + 1.0) / 2.0 * vec2(gl_NumWorkGroups);
         float depth = ndc.z / ndc.w;
-        if (depth > texture(depthSampler, screenPosition).r) {
+
+        if (depth > texture(depthSampler, screenPosition).r + 0.01) {
             continue;
         }
 
-        if (length(screenPosition - chunkCenter) < depth) {
+        if (isInsideFrustum(frustum, particle.position.xyz, particle.position.w)) {
             uint id = atomicAdd(lightIndex, 1);
             indices.data[id] = i;
         }

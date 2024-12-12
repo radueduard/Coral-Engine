@@ -19,19 +19,17 @@ namespace Memory {
 
 class Fireflies final : public Compute::Program {
 public:
-    struct Frustum {
-        glm::vec4 planes[4];
-    };
-
     struct Particle {
+        glm::vec4 origin;
         glm::vec4 position;
         glm::vec4 color;
 
         static Particle Random(const Graphics::AABB &bounds) {
-            return {
-                .position = glm::vec4(Utils::Random::UniformRealVector(bounds.Min(), bounds.Max()), 1.0f),
-                .color = glm::vec4(Utils::Random::Color(), 1.0f)
-            };
+            Particle particle {};
+            particle.origin = { Utils::Random::UniformRealVector(bounds.Min(), bounds.Max()), 0.0f };
+            particle.position = { particle.origin.x, 0.0 ,particle.origin.y, Utils::Random::UniformRealValue(1.0f, 2.0f) };
+            particle.color = glm::vec4(Utils::Random::Color(), 1.0f);
+            return particle;
         }
     };
 

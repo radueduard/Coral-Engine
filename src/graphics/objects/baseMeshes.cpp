@@ -85,17 +85,17 @@ namespace mgv {
         float farHeight = tanHalfFov * far;
         float farWidth = farHeight * aspect;
 
-        glm::vec3 nearCenter = glm::vec3(0.0f, 0.0f, near);
-        glm::vec3 farCenter = glm::vec3(0.0f, 0.0f, far);
+        glm::vec3 nearCenter = glm::vec3(0.0f, 0.0f, -near);
+        glm::vec3 farCenter = glm::vec3(0.0f, 0.0f, -far);
 
-        glm::vec3 nearTopLeft = nearCenter + glm::vec3(-nearWidth, nearHeight, near);
-        glm::vec3 nearTopRight = nearCenter + glm::vec3(nearWidth, nearHeight, near);
-        glm::vec3 nearBottomLeft = nearCenter + glm::vec3(-nearWidth, -nearHeight, near);
-        glm::vec3 nearBottomRight = nearCenter + glm::vec3(nearWidth, -nearHeight, near);
-        glm::vec3 farTopLeft = farCenter + glm::vec3(-farWidth, farHeight, far);
-        glm::vec3 farTopRight = farCenter + glm::vec3(farWidth, farHeight, far);
-        glm::vec3 farBottomLeft = farCenter + glm::vec3(-farWidth, -farHeight, far);
-        glm::vec3 farBottomRight = farCenter + glm::vec3(farWidth, -farHeight, far);
+        glm::vec3 nearTopLeft = nearCenter + glm::vec3(-nearWidth, nearHeight,  0.0f);
+        glm::vec3 nearTopRight = nearCenter + glm::vec3(nearWidth, nearHeight, 0.0f);
+        glm::vec3 nearBottomLeft = nearCenter + glm::vec3(-nearWidth, -nearHeight, 0.0f);
+        glm::vec3 nearBottomRight = nearCenter + glm::vec3(nearWidth, -nearHeight, 0.0f);
+        glm::vec3 farTopLeft = farCenter + glm::vec3(-farWidth, farHeight, 0.0f);
+        glm::vec3 farTopRight = farCenter + glm::vec3(farWidth, farHeight, 0.0f);
+        glm::vec3 farBottomLeft = farCenter + glm::vec3(-farWidth, -farHeight, 0.0f);
+        glm::vec3 farBottomRight = farCenter + glm::vec3(farWidth, -farHeight, 0.0f);
 
         return Builder("Perspective frustum volume")
             .AddVertex({nearTopLeft, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})

@@ -19,7 +19,8 @@ layout (set = 0, binding = 0) uniform Camera {
 layout (set = 1, binding = 0) uniform sampler2D reflectionTexture;
 
 struct Light {
-    vec4 position;
+    vec4 origin;    // vec2
+    vec4 position;  // vec3, w = radius
     vec4 color;
 };
 
@@ -40,9 +41,16 @@ layout(location = 0) out vec4 FragColor;
 vec3 DiffuseLighting(uint lightIndex) {
     Light light = lights.data[lightIndex];
     float distance = length(light.position.xyz - f_in.position.xyz);
-    float diff = max(dot(normalize(f_in.normal), normalize(light.position.xyz - f_in.position.xyz)), 0.0) * 0.25;
-    float attenuation = 1.0 / (1 + distance);
-    return vec3(light.color.rgb) / 64.0 * attenuation * diff;
+    float radius = light.position.w;
+    if (distance > radius) {
+        return vec3(0.0);
+    }
+
+    float attenuation = 1.0 - distance / radius;
+    vec3 normal = normalize(f_in.normal);
+    vec3 lightDir = normalize(light.position.xyz - f_in.position.xyz);
+    float diff = max(dot(normal, lightDir), 0.0);
+    return light.color.rgb * diff * attenuation / 64.0;
 }
 
 void main() {
@@ -59,10 +67,6 @@ void main() {
     for (int i = 1; i < indices.data[0]; i++) {
         lightColor += vec4(DiffuseLighting(indices.data[i]), 0.0);
     }
-
-//    for (int i = 0; i < 1024; i++) {
-//        lightColor += vec4(DiffuseLighting(i), 0.0);
-//    }
 
     FragColor = reflectionColor * 0.7 + lightColor;
     FragColor.a = 1.0;

@@ -4,6 +4,7 @@
 
 #include "debugCamera.h"
 
+#include "imgui.h"
 #include "renderer.h"
 #include "components/camera.h"
 #include "core/input.h"
@@ -66,6 +67,10 @@ void DebugCamera::Update(const double deltaTime) {
 }
 
 void DebugCamera::Draw(const vk::CommandBuffer &commandBuffer, const Graphics::RenderPass* renderPass) const {
+    if (!m_enabled) {
+        return;
+    }
+
     m_pipelines.at(renderPass)->Bind(commandBuffer);
     m_pipelines.at(renderPass)->BindDescriptorSet(0, commandBuffer, mgv::Renderer::GlobalDescriptorSet());
 
@@ -74,7 +79,7 @@ void DebugCamera::Draw(const vk::CommandBuffer &commandBuffer, const Graphics::R
             continue;
 
         auto model = glm::mat4(1.0f);
-        auto forward = glm::quat(glm::vec3{0, glm::pi<float>(), 0} + glm::radians(camera->Owner().rotation));
+        auto forward = glm::quat(glm::radians(camera->Owner().rotation));
         model = glm::translate(model, camera->Owner().position);
         model *= glm::mat4_cast(forward);
 
@@ -86,3 +91,9 @@ void DebugCamera::Draw(const vk::CommandBuffer &commandBuffer, const Graphics::R
 }
 
 void DebugCamera::ResetDescriptorSets() {}
+
+void DebugCamera::OnUIRender() {
+    ImGui::Begin("Debug Camera");
+    ImGui::Checkbox("Enabled", &m_enabled);
+    ImGui::End();
+}

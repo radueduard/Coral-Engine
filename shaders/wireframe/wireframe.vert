@@ -15,6 +15,11 @@ layout(push_constant) uniform PushConstants {
     mat4 model;
 } push;
 
+layout(location = 0) out PerVertexData {
+    vec4 color;
+} v_out;
+
 void main() {
+    v_out.color = vec4(1.0, 1.0, 1.0, 1.0);
     gl_Position = camera.projection * camera.view * push.model * vec4(inPosition, 1.0);
 }

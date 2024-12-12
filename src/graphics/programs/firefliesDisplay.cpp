@@ -37,6 +37,7 @@ FirefliesDisplay::FirefliesDisplay(const CreateInfo &createInfo)
         .chunksPerAxis = { 64, 64 },
         .particlesBuffer = createInfo.particlesBuffer,
         .lightIndicesBuffer = createInfo.lightIndicesBuffer,
+        .frustumsBuffer = createInfo.frustumsBuffer,
     };
 
     m_partitionLightsProgram = std::make_unique<PartitionLights>(partitionLightsCreateInfo);

@@ -5,7 +5,8 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 0) out vec3 color;
 
 struct Particle {
-    vec4 position;
+    vec4 origin;    // vec2
+    vec4 position;  // vec3
     vec4 color;
 };
 

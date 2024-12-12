@@ -28,8 +28,10 @@ public:
     // GUI::Layer
     void OnUIAttach() override {}
     void OnUIUpdate() override {}
-    void OnUIRender() override {}
+    void OnUIRender() override;
     void OnUIDetach() override {}
 private:
+    bool m_enabled = false;
+
     std::unordered_map<const mgv::Camera*, std::unique_ptr<mgv::Mesh>> m_meshes;
 };

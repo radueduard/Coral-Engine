@@ -23,8 +23,8 @@ namespace mgv {
             glm::vec4 right;
             glm::vec4 top;
             glm::vec4 bottom;
-
-            Frustum(float fov, float aspectRatio, float near, float far);
+            glm::vec4 near;
+            glm::vec4 far;
         };
 
         enum Type {
@@ -69,6 +69,7 @@ namespace mgv {
         };
 
         explicit Camera(const Object& object, const CreateInfo &createInfo);
+        ~Camera() override = default;
 
         void Update(double deltaTime) override;
         void LateUpdate(double deltaTime) override;
@@ -83,6 +84,7 @@ namespace mgv {
         [[nodiscard]] const glm::mat4& FlippedInverseView() const { return m_flippedInverseView; }
         [[nodiscard]] bool Moved() const { return m_moved; }
         [[nodiscard]] glm::uvec2 Resolution() const { return m_viewportSize; }
+        [[nodiscard]] Memory::Buffer* FrustumsBuffer() const { return m_frustumBuffer.get(); }
         [[nodiscard]] Info BufferData() const;
 
         [[nodiscard]] static Camera* Main() { return mainCamera; }
@@ -119,7 +121,5 @@ namespace mgv {
         void MoveForward(float amount);
         void MoveRight(float amount);
         void MoveUp(float amount);
-    public:
-        ~Camera() override = default;
     };
 }

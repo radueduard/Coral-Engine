@@ -71,6 +71,6 @@ namespace Utils {
         }
 
     private:
-        static boost::random::mt19937 m_rng;
+        inline static boost::random::mt19937 m_rng = boost::random::mt19937(std::random_device()());
     };
 }

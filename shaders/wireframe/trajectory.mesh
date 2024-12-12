@@ -1,0 +1,84 @@
+#version 460 core
+
+#extension GL_EXT_mesh_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(lines, max_vertices = 100, max_primitives = 100) out;
+
+struct Particle {
+    vec4 origin;    // vec2
+    vec4 position;  // vec3
+    vec4 color;
+};
+
+struct Trajectory {
+    vec4 onCurve[4];
+    vec4 controlPoints[8];
+};
+
+layout(set = 0, binding = 0) uniform Camera {
+    mat4 view;
+    mat4 projection;
+    mat4 inverseView;
+    mat4 inverseProjection;
+    mat4 flippedView;
+    mat4 inverseFlippedView;
+} camera;
+
+layout(set = 1, binding = 0) readonly buffer Particles {
+    Particle data[];
+} particles;
+
+layout(set = 1, binding = 1) readonly buffer Trajectories {
+    Trajectory data[];
+} trajectories;
+
+layout(set = 1, binding = 2) uniform sampler2D heightMap;
+
+vec4 bezier (vec4 p0, vec4 p1, vec4 p2, vec4 p3, float t) {
+    float u = 1.0 - t;
+    float tt = t * t;
+    float uu = u * u;
+    float uuu = uu * u;
+    float ttt = tt * t;
+
+    vec4 p = uuu * p0;
+    p += 3.0 * uu * t * p1;
+    p += 3.0 * u * tt * p2;
+    p += ttt * p3;
+    p.w = 0.0;
+    return p;
+}
+
+layout (location = 0) out PerVertexData {
+    vec4 color;
+} v_out[];
+
+void main() {
+    uint instanceIndex = gl_WorkGroupID.x * gl_NumWorkGroups.y * gl_NumWorkGroups.z + gl_WorkGroupID.y * gl_NumWorkGroups.z + gl_WorkGroupID.z;
+
+    Particle particle = particles.data[instanceIndex];
+    Trajectory trajectory = trajectories.data[instanceIndex];
+
+    for (uint segment = 0; segment < 4; segment++) {
+        vec4 p0 = trajectory.onCurve[segment];
+        vec4 p1 = trajectory.controlPoints[segment * 2 + 1];
+        vec4 p2 = trajectory.controlPoints[(segment * 2 + 2) % 8];
+        vec4 p3 = trajectory.onCurve[(segment + 1) % 4];
+
+        for(uint j = 0; j < 25; j++) {
+            float t = float(j) / 25.0;
+            float height = max(0.0, texture(heightMap, (particle.origin.xz / 15.0 + 1.0) / 2.0).r) + 1.0;
+            vec4 position = bezier(p0, p1, p2, p3, t) + vec4(particle.origin.x, height, particle.origin.z, 1.0);
+            gl_MeshVerticesEXT[segment * 25 + j].gl_Position = camera.projection * camera.view * position;
+            v_out[segment * 25 + j].color = particle.color;
+        }
+    }
+
+    for (uint i = 0; i < 100; i++) {
+        gl_PrimitiveLineIndicesEXT[i] = uvec2(i, (i + 1) % 100);
+    }
+
+
+    SetMeshOutputsEXT(100, 100);
+}

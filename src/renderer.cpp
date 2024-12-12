@@ -85,18 +85,21 @@ namespace mgv {
         m_instance->m_reflectionPass = std::make_unique<class ReflectionPass>();
         m_instance->m_graphicsPass = std::make_unique<class GraphicsPass>();
 
-        m_instance->m_cameraBuffer = std::make_unique<Memory::Buffer>(
-            sizeof(mgv::Camera::Info), 1,
-            vk::BufferUsageFlagBits::eUniformBuffer,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
         m_instance->m_globalSetLayout = Memory::Descriptor::SetLayout::Builder()
             .AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
             .Build();
 
-        m_instance->m_globalDescriptorSet = Memory::Descriptor::Set::Builder(*m_instance->m_descriptorPool, *m_instance->m_globalSetLayout)
-            .WriteBuffer(0, m_instance->m_cameraBuffer->DescriptorInfo())
-            .Build();
+        m_instance->m_cameraBuffers.resize(m_instance->m_swapChain->ImageCount());
+        m_instance->m_globalDescriptorSets.resize(m_instance->m_swapChain->ImageCount());
+        for (uint32_t i = 0; i < m_instance->m_swapChain->ImageCount(); i++) {
+            m_instance->m_cameraBuffers[i] = std::make_unique<Memory::Buffer>(
+                sizeof(mgv::Camera::Info), 1,
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+            m_instance->m_globalDescriptorSets[i] = Memory::Descriptor::Set::Builder(*m_instance->m_descriptorPool, *m_instance->m_globalSetLayout)
+                .WriteBuffer(0, m_instance->m_cameraBuffers[i]->DescriptorInfo())
+                .Build();
+        }
     }
 
     void Renderer::InitUI() {
@@ -229,11 +232,13 @@ namespace mgv {
     }
 
     void Renderer::Update(const float deltaTime) {
-        if (Camera::Main() != nullptr && Camera::Main()->Moved()) {
-            auto mapped = m_instance->m_cameraBuffer->Map<Camera::Info>();
+        const uint32_t currentFrame = m_instance->m_frames[m_instance->m_currentFrame].imageIndex;
+        auto& cameraBuffer = *m_instance->m_cameraBuffers[currentFrame];
+        if (Camera::Main() != nullptr) {
+            auto mapped = cameraBuffer.Map<Camera::Info>();
             mapped[0] = Camera::Main()->BufferData();
-            m_instance->m_cameraBuffer->Flush();
-            m_instance->m_cameraBuffer->Unmap();
+            cameraBuffer.Flush();
+            cameraBuffer.Unmap();
         }
 
         m_instance->m_depthPrepass->RenderPass()->Update(deltaTime);
@@ -254,6 +259,8 @@ namespace mgv {
             m_instance->m_depthPrepass->RenderPass()->Resize(imageCount, m_instance->m_extent);
             m_instance->m_reflectionPass->RenderPass()->Resize(imageCount, { m_instance->m_extent.width / 2, m_instance->m_extent.height / 2 });
             m_instance->m_graphicsPass->RenderPass()->Resize(imageCount, m_instance->m_extent);
+
+            Camera::Main()->Resize({ m_instance->m_extent.width, m_instance->m_extent.height });
 
             for (uint32_t i = 0; i < imageCount; i++) {
                 const auto& outputImage = m_instance->m_graphicsPass->RenderPass()->OutputImage(i);

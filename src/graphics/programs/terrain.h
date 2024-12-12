@@ -47,7 +47,7 @@ public:
     void OnUIDetach() override {}
 
 private:
-    glm::ivec2 patchCount = { 100, 100 };
+    glm::ivec2 patchCount = { 200, 200 };
 
     const Memory::Image& m_heightMap;
     const Memory::Image& m_albedo;

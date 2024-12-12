@@ -28,6 +28,7 @@ public:
         const Memory::Buffer& particlesBuffer;
         const Memory::Buffer& lightIndicesBuffer;
         const Memory::Buffer& trajectoriesBuffer;
+        const Memory::Buffer& frustumsBuffer;
     };
 
     explicit FirefliesDisplay(const CreateInfo &createInfo);

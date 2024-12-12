@@ -8,6 +8,7 @@
 
 namespace Memory {
     class Buffer;
+    class Image;
 }
 
 class TrajectoryDisplay final : public Graphics::Program {
@@ -15,6 +16,7 @@ public:
     struct CreateInfo {
         const Memory::Buffer& particlesBuffer;
         const Memory::Buffer& trajectoriesBuffer;
+        const Memory::Image& heightMap;
     };
 
     explicit TrajectoryDisplay(const CreateInfo &createInfo);
@@ -29,13 +31,16 @@ public:
     // GUI
     void OnUIAttach() override {}
     void OnUIUpdate() override {}
-    void OnUIRender() override {}
+    void OnUIRender() override;
     void OnUIReset() override {}
     void OnUIDetach() override {}
 
 private:
+    bool m_enabled = false;
+
     const Memory::Buffer& m_particlesBuffer;
     const Memory::Buffer& m_trajectoriesBuffer;
+    const Memory::Image& m_heightMap;
 
     std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
 };

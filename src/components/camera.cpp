@@ -17,42 +17,6 @@
 #include "memory/buffer.h"
 
 namespace mgv {
-    Camera::Frustum::Frustum(float fov, float aspectRatio, float near, float far) {
-        float tanHalfFov = tan(glm::radians(fov) / 2.0f);
-        float nearHeight = tanHalfFov * near;
-        float nearWidth = nearHeight * aspectRatio;
-        float farHeight = tanHalfFov * far;
-        float farWidth = farHeight * aspectRatio;
-
-        glm::vec3 nearCenter = glm::vec3(0.0f, 0.0f, near);
-        glm::vec3 farCenter = glm::vec3(0.0f, 0.0f, far);
-
-        glm::vec3 nearTopLeft = nearCenter + glm::vec3(-nearWidth, nearHeight, 0.0f);
-        glm::vec3 nearTopRight = nearCenter + glm::vec3(nearWidth, nearHeight, 0.0f);
-        glm::vec3 nearBottomLeft = nearCenter + glm::vec3(-nearWidth, -nearHeight, 0.0f);
-        glm::vec3 nearBottomRight = nearCenter + glm::vec3(nearWidth, -nearHeight, 0.0f);
-
-        glm::vec3 farTopLeft = farCenter + glm::vec3(-farWidth, farHeight, 0.0f);
-        glm::vec3 farTopRight = farCenter + glm::vec3(farWidth, farHeight, 0.0f);
-        glm::vec3 farBottomLeft = farCenter + glm::vec3(-farWidth, -farHeight, 0.0f);
-        glm::vec3 farBottomRight = farCenter + glm::vec3(farWidth, -farHeight, 0.0f);
-
-        glm::vec3 topLeft = glm::normalize(farTopLeft - nearTopLeft);
-        glm::vec3 topRight = glm::normalize(farTopRight - nearTopRight);
-        glm::vec3 bottomLeft = glm::normalize(farBottomLeft - nearBottomLeft);
-        glm::vec3 bottomRight = glm::normalize(farBottomRight - nearBottomRight);
-
-        glm::vec3 left = glm::cross(topLeft, bottomLeft);
-        glm::vec3 right = glm::cross(bottomRight, topRight);
-        glm::vec3 top = glm::cross(topRight, topLeft);
-        glm::vec3 bottom = glm::cross(bottomLeft, bottomRight);
-
-        this->left = glm::vec4(left, 0.0f);
-        this->right = glm::vec4(right, 0.0f);
-        this->top = glm::vec4(top, 0.0f);
-        this->bottom = glm::vec4(bottom, 0.0f);
-    }
-
     Camera::Camera(const Object& object, const CreateInfo &createInfo)
         : Component(object), m_type(createInfo.type),
           m_projectionData(createInfo.projectionData),
@@ -68,6 +32,7 @@ namespace mgv {
 
         RecalculateProjection();
         RecalculateView();
+        CalculateScreenFrustums(64, 64);
 
         cameras.emplace_back(this);
     }
@@ -104,6 +69,7 @@ namespace mgv {
 
         if (m_changed) {
             RecalculateProjection();
+            CalculateScreenFrustums(64, 64);
         }
     }
 
@@ -123,6 +89,8 @@ namespace mgv {
 
         m_viewportSize = size;
         RecalculateProjection();
+        CalculateScreenFrustums(64, 64);
+        m_moved = true;
     }
 
     Camera::Info Camera::BufferData() const {
@@ -221,22 +189,62 @@ namespace mgv {
     }
 
     void Camera::CalculateScreenFrustums(const uint32_t chunksOnX, const uint32_t chunksOnY) {
+        if (!m_primary)
+            return;
+
         if (m_frustumBuffer == nullptr || m_frustumBuffer->InstanceCount() != chunksOnX * chunksOnY) {
             m_frustumBuffer = std::make_unique<Memory::Buffer>(
                 sizeof(Frustum), chunksOnX * chunksOnY,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
-            // m_frustumBuffer->Map<Frustum>();
-            // for (uint32_t i = 0; i < chunksOnX * chunksOnY; i++) {
-            //     Frustum frustum = {
-            //
-            //     };
-            //     m_frustumBuffer->WriteAt(i, frustum);
-            // }
         }
 
+        const float aspectRatio = static_cast<float>(m_viewportSize.x) / static_cast<float>(m_viewportSize.y);
+        const float fov = m_projectionData.perspective.fov;
+        const float near = m_projectionData.perspective.near;
+        const float far = m_projectionData.perspective.far;
 
+        const float tanHalfFov = tan(glm::radians(fov) / 2.0f);
+        const float nearHeight = tanHalfFov * near;
+        const float nearWidth = nearHeight * aspectRatio;
+
+        const auto nearTopLeft = glm::vec3(-nearWidth, nearHeight, -near);
+        glm::vec2 deltaNear = 2.0f * glm::vec2(nearWidth, -nearHeight) / glm::vec2(chunksOnX, chunksOnY);
+
+        auto frustums = m_frustumBuffer->Map<Frustum>();
+        for (uint32_t i = 0; i < chunksOnX; i++) {
+            for (uint32_t j = 0; j < chunksOnY; j++) {
+                auto chunk = glm::vec2(static_cast<float>(i), static_cast<float>(j));
+
+                glm::vec3 topLeft = glm::vec3(nearTopLeft.x + deltaNear.x * chunk.x, nearTopLeft.y + deltaNear.y * chunk.y, -near);
+                glm::vec3 topRight = glm::vec3(nearTopLeft.x + deltaNear.x * (chunk.x + 1), nearTopLeft.y + deltaNear.y * chunk.y, -near);
+                glm::vec3 bottomLeft = glm::vec3(nearTopLeft.x + deltaNear.x * chunk.x, nearTopLeft.y + deltaNear.y * (chunk.y + 1), -near);
+                glm::vec3 bottomRight = glm::vec3(nearTopLeft.x + deltaNear.x * (chunk.x + 1), nearTopLeft.y + deltaNear.y * (chunk.y + 1), -near);
+
+                glm::vec3 center = ((topLeft + topRight) / 2.0f + (bottomLeft + bottomRight) / 2.0f) / 2.0f;
+
+                glm::vec3 dirTopLeft = glm::normalize(topLeft);
+                glm::vec3 dirTopRight = glm::normalize(topRight);
+                glm::vec3 dirBottomLeft = glm::normalize(bottomLeft);
+                glm::vec3 dirBottomRight = glm::normalize(bottomRight);
+
+                glm::vec3 rightNormal = glm::normalize(glm::cross(dirTopRight, dirBottomRight));
+                glm::vec3 leftNormal = glm::normalize(glm::cross(dirBottomLeft, dirTopLeft));
+                glm::vec3 topNormal = glm::normalize(glm::cross(dirTopLeft, dirTopRight));
+                glm::vec3 bottomNormal = glm::normalize(glm::cross(dirBottomRight, dirBottomLeft));
+
+                frustums[i * chunksOnY + j] = {
+                    .left = glm::vec4(leftNormal * glm::sign(glm::dot(leftNormal, center)), 0.0f),
+                    .right = glm::vec4(rightNormal * glm::sign(glm::dot(rightNormal, center)), 0.0f),
+                    .top = glm::vec4(topNormal * glm::sign(glm::dot(topNormal, center)), 0.0f),
+                    .bottom = glm::vec4(bottomNormal * glm::sign(glm::dot(bottomNormal, center)), 0.0f),
+                    .near = glm::vec4(0.0f, 0.0f, -1.0f, near),
+                    .far = glm::vec4(0.0f, 0.0f, 1.0f, far)
+                };
+            }
+        }
+        m_frustumBuffer->Flush();
+        m_frustumBuffer->Unmap();
     }
 
     void Camera::Rotate(float yaw, float pitch) {

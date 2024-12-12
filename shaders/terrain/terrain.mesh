@@ -35,7 +35,7 @@ const uint trianglePerLinePerInstance = vertexPerLinePerInstance - 1;
 const uint trianglePerInstance = trianglePerLinePerInstance * trianglePerLinePerInstance;
 const uint trianglePerPatch = trianglePerInstance * gl_WorkGroupSize.x * gl_WorkGroupSize.z;
 
-const float patchSize = 0.1f;
+const float patchSize = 0.05f;
 
 vec3 ComputeNormal(vec2 uv) {
     vec2 textureSize = vec2(1024.0, 1024.0);

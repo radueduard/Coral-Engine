@@ -34,6 +34,7 @@ public:
         glm::uvec2 chunksPerAxis;
         const Memory::Buffer& particlesBuffer;
         const Memory::Buffer& lightIndicesBuffer;
+        const Memory::Buffer& frustumsBuffer;
     };
 
     explicit PartitionLights(const CreateInfo &createInfo);
@@ -58,6 +59,7 @@ private:
 
     const Memory::Buffer& m_particlesBuffer;
     const Memory::Buffer& m_lightIndicesBuffer;
+    const Memory::Buffer& m_frustumsBuffer;
 
     std::unique_ptr<Memory::Image> m_debugImage;
     vk::DescriptorSet m_debugDescriptorSet;

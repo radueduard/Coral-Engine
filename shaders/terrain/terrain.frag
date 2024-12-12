@@ -11,7 +11,8 @@ layout (set = 1, binding = 1) uniform sampler2D albedo;
 layout (set = 1, binding = 2) uniform sampler2D normal;
 
 struct Light {
-    vec4 position;
+    vec4 origin;    // vec2
+    vec4 position;  // vec3, w = radius
     vec4 color;
 };
 
@@ -36,15 +37,20 @@ layout(location = 0) out vec4 FragColor;
 vec3 DiffuseLighting(uint lightIndex) {
     Light light = lights.data[lightIndex];
     float distance = length(light.position.xyz - f_in.position.xyz);
-    float attenuation = 1.0 / (1 + distance + 2 * distance * distance);
-    vec3 direction = normalize(light.position.xyz - f_in.position.xyz);
-    float diff = max(dot(f_in.normal, direction), 0.0) * 0.25;
-    return vec3(light.color.rgb) * attenuation * diff;
+    float radius = light.position.w;
+    if (distance > radius) {
+        return vec3(0.0);
+    }
+    float attenuation = 1.0 - distance / radius;
+    vec3 normal = normalize(f_in.normal);
+    vec3 lightDir = normalize(light.position.xyz - f_in.position.xyz);
+    float diff = max(dot(normal, lightDir), 0.0) * 0.25;
+    return light.color.rgb * diff * attenuation;
 }
 
 
 void main() {
-    if (f_in.position.y < -0.2) {
+    if (f_in.position.y < 0) {
         discard;
     }
 
@@ -55,10 +61,6 @@ void main() {
     for (int i = 1; i < indices.data[0]; i++) {
         lightColor += vec4(DiffuseLighting(indices.data[i]), 0.0);
     }
-
-//    for (int i = 0; i < 1024; i++) {
-//        lightColor += vec4(DiffuseLighting(i), 0.0);
-//    }
 
     vec4 albedoColor = texture(albedo, f_in.texCoords);
     FragColor = albedoColor * lightColor;

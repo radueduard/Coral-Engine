@@ -16,26 +16,22 @@
 #include "compute/programs/partitionLights.h"
 #include "core/runtime.h"
 #include "core/window.h"
-#include "graphics/objects/cubeMap.h"
 #include "graphics/objects/textureArray.h"
+#include "graphics/programs/displayViewFrustums.h"
 #include "graphics/programs/firefliesDisplay.h"
 #include "graphics/programs/lake.h"
-#include "graphics/programs/skyBox.h"
 #include "graphics/programs/terrain.h"
 #include "graphics/programs/trajectoryDisplay.h"
 #include "memory/buffer.h"
 #include "memory/manager.h"
 #include "memory/sampler.h"
-#include "memory/descriptor/setLayout.h"
 #include "scene/scene.h"
-
-boost::random::mt19937 Utils::Random::m_rng = boost::random::mt19937(std::random_device()());
 
 namespace mgv {
     Engine::Engine() {
         const auto windowInfo = Core::Window::Info {
             .title = "Mgv",
-            .extent = { 2560, 1440 },
+            .extent = { 2500, 1200 },
             .resizable = true,
             .fullscreen = false
         };
@@ -152,15 +148,22 @@ namespace mgv {
             .heightMap = generateTerrain->HeightMap(),
             .particlesBuffer = *particlesBuffer,
             .lightIndicesBuffer = *lightIndicesBuffer,
-            .trajectoriesBuffer = *lightTrajectoriesBuffer
+            .trajectoriesBuffer = *lightTrajectoriesBuffer,
+            .frustumsBuffer = *Camera::Main()->FrustumsBuffer()
         };
 
         const auto trajectoryDisplayCreateInfo = TrajectoryDisplay::CreateInfo {
             .particlesBuffer = *particlesBuffer,
-            .trajectoriesBuffer = *lightTrajectoriesBuffer
+            .trajectoriesBuffer = *lightTrajectoriesBuffer,
+            .heightMap = generateTerrain->HeightMap()
         };
 
         const auto trajectoryDisplay = std::make_unique<TrajectoryDisplay>(trajectoryDisplayCreateInfo);
+
+        const auto displayViewFrustumsCreateInfo = DisplayViewFrustums::CreateInfo {
+            .frustumsBuffer = *Camera::Main()->FrustumsBuffer()
+        };
+        const auto displayViewFrustums = std::make_unique<DisplayViewFrustums>(displayViewFrustumsCreateInfo);
 
         const auto fireflies = std::make_unique<FirefliesDisplay>(firefliesCreateInfo);
         fireflies->Init();

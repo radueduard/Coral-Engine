@@ -89,7 +89,7 @@ namespace mgv {
         static const GraphicsPass& GraphicsPass() { return *m_instance->m_graphicsPass; }
 
         static Memory::Descriptor::SetLayout& GlobalSetLayout() { return *m_instance->m_globalSetLayout; }
-        static Memory::Descriptor::Set& GlobalDescriptorSet() { return *m_instance->m_globalDescriptorSet; }
+        static Memory::Descriptor::Set& GlobalDescriptorSet() { return *m_instance->m_globalDescriptorSets[m_instance->m_currentFrame]; }
 
         static void InitUI();
         static void UpdateUI();
@@ -120,9 +120,9 @@ namespace mgv {
         void CreateDescriptorPool();
         std::unique_ptr<Memory::Descriptor::Pool> m_descriptorPool;
 
-        std::unique_ptr<Memory::Buffer> m_cameraBuffer;
+        std::vector<std::unique_ptr<Memory::Buffer>> m_cameraBuffers;
         std::unique_ptr<Memory::Descriptor::SetLayout> m_globalSetLayout;
-        std::unique_ptr<Memory::Descriptor::Set> m_globalDescriptorSet;
+        std::vector<std::unique_ptr<Memory::Descriptor::Set>> m_globalDescriptorSets;
 
         bool m_resized = false;
         vk::Extent2D m_extent;
