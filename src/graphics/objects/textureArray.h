@@ -12,6 +12,11 @@
 #include <vulkan/vulkan.hpp>
 
 #include "memory/image.h"
+#include "memory/imageView.h"
+
+namespace Memory {
+    class Sampler;
+}
 
 struct ThreadPayload {
     uint32_t tid;
@@ -68,7 +73,7 @@ namespace mgv {
                 return *this;
             }
 
-            [[nodiscard]] std::unique_ptr<TextureArray> Build();
+            [[nodiscard]] std::unique_ptr<TextureArray> Build(const Core::Device& device) const;
 
         private:
             std::string m_name;
@@ -80,7 +85,7 @@ namespace mgv {
             std::vector<void*> m_data;
         };
 
-        explicit TextureArray(const Builder& builder);
+        explicit TextureArray(const Core::Device& device, const Builder& builder);
 
         [[nodiscard]] const vk::DescriptorImageInfo& DescriptorInfo() const { return m_descriptorInfo; }
         [[nodiscard]] uint32_t Id(const std::string& name) const;
@@ -88,12 +93,17 @@ namespace mgv {
     private:
         void LoadTexture(const ThreadPayload& threadPayload);
 
+        const Core::Device& m_device;
+
         std::string m_name;
         vk::Format m_format;
         uint32_t m_width;
         uint32_t m_height;
         vk::DescriptorImageInfo m_descriptorInfo;
+
         std::unique_ptr<Memory::Image> m_image;
+        std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;
+        std::unique_ptr<Memory::Sampler> m_sampler;
 
         std::unordered_map<std::string, uint32_t> m_imageIndices;
     };

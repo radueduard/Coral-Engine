@@ -2,6 +2,6 @@
 
 int main()
 {
-    mgv::Engine().Run();
+    Engine().Run();
     return 0;
 }

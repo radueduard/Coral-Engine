@@ -9,50 +9,53 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "core/window.h"
+
 namespace Core {
     class PhysicalDevice;
 }
 
 namespace Core {
-    /**
-     * @brief Singleton class for the Vulkan instance and physical device selection
-     *
-     */
-
     class Runtime {
+        friend class PhysicalDevice;
+        friend class Device;
     public:
-        static struct Settings {
+        struct CreateInfo {
+            const Window &window;
             vk::PhysicalDeviceFeatures deviceFeatures;
             std::vector<const char*> instanceLayers;
             std::vector<const char*> instanceExtensions;
             std::vector<const char*> deviceExtensions;
             std::vector<const char*> deviceLayers;
             std::unordered_set<vk::QueueFlagBits> requiredQueueFamilies;
-        } settings;
+        };
 
-        static void Init();
-        static void Destroy();
-
-        static Runtime& Get() { return *m_instance; }
-
-        Runtime();
+        explicit Runtime(const CreateInfo &createInfo);
         ~Runtime();
         Runtime(const Runtime &) = delete;
         Runtime &operator=(const Runtime &) = delete;
 
-        void createInstance();
-        void selectPhysicalDevice();
+        void CreateInstance();
+        void SelectPhysicalDevice();
 
-        void setupDebugMessenger();
+        void SetupDebugMessenger();
         void destroyDebugMessenger() const;
 
-        [[nodiscard]] const vk::Instance& Instance() const { return m_vkInstance; }
+        [[nodiscard]] const vk::Instance& Instance() const { return m_instance; }
         [[nodiscard]] const vk::SurfaceKHR& Surface() const { return m_surface; }
         [[nodiscard]] PhysicalDevice& PhysicalDevice() const { return *m_physicalDevice; }
-    private:
-        static std::unique_ptr<Runtime> m_instance;
 
-        vk::Instance m_vkInstance;
+    private:
+        const Window &m_window;
+
+        vk::PhysicalDeviceFeatures m_deviceFeatures;
+        std::vector<const char*> m_instanceLayers;
+        std::vector<const char*> m_instanceExtensions;
+        std::vector<const char*> m_deviceExtensions;
+        std::vector<const char*> m_deviceLayers;
+        std::unordered_set<vk::QueueFlagBits> m_requiredQueueFamilies;
+
+        vk::Instance m_instance;
         vk::DebugUtilsMessengerEXT m_debugMessenger;
         vk::SurfaceKHR m_surface;
         std::unique_ptr<Core::PhysicalDevice> m_physicalDevice = nullptr;

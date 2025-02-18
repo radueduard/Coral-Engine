@@ -2,21 +2,20 @@
 // Created by radue on 10/14/2024.
 //
 
-#include "physicalDevice.h"
-
 #include <iostream>
 
+#include "physicalDevice.h"
 #include "runtime.h"
 
 namespace Core {
-    PhysicalDevice::PhysicalDevice(const vk::PhysicalDevice physicalDevice, const vk::SurfaceKHR surface)
-        : m_physicalDevice(physicalDevice), m_surface(surface)
+    PhysicalDevice::PhysicalDevice(const CreateInfo& createInfo)
+        : m_runtime(createInfo.runtime), m_physicalDevice(createInfo.physicalDevice), m_surface(createInfo.surface)
     {
-        m_properties = physicalDevice.getProperties();
-        m_features = physicalDevice.getFeatures();
-        m_memoryProperties = physicalDevice.getMemoryProperties();
-        m_extensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
-        m_queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+        m_properties = m_physicalDevice.getProperties();
+        m_features = m_physicalDevice.getFeatures();
+        m_memoryProperties = m_physicalDevice.getMemoryProperties();
+        m_extensionProperties = m_physicalDevice.enumerateDeviceExtensionProperties();
+        m_queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
 
         QuerySurfaceCapabilities();
     }
@@ -29,11 +28,11 @@ namespace Core {
 
 
     bool PhysicalDevice::isSuitable() const {
-        auto requiredExtensions = std::unordered_set<std::string>(Runtime::settings.deviceExtensions.begin(), Runtime::settings.deviceExtensions.end());
+        auto requiredExtensions = std::unordered_set<std::string>(m_runtime.m_deviceExtensions.begin(), m_runtime.m_deviceExtensions.end());
 
-        return hasRequiredQueueFamilies(Runtime::settings.requiredQueueFamilies)
+        return hasRequiredQueueFamilies(m_runtime.m_requiredQueueFamilies)
             && hasRequiredExtensions(requiredExtensions)
-            && hasRequiredFeatures(Runtime::settings.deviceFeatures);
+            && hasRequiredFeatures(m_runtime.m_deviceFeatures);
     }
 
     bool PhysicalDevice::hasRequiredQueueFamilies(const std::unordered_set<vk::QueueFlagBits>& requiredQueueFamilies) const {
@@ -77,4 +76,4 @@ namespace Core {
 
         return true;
     }
-} // namespace Core
+}

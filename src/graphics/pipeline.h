@@ -10,10 +10,10 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "core/shader.h"
+#include "../shader/shader.h"
+#include "memory/descriptor/set.h"
 
 namespace Memory::Descriptor {
-    class Set;
     class SetLayout;
 }
 
@@ -33,7 +33,7 @@ namespace Graphics {
             Builder(const Builder &) = delete;
             Builder &operator=(const Builder &) = delete;
 
-            Builder &AddShader(const std::string& path);
+            Builder &AddShader(Core::Shader* shader);
             Builder &VertexInputState(const vk::PipelineVertexInputStateCreateInfo &);
             Builder &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
             Builder &Viewport(const vk::Viewport &);
@@ -66,11 +66,11 @@ namespace Graphics {
             Builder &DescriptorSetLayout(uint32_t setNumber, const Memory::Descriptor::SetLayout &layout);
             Builder &DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts);
 
-            std::unique_ptr<Pipeline> Build();
+            std::unique_ptr<Pipeline> Build(const Core::Device&);
         private:
             void CheckShaderStagesValidity() const;
 
-            std::unordered_map<vk::ShaderStageFlagBits, std::unique_ptr<Core::Shader>> m_shaders;
+            std::unordered_map<vk::ShaderStageFlagBits, Core::Shader*> m_shaders;
             std::unordered_set<Type> m_yetPossibleTypes;
 
             std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
@@ -106,7 +106,7 @@ namespace Graphics {
             std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
         };
 
-        explicit Pipeline(const Builder &);
+        explicit Pipeline(const Core::Device& device, const Builder &);
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
@@ -127,6 +127,8 @@ namespace Graphics {
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
 
     private:
+        const Core::Device& m_device;
+
         Type m_type;
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;

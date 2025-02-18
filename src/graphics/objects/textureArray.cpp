@@ -37,6 +37,7 @@ namespace mgv {
             stbi_uc* image = stbi_load(path.c_str(), reinterpret_cast<int*>(&width), reinterpret_cast<int*>(&height), reinterpret_cast<int*>(&channels), STBI_rgb_alpha);
 
             auto stagingBuffer = Memory::Buffer(
+                m_device,
                 sizeof(glm::u8vec4), width * height,
                 vk::BufferUsageFlagBits::eTransferSrc,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -51,12 +52,12 @@ namespace mgv {
         }
     }
 
-    std::unique_ptr<TextureArray> TextureArray::Builder::Build() {
-        return std::make_unique<TextureArray>(*this);
+    std::unique_ptr<TextureArray> TextureArray::Builder::Build(const Core::Device &device) const {
+        return std::make_unique<TextureArray>(device, *this);
     }
 
-    TextureArray::TextureArray(const Builder &builder)
-        : m_name(builder.m_name), m_format(builder.m_format), m_width(builder.m_width), m_height(builder.m_height)
+    TextureArray::TextureArray(const Core::Device& device, const Builder &builder)
+        : m_device(device), m_name(builder.m_name), m_format(builder.m_format), m_width(builder.m_width), m_height(builder.m_height)
     {
         const auto extent = vk::Extent3D(builder.m_width, builder.m_height, 1);
         const auto mipLevels = builder.m_createMipmaps ? static_cast<uint32_t>(std::ceil(std::log2(std::max(builder.m_width, builder.m_height)))) + 1 : 1;
@@ -68,8 +69,7 @@ namespace mgv {
             .SampleCount(vk::SampleCountFlagBits::e1)
             .InitialLayout(vk::ImageLayout::eUndefined)
             .UsageFlags(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled)
-            .ViewType(vk::ImageViewType::e2DArray)
-            .Build();
+            .Build(m_device);
         m_image->TransitionLayout(vk::ImageLayout::eTransferDstOptimal);
 
         const uint32_t numThreads = std::thread::hardware_concurrency();
@@ -91,6 +91,7 @@ namespace mgv {
 
         for (uint32_t i = 0; i < builder.m_data.size(); i++) {
             const auto stagingBuffer = std::make_unique<Memory::Buffer>(
+                m_device,
                 sizeof(glm::u8vec4), builder.m_width * builder.m_height,
                 vk::BufferUsageFlagBits::eTransferSrc,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -105,9 +106,26 @@ namespace mgv {
 
         m_image->GenerateMipmaps();
 
+        m_imageViews.emplace_back(Memory::ImageView::Builder(*m_image)
+            .ViewType(vk::ImageViewType::e2DArray)
+            .BaseMipLevel(0)
+            .LevelCount(mipLevels)
+            .BaseArrayLayer(0)
+            .LayerCount(static_cast<uint32_t>(builder.m_images.size() + builder.m_data.size()))
+            .Build(m_device));
+
+        constexpr auto samplerCreateInfo = Memory::Sampler::CreateInfo {
+            .magFilter = vk::Filter::eLinear,
+            .minFilter = vk::Filter::eLinear,
+            .addressMode = vk::SamplerAddressMode::eRepeat,
+            .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        };
+
+        m_sampler = std::make_unique<Memory::Sampler>(m_device, samplerCreateInfo);
+
         m_descriptorInfo = vk::DescriptorImageInfo()
-            .setSampler(Memory::Sampler::Get(vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat, vk::SamplerMipmapMode::eLinear))
-            .setImageView(m_image->ImageView())
+            .setSampler(m_sampler->Handle())
+            .setImageView(m_imageViews[0]->Handle())
             .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 }

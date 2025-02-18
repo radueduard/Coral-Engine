@@ -25,44 +25,40 @@ namespace Core {
          * @param resizable If the window is resizable (when fullscreen the value is ignored)
          * @param fullscreen If the window is fullscreen (overrides the extent value)
          */
-        struct Info {
+        struct CreateInfo {
             std::string title;
             vk::Extent2D extent;
             bool resizable;
             bool fullscreen;
         };
 
-        static void Init(const Info&);
-        static void Destroy();
-
-        static GLFWwindow* Get() { return m_instance->m_window; }
-
-        explicit Window(const Info&);
+        explicit Window(const CreateInfo&);
         ~Window();
 
         Window(const Window &) = delete;
         Window &operator=(const Window &) = delete;
 
-        [[nodiscard]] static bool ShouldClose() { return glfwWindowShouldClose(m_instance->m_window); }
-        static void Close() { glfwSetWindowShouldClose(m_instance->m_window, GLFW_TRUE); }
-        static void PollEvents() { glfwPollEvents(); }
+        [[nodiscard]] bool ShouldClose() const { return glfwWindowShouldClose(m_window); }
+        void Close() const { glfwSetWindowShouldClose(m_window, GLFW_TRUE); }
+        void PollEvents() const { glfwPollEvents(); }
 
-        [[nodiscard]] static vk::Extent2D Extent() { return m_instance->m_info.extent; }
-        [[nodiscard]] static std::vector<const char*> GetRequiredExtensions() ;
-        [[nodiscard]] static vk::SurfaceKHR CreateSurface(const vk::Instance&);
+        [[nodiscard]] GLFWwindow* GetHandle() const { return m_window; }
+        [[nodiscard]] vk::Extent2D Extent() const { return m_info.extent; }
+        [[nodiscard]] std::vector<const char*> GetRequiredExtensions() const;
+        [[nodiscard]] vk::SurfaceKHR CreateSurface(const vk::Instance&) const;
 
-        [[nodiscard]] static bool IsPaused() { return m_instance->m_paused; }
+        [[nodiscard]] bool IsPaused() const { return m_paused; }
 
-        static void Pause() { m_instance->m_paused = true; }
-        static void UnPause() { m_instance->m_paused = false; }
+        void Pause() { m_paused = true; }
+        void UnPause() { m_paused = false; }
 
-        static void UpdateDeltaTime();
-        [[nodiscard]] static float DeltaTime() { return static_cast<float>(m_instance->m_deltaTime); }
-        [[nodiscard]] static float TimeElapsed() { return static_cast<float>(glfwGetTime()); }
+        void UpdateDeltaTime();
+        [[nodiscard]] float DeltaTime() const { return static_cast<float>(m_deltaTime); }
+        [[nodiscard]] float TimeElapsed() const { return static_cast<float>(glfwGetTime()); }
 
-        static void SetTitle(const std::string &title) {
-            m_instance->m_info.title = title;
-            glfwSetWindowTitle(m_instance->m_window, title.c_str());
+        void SetTitle(const std::string &title) {
+            m_info.title = title;
+            glfwSetWindowTitle(m_window, title.c_str());
         }
     private:
         /**
@@ -77,13 +73,11 @@ namespace Core {
             static void framebufferResize(GLFWwindow*, int, int);
         };
 
-        static std::unique_ptr<Window> m_instance;
-
         GLFWwindow* m_window;
         GLFWmonitor* m_monitor;
         const GLFWvidmode *m_videoMode;
 
-        Info m_info;
+        CreateInfo m_info;
         bool m_paused = false;
 
         double m_lastTime = 0.0;

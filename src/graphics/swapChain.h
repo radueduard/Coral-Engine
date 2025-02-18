@@ -6,12 +6,14 @@
 
 #include <vulkan/vulkan.hpp>
 
-namespace mgv {
-    struct Frame;
-    class Renderer;
+namespace Memory {
+    class Image;
 }
 
 namespace Core {
+    class Device;
+    struct Frame;
+    class Scheduler;
     struct Queue;
 }
 
@@ -22,14 +24,15 @@ namespace Graphics {
 namespace Graphics {
     class SwapChain {
     public:
-        struct Settings {
+        struct CreateInfo {
+            vk::Extent2D extent;
             uint32_t minImageCount;
             uint32_t imageCount;
             vk::SampleCountFlagBits sampleCount;
             std::vector<uint32_t> queueFamilyIndices;
         };
 
-        SwapChain(vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain = nullptr);
+        explicit SwapChain(const Core::Device& device, const CreateInfo& createInfo);
         ~SwapChain();
 
         vk::SwapchainKHR operator *() const { return m_swapChain; }
@@ -37,27 +40,35 @@ namespace Graphics {
         [[nodiscard]] uint32_t MinImageCount() const { return m_minImageCount; }
         [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
         [[nodiscard]] vk::SampleCountFlagBits SampleCount() const;
-
         [[nodiscard]] RenderPass &RenderPass() const { return *m_renderPass; }
 
-        vk::Result Acquire(const mgv::Frame &frame);
-
+        void Resize(vk::Extent2D newSize);
+        vk::Result Acquire(const Core::Frame &frame);
         void Render(vk::CommandBuffer commandBuffer) const;
+        vk::Result Present(const Core::Frame &frame);
 
-        vk::Result Present(const mgv::Frame &frame);
     private:
-        vk::SwapchainKHR m_swapChain;
-        vk::Extent2D m_extent;
-        uint32_t m_minImageCount;
-        uint32_t m_imageCount;
+        const Core::Device &m_device;
+
+        vk::Extent2D m_extent = {};
+        vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
+        uint32_t m_minImageCount = 0;
+        uint32_t m_imageCount = 0;
+        uint32_t m_imageIndex = 0;
+        vk::SurfaceFormatKHR m_surfaceFormat = {};
+        vk::PresentModeKHR m_presentMode = {};
+
+        std::vector<unsigned> m_queueFamilyIndices;
         Core::Queue *m_presentQueue;
 
         std::unique_ptr<Graphics::RenderPass> m_renderPass;
 
-        uint32_t m_imageIndex = 0;
+        vk::SwapchainKHR m_swapChain = nullptr;
+        std::vector<std::unique_ptr<Memory::Image>> m_swapChainImages;
+        std::vector<std::unique_ptr<Memory::Image>> m_multiSampledImages;
 
-        void CreateSwapChain(const vk::SurfaceFormatKHR &surfaceFormat, const vk::PresentModeKHR &presentMode, const Settings& settings, const std::unique_ptr<SwapChain> &oldSwapChain);
-        void CreateRenderPass(const vk::SurfaceFormatKHR &surfaceFormat, const Settings& settings, const std::unique_ptr<SwapChain> &oldSwapChain);
+        void CreateSwapChain();
+        void CreateRenderPass();
 
         static vk::SurfaceFormatKHR ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
         static vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);

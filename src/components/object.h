@@ -5,7 +5,6 @@
 #pragma once
 
 #include <memory>
-#include <ranges>
 #include <typeindex>
 
 #include <glm/glm.hpp>
@@ -16,6 +15,7 @@
 #include <boost/unordered_map.hpp>
 
 #include "gui/layer.h"
+#include "utils/narryTree.h"
 
 namespace mgv {
     struct Transform {
@@ -31,45 +31,38 @@ namespace mgv {
         }
     };
 
-    class Component : public GUI::SubLayer {
+    class Component {
         friend class Object;
     public:
         explicit Component(const Object& owner);
-        ~Component() override = default;
+        virtual ~Component() = default;
 
         virtual void Update(double deltaTime) = 0;
         virtual void LateUpdate(double deltaTime) {}
 
         [[nodiscard]] Object& Owner() const;
 
-        void OnUIRender() override {}
-
     protected:
         boost::uuids::uuid m_ownerId;
     };
 
-    class Object : public Transform {
+    class Object final : public Transform, public NarryTree<Object> {
         friend class Component;
 
         static boost::uuids::random_generator generator;
-        static boost::unordered_map<boost::uuids::uuid, Object*> objects;
+        inline static boost::unordered_map<boost::uuids::uuid, Object*> objects;
     public:
         explicit Object(std::string name = "root");
-        ~Object();
+        ~Object() override;
 
         Object(const Object&) = delete;
         Object& operator=(const Object&) = delete;
 
         [[nodiscard]] const boost::uuids::uuid &Id() const { return m_id; }
         [[nodiscard]] const std::string &Name() const { return m_name; }
-        [[nodiscard]] Object* Parent() const { return m_parent; }
-        [[nodiscard]] std::vector<Object*> Children() const;
         [[nodiscard]] std::vector<Component*> Components() const;
         [[nodiscard]] bool Moved() const { return m_moved; }
         uint32_t& Index() { return m_indexInBuffer; }
-
-        void AddChild(std::unique_ptr<Object> child);
-        void RemoveChild(const boost::uuids::uuid& id);
 
         template<typename T>
         std::optional<T*> Get() {
@@ -83,7 +76,7 @@ namespace mgv {
 
         template<typename T>
         std::optional<T*> GetFromChildren() {
-            for (const auto &child: m_children | std::views::values) {
+            for (const auto &child: m_children) {
                 if (auto result = child->Get<T>(); result.has_value()) {
                     return result;
                 }
@@ -119,10 +112,10 @@ namespace mgv {
         uint32_t m_indexInBuffer = 0;
         bool m_moved = false;
 
-        Object *m_parent = nullptr;
-        boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Object>> m_children;
         boost::unordered_map<std::type_index, std::unique_ptr<mgv::Component>> m_components;
-
-
     };
+}
+
+inline std::string to_string(const mgv::Object& object) {
+    return object.Name();
 }

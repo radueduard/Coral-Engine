@@ -7,7 +7,7 @@
 #include <iostream>
 
 namespace Memory::Descriptor {
-    Set::Builder & Set::Builder::WriteBuffer(uint32_t binding, const vk::DescriptorBufferInfo &bufferInfo) {
+    Set::Builder & Set::Builder::WriteBuffer(const uint32_t binding, const vk::DescriptorBufferInfo &bufferInfo) {
         if (!m_layout.HasBinding(binding)) {
             std::cerr << "Binding " << binding << " not found in layout" << std::endl;
             return *this;
@@ -26,7 +26,7 @@ namespace Memory::Descriptor {
         return *this;
     }
 
-    Set::Builder & Set::Builder::WriteImage(uint32_t binding, const vk::DescriptorImageInfo &imageInfo) {
+    Set::Builder & Set::Builder::WriteImage(const uint32_t binding, const vk::DescriptorImageInfo &imageInfo) {
         if (!m_layout.HasBinding(binding)) {
             std::cerr << "Binding " << binding << " not found in layout" << std::endl;
             return *this;
@@ -45,21 +45,22 @@ namespace Memory::Descriptor {
         return *this;
     }
 
-    std::unique_ptr<Set> Set::Builder::Build() {
-        return std::make_unique<Set>(*this);
+    std::unique_ptr<Set> Set::Builder::Build(const Core::Device& device) {
+        return std::make_unique<Set>(device, *this);
     }
 
 
-    Set::Set(Builder &builder) : m_pool{builder.m_pool}, m_layout{builder.m_layout} {
+    Set::Set(const Core::Device& device, Builder &builder)
+    : m_device(device), m_pool{builder.m_pool}, m_layout{builder.m_layout} {
         m_set = m_pool.Allocate(m_layout);
         for (auto &write: builder.m_writes) {
             write.setDstSet(m_set);
         }
-        (*Core::Device::Get()).updateDescriptorSets(builder.m_writes, {});
+        m_device.Handle().updateDescriptorSets(builder.m_writes, {});
     }
 
     Set::~Set() {
-        (*Core::Device::Get()).waitIdle();
+        m_device.Handle().waitIdle();
         m_pool.Free(m_set);
     }
 }

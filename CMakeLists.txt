@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.29)
 project(MotorGraficVulkan)
 
 # Find and include the required packages
@@ -8,12 +8,24 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan COMPONENTS glslang shaderc_combined SPIRV-Tools REQUIRED)
+message(STATUS "Vulkan found: ${Vulkan_FOUND}")
+message(STATUS "Vulkan_INCLUDE_DIRS: ${Vulkan_INCLUDE_DIRS}")
+message(STATUS "Vulkan_LIBRARIES: ${Vulkan_LIBRARIES}")
+message(STATUS "Vulkan_VERSION: ${Vulkan_VERSION}")
+
+find_package(glslang REQUIRED)
+
+find_package(spirv_cross_core CONFIG REQUIRED)
+find_package(spirv_cross_glsl CONFIG REQUIRED)
+find_package(spirv_cross_cpp CONFIG REQUIRED)
+
 find_package(glfw3 CONFIG REQUIRED)
 find_package(assimp REQUIRED)
 find_package(nlohmann_json REQUIRED)
+
+cmake_policy(SET CMP0167 OLD)
 find_package(Boost COMPONENTS REQUIRED)
-find_package(glslang CONFIG REQUIRED)
 
 # Add the source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
@@ -27,16 +39,19 @@ add_executable(MotorGraficVulkan ${SOURCES} ${HEADERS})
 
 # Link the required libraries
 target_link_libraries(MotorGraficVulkan PRIVATE Vulkan::Vulkan)
-target_link_libraries(MotorGraficVulkan PRIVATE glfw)
-target_link_libraries(MotorGraficVulkan PRIVATE assimp::assimp)
-target_link_libraries(MotorGraficVulkan PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(MotorGraficVulkan PRIVATE ${Boost_LIBRARIES})
-target_link_libraries(MotorGraficVulkan PRIVATE bcrypt)
 target_link_libraries(MotorGraficVulkan PRIVATE
         glslang::glslang
         glslang::glslang-default-resource-limits
         glslang::SPIRV
         glslang::SPVRemapper)
+target_link_libraries(MotorGraficVulkan PRIVATE spirv-cross-cpp)
+
+target_link_libraries(MotorGraficVulkan PRIVATE glfw)
+target_link_libraries(MotorGraficVulkan PRIVATE assimp::assimp)
+target_link_libraries(MotorGraficVulkan PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(MotorGraficVulkan PRIVATE ${Boost_LIBRARIES})
+target_link_libraries(MotorGraficVulkan PRIVATE bcrypt)
+
 
 # imgui
 set(IMGUI_DIR external/imgui)

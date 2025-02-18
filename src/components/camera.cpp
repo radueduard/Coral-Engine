@@ -32,7 +32,7 @@ namespace mgv {
 
         RecalculateProjection();
         RecalculateView();
-        CalculateScreenFrustums(64, 64);
+        // CalculateScreenFrustums(64, 64);
 
         cameras.emplace_back(this);
     }
@@ -69,7 +69,7 @@ namespace mgv {
 
         if (m_changed) {
             RecalculateProjection();
-            CalculateScreenFrustums(64, 64);
+            // CalculateScreenFrustums(64, 64);
         }
     }
 
@@ -89,7 +89,7 @@ namespace mgv {
 
         m_viewportSize = size;
         RecalculateProjection();
-        CalculateScreenFrustums(64, 64);
+        // CalculateScreenFrustums(64, 64);
         m_moved = true;
     }
 
@@ -102,45 +102,6 @@ namespace mgv {
             .flippedView = m_flippedView,
             .flippedInverseView = m_flippedInverseView
         };
-    }
-
-    void Camera::OnUIRender() {
-        ImGui::Text("Projection details");
-        if (const char* items[] = { "Perspective", "Orthographic" }; ImGui::Combo("Type", reinterpret_cast<int *>(&m_type), items, IM_ARRAYSIZE(items))) {
-            switch (m_type) {
-                case Perspective:
-                    m_projectionData.perspective = { 75.0f, 0.01f, 100.0f };
-                break;
-                case Orthographic:
-                    m_projectionData.orthographic = {
-                        -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f
-                    };
-                break;
-            }
-            m_changed = true;
-        }
-
-        switch (this->m_type) {
-            case Perspective:
-                m_changed |= ImGui::DragFloat("Fov", &m_projectionData.perspective.fov, 0.1f, 1.0f, 179.0f);
-                m_changed |= ImGui::DragFloat("Near", &m_projectionData.perspective.near, 0.1f, 0.01f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-                m_changed |= ImGui::DragFloat("Far", &m_projectionData.perspective.far, 100.f, 10.0f, 10000.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
-                break;
-            case Orthographic:
-                m_changed |= ImGui::DragFloat("Left", &m_projectionData.orthographic.left, 0.1f, - 10.0f, 0.0f);
-                m_changed |= ImGui::DragFloat("Right", &m_projectionData.orthographic.right, 0.1f, 0.0f, 10.0f);
-                m_changed |= ImGui::DragFloat("Bottom", &m_projectionData.orthographic.bottom, 0.1f, -10.0f, 0.0f);
-                m_changed |= ImGui::DragFloat("Top", &m_projectionData.orthographic.top, 0.1f, 0.0f, 10.0f);
-                m_changed |= ImGui::DragFloat("Near", &m_projectionData.orthographic.near, 0.1f, -10.0f, 0.0f);
-                m_changed |= ImGui::DragFloat("Far", &m_projectionData.orthographic.far, 0.1f, 0.0f, 10.0f);
-                break;
-        }
-
-        ImGui::Text("View details");
-        ImGui::Text("Position: (%.2f, %.2f, %.2f)", Owner().position.x, Owner().position.y, Owner().position.z);
-        ImGui::Text("Forward: (%.2f, %.2f, %.2f)", m_view[0][2], m_view[1][2], m_view[2][2]);
-        ImGui::Text("Up: (%.2f, %.2f, %.2f)", m_view[0][1], m_view[1][1], m_view[2][1]);
-        ImGui::Text("Right: (%.2f, %.2f, %.2f)", m_view[0][0], m_view[1][0], m_view[2][0]);
     }
 
     void Camera::RecalculateProjection() {
@@ -188,64 +149,65 @@ namespace mgv {
         }
     }
 
-    void Camera::CalculateScreenFrustums(const uint32_t chunksOnX, const uint32_t chunksOnY) {
-        if (!m_primary)
-            return;
-
-        if (m_frustumBuffer == nullptr || m_frustumBuffer->InstanceCount() != chunksOnX * chunksOnY) {
-            m_frustumBuffer = std::make_unique<Memory::Buffer>(
-                sizeof(Frustum), chunksOnX * chunksOnY,
-                vk::BufferUsageFlagBits::eStorageBuffer,
-                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-        }
-
-        const float aspectRatio = static_cast<float>(m_viewportSize.x) / static_cast<float>(m_viewportSize.y);
-        const float fov = m_projectionData.perspective.fov;
-        const float near = m_projectionData.perspective.near;
-        const float far = m_projectionData.perspective.far;
-
-        const float tanHalfFov = tan(glm::radians(fov) / 2.0f);
-        const float nearHeight = tanHalfFov * near;
-        const float nearWidth = nearHeight * aspectRatio;
-
-        const auto nearTopLeft = glm::vec3(-nearWidth, nearHeight, -near);
-        glm::vec2 deltaNear = 2.0f * glm::vec2(nearWidth, -nearHeight) / glm::vec2(chunksOnX, chunksOnY);
-
-        auto frustums = m_frustumBuffer->Map<Frustum>();
-        for (uint32_t i = 0; i < chunksOnX; i++) {
-            for (uint32_t j = 0; j < chunksOnY; j++) {
-                auto chunk = glm::vec2(static_cast<float>(i), static_cast<float>(j));
-
-                glm::vec3 topLeft = glm::vec3(nearTopLeft.x + deltaNear.x * chunk.x, nearTopLeft.y + deltaNear.y * chunk.y, -near);
-                glm::vec3 topRight = glm::vec3(nearTopLeft.x + deltaNear.x * (chunk.x + 1), nearTopLeft.y + deltaNear.y * chunk.y, -near);
-                glm::vec3 bottomLeft = glm::vec3(nearTopLeft.x + deltaNear.x * chunk.x, nearTopLeft.y + deltaNear.y * (chunk.y + 1), -near);
-                glm::vec3 bottomRight = glm::vec3(nearTopLeft.x + deltaNear.x * (chunk.x + 1), nearTopLeft.y + deltaNear.y * (chunk.y + 1), -near);
-
-                glm::vec3 center = ((topLeft + topRight) / 2.0f + (bottomLeft + bottomRight) / 2.0f) / 2.0f;
-
-                glm::vec3 dirTopLeft = glm::normalize(topLeft);
-                glm::vec3 dirTopRight = glm::normalize(topRight);
-                glm::vec3 dirBottomLeft = glm::normalize(bottomLeft);
-                glm::vec3 dirBottomRight = glm::normalize(bottomRight);
-
-                glm::vec3 rightNormal = glm::normalize(glm::cross(dirTopRight, dirBottomRight));
-                glm::vec3 leftNormal = glm::normalize(glm::cross(dirBottomLeft, dirTopLeft));
-                glm::vec3 topNormal = glm::normalize(glm::cross(dirTopLeft, dirTopRight));
-                glm::vec3 bottomNormal = glm::normalize(glm::cross(dirBottomRight, dirBottomLeft));
-
-                frustums[i * chunksOnY + j] = {
-                    .left = glm::vec4(leftNormal * glm::sign(glm::dot(leftNormal, center)), 0.0f),
-                    .right = glm::vec4(rightNormal * glm::sign(glm::dot(rightNormal, center)), 0.0f),
-                    .top = glm::vec4(topNormal * glm::sign(glm::dot(topNormal, center)), 0.0f),
-                    .bottom = glm::vec4(bottomNormal * glm::sign(glm::dot(bottomNormal, center)), 0.0f),
-                    .near = glm::vec4(0.0f, 0.0f, -1.0f, near),
-                    .far = glm::vec4(0.0f, 0.0f, 1.0f, far)
-                };
-            }
-        }
-        m_frustumBuffer->Flush();
-        m_frustumBuffer->Unmap();
-    }
+    // void Camera::CalculateScreenFrustums(const uint32_t chunksOnX, const uint32_t chunksOnY) {
+    //     if (!m_primary)
+    //         return;
+    //
+    //     if (m_frustumBuffer == nullptr || m_frustumBuffer->InstanceCount() != chunksOnX * chunksOnY) {
+    //         m_frustumBuffer = std::make_unique<Memory::Buffer>(
+    //             m_device,
+    //             sizeof(Frustum), chunksOnX * chunksOnY,
+    //             vk::BufferUsageFlagBits::eStorageBuffer,
+    //             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    //     }
+    //
+    //     const float aspectRatio = static_cast<float>(m_viewportSize.x) / static_cast<float>(m_viewportSize.y);
+    //     const float fov = m_projectionData.perspective.fov;
+    //     const float near = m_projectionData.perspective.near;
+    //     const float far = m_projectionData.perspective.far;
+    //
+    //     const float tanHalfFov = tan(glm::radians(fov) / 2.0f);
+    //     const float nearHeight = tanHalfFov * near;
+    //     const float nearWidth = nearHeight * aspectRatio;
+    //
+    //     const auto nearTopLeft = glm::vec3(-nearWidth, nearHeight, -near);
+    //     glm::vec2 deltaNear = 2.0f * glm::vec2(nearWidth, -nearHeight) / glm::vec2(chunksOnX, chunksOnY);
+    //
+    //     auto frustums = m_frustumBuffer->Map<Frustum>();
+    //     for (uint32_t i = 0; i < chunksOnX; i++) {
+    //         for (uint32_t j = 0; j < chunksOnY; j++) {
+    //             auto chunk = glm::vec2(static_cast<float>(i), static_cast<float>(j));
+    //
+    //             glm::vec3 topLeft = glm::vec3(nearTopLeft.x + deltaNear.x * chunk.x, nearTopLeft.y + deltaNear.y * chunk.y, -near);
+    //             glm::vec3 topRight = glm::vec3(nearTopLeft.x + deltaNear.x * (chunk.x + 1), nearTopLeft.y + deltaNear.y * chunk.y, -near);
+    //             glm::vec3 bottomLeft = glm::vec3(nearTopLeft.x + deltaNear.x * chunk.x, nearTopLeft.y + deltaNear.y * (chunk.y + 1), -near);
+    //             glm::vec3 bottomRight = glm::vec3(nearTopLeft.x + deltaNear.x * (chunk.x + 1), nearTopLeft.y + deltaNear.y * (chunk.y + 1), -near);
+    //
+    //             glm::vec3 center = ((topLeft + topRight) / 2.0f + (bottomLeft + bottomRight) / 2.0f) / 2.0f;
+    //
+    //             glm::vec3 dirTopLeft = glm::normalize(topLeft);
+    //             glm::vec3 dirTopRight = glm::normalize(topRight);
+    //             glm::vec3 dirBottomLeft = glm::normalize(bottomLeft);
+    //             glm::vec3 dirBottomRight = glm::normalize(bottomRight);
+    //
+    //             glm::vec3 rightNormal = glm::normalize(glm::cross(dirTopRight, dirBottomRight));
+    //             glm::vec3 leftNormal = glm::normalize(glm::cross(dirBottomLeft, dirTopLeft));
+    //             glm::vec3 topNormal = glm::normalize(glm::cross(dirTopLeft, dirTopRight));
+    //             glm::vec3 bottomNormal = glm::normalize(glm::cross(dirBottomRight, dirBottomLeft));
+    //
+    //             frustums[i * chunksOnY + j] = {
+    //                 .left = glm::vec4(leftNormal * glm::sign(glm::dot(leftNormal, center)), 0.0f),
+    //                 .right = glm::vec4(rightNormal * glm::sign(glm::dot(rightNormal, center)), 0.0f),
+    //                 .top = glm::vec4(topNormal * glm::sign(glm::dot(topNormal, center)), 0.0f),
+    //                 .bottom = glm::vec4(bottomNormal * glm::sign(glm::dot(bottomNormal, center)), 0.0f),
+    //                 .near = glm::vec4(0.0f, 0.0f, -1.0f, near),
+    //                 .far = glm::vec4(0.0f, 0.0f, 1.0f, far)
+    //             };
+    //         }
+    //     }
+    //     m_frustumBuffer->Flush();
+    //     m_frustumBuffer->Unmap();
+    // }
 
     void Camera::Rotate(float yaw, float pitch) {
         if (pitch == 0 && yaw == 0)

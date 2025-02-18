@@ -3,20 +3,29 @@
 //
 
 #include "swapChain.h"
-#include "../renderer.h"
 
 #include <iostream>
 
 #include "renderPass.h"
+#include "core/device.h"
 #include "core/physicalDevice.h"
 #include "core/runtime.h"
-#include "gui/manager.h"
 #include "memory/image.h"
+
+#include "../core/scheduler.h"
+#include "gui/manager.h"
 
 namespace Graphics {
     vk::SurfaceFormatKHR SwapChain::ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) {
+        // for (const auto &availableFormat : availableFormats) {
+        //     std::cout << "Available format: " << vk::to_string(availableFormat.format) << std::endl;
+        //     std::cout << "Available color space: " << vk::to_string(availableFormat.colorSpace) << std::endl << std::endl;
+        // }
+
         for (const auto &availableFormat : availableFormats) {
-            if (availableFormat.format == vk::Format::eR8G8B8A8Srgb && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+            if (availableFormat.format == vk::Format::eA2B10G10R10UnormPack32 && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+            // if (availableFormat.format == vk::Format::eB8G8R8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+            // if (availableFormat.format == vk::Format::eR8G8B8A8Srgb && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
                 return availableFormat;
             }
         }
@@ -39,88 +48,79 @@ namespace Graphics {
             return capabilities.currentExtent;
         }
         vk::Extent2D actualExtent = extent;
-        actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-        actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+        actualExtent.width = std::max<uint32_t>(capabilities.minImageExtent.width, std::min<uint32_t>(capabilities.maxImageExtent.width, actualExtent.width));
+        actualExtent.height = std::max<uint32_t>(capabilities.minImageExtent.height, std::min<uint32_t>(capabilities.maxImageExtent.height, actualExtent.height));
         return actualExtent;
     }
 
-    SwapChain::SwapChain(const vk::Extent2D extent, const Settings& settings, std::unique_ptr<SwapChain> oldSwapChain)
-        : m_minImageCount(settings.minImageCount), m_imageCount(settings.imageCount)
+    SwapChain::SwapChain(const Core::Device& device, const CreateInfo& createInfo)
+        : m_device(device), m_extent(createInfo.extent), m_sampleCount(createInfo.sampleCount), m_minImageCount(createInfo.minImageCount), m_imageCount(createInfo.imageCount)
     {
-        const auto &m_device = Core::Device::Get();
-        (*m_device).waitIdle();
-        m_device.QuerySurfaceCapabilities();
+        m_device.Handle().waitIdle();
+        m_queueFamilyIndices = createInfo.queueFamilyIndices;
+        m_presentQueue = m_device.RequestPresentQueue().value();
+        m_queueFamilyIndices.emplace_back(m_presentQueue->familyIndex);
 
-        const vk::SurfaceFormatKHR surfaceFormat = ChooseSurfaceFormat(Core::Runtime::Get().PhysicalDevice().SurfaceFormats());
-        const vk::PresentModeKHR presentMode = ChoosePresentMode(Core::Runtime::Get().PhysicalDevice().SurfacePresentModes());
-        m_extent = ChooseExtent(Core::Runtime::Get().PhysicalDevice().SurfaceCapabilities(), extent);
-
-        if (oldSwapChain) {
-            m_presentQueue = oldSwapChain->m_presentQueue;
-        } else {
-            m_presentQueue = m_device.RequestPresentQueue().value();
-        }
-
-        CreateSwapChain(surfaceFormat, presentMode, settings, oldSwapChain);
-        CreateRenderPass(surfaceFormat, settings, oldSwapChain);
-
-        oldSwapChain.reset();
+        CreateSwapChain();
+        CreateRenderPass();
     }
 
-    void SwapChain::CreateSwapChain(const vk::SurfaceFormatKHR &surfaceFormat, const vk::PresentModeKHR &presentMode, const Settings& settings, const std::unique_ptr<SwapChain> &oldSwapChain) {
-        auto queueFamilyIndices = settings.queueFamilyIndices;
-        queueFamilyIndices.push_back(m_presentQueue->familyIndex);
+    void SwapChain::CreateSwapChain() {
+        const auto& physicalDevice = m_device.QuerySurfaceCapabilities();
+        m_surfaceFormat = ChooseSurfaceFormat(physicalDevice.SurfaceFormats());
+        m_presentMode = ChoosePresentMode(physicalDevice.SurfacePresentModes());
+        m_extent = ChooseExtent(physicalDevice.SurfaceCapabilities(), m_extent);
 
-        const auto& device = Core::Device::Get();
+        const vk::SwapchainKHR oldSwapChain = m_swapChain;
 
-        auto createInfo = vk::SwapchainCreateInfoKHR()
-            .setSurface(Core::Runtime::Get().PhysicalDevice().Surface())
-            .setMinImageCount(settings.imageCount)
-            .setImageFormat(surfaceFormat.format)
-            .setImageColorSpace(surfaceFormat.colorSpace)
+        const auto createInfo = vk::SwapchainCreateInfoKHR()
+            .setSurface(physicalDevice.Surface())
+            .setMinImageCount(m_imageCount)
+            .setImageFormat(m_surfaceFormat.format)
+            .setImageColorSpace(m_surfaceFormat.colorSpace)
             .setImageExtent(m_extent)
             .setImageArrayLayers(1)
             .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
             .setImageSharingMode(vk::SharingMode::eExclusive)
-            .setQueueFamilyIndices(queueFamilyIndices)
-            .setPreTransform(Core::Runtime::Get().PhysicalDevice().SurfaceCapabilities().currentTransform)
+            .setQueueFamilyIndices(m_queueFamilyIndices)
+            .setPreTransform(physicalDevice.SurfaceCapabilities().currentTransform)
             .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
-            .setPresentMode(presentMode)
+            .setPresentMode(m_presentMode)
+            .setOldSwapchain(oldSwapChain)
             .setClipped(true);
+        m_swapChain = m_device.Handle().createSwapchainKHR(createInfo);
 
         if (oldSwapChain) {
-            createInfo.setOldSwapchain(oldSwapChain->m_swapChain);
-            m_imageIndex = oldSwapChain->m_imageIndex;
+            m_device.Handle().destroySwapchainKHR(oldSwapChain);
         }
-        m_swapChain = (*device).createSwapchainKHR(createInfo);
     }
 
-    void SwapChain::CreateRenderPass(const vk::SurfaceFormatKHR &surfaceFormat, const Settings& settings, const std::unique_ptr<SwapChain> &oldSwapChain) {
-        const auto &device = Core::Device::Get();
-        const auto swapChainImageHandles = (*device).getSwapchainImagesKHR(m_swapChain);
-        std::vector<std::unique_ptr<Memory::Image>> swapChainImages;
-        swapChainImages.reserve(swapChainImageHandles.size());
+    void SwapChain::CreateRenderPass() {
+        const auto swapChainImageHandles = m_device.Handle().getSwapchainImagesKHR(m_swapChain);
+
+        m_swapChainImages.clear();
+        m_swapChainImages.reserve(swapChainImageHandles.size());
         for (const auto &image : swapChainImageHandles) {
-            swapChainImages.emplace_back(Memory::Image::Builder()
+            m_swapChainImages.emplace_back(Memory::Image::Builder()
                 .Image(image)
-                .Format(surfaceFormat.format)
+                .Format(m_surfaceFormat.format)
                 .Extent({ m_extent.width, m_extent.height, 1 })
                 .UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
                 .MipLevels(1)
                 .LayersCount(1)
-                .InitialLayout(vk::ImageLayout::eUndefined)
-                .Build());
+                .InitialLayout(vk::ImageLayout::ePresentSrcKHR)
+                .Build(m_device));
         }
 
         auto colorAttachment = RenderPass::Attachment {
             .description = vk::AttachmentDescription()
-                .setFormat(surfaceFormat.format)
-                .setSamples(settings.sampleCount)
+                .setFormat(m_surfaceFormat.format)
+                .setSamples(m_sampleCount)
                 .setLoadOp(vk::AttachmentLoadOp::eClear)
                 .setStoreOp(vk::AttachmentStoreOp::eStore)
                 .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                 .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
                 .setFinalLayout(vk::ImageLayout::ePresentSrcKHR),
             .reference = vk::AttachmentReference()
                 .setAttachment(0)
@@ -144,8 +144,10 @@ namespace Graphics {
             .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead)
             .setDstAccessMask(vk::AccessFlagBits::eNone);
 
-        if (settings.sampleCount == vk::SampleCountFlagBits::e1) {
-            colorAttachment.images = std::move(swapChainImages);
+        if (m_sampleCount == vk::SampleCountFlagBits::e1) {
+            for (const auto& image : m_swapChainImages) {
+                colorAttachment.images.emplace_back(image.get());
+            }
 
             auto subpass = vk::SubpassDescription()
                 .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
@@ -153,20 +155,22 @@ namespace Graphics {
                 .setPColorAttachments(&colorAttachment.reference);
 
             m_renderPass = RenderPass::Builder()
-               .ImageCount(settings.imageCount)
+               .ImageCount(m_imageCount)
                .OutputImageIndex(0)
                .Extent(m_extent)
                .Attachment(0, std::move(colorAttachment))
                .Subpass(subpass)
                .Dependency(dependency1)
                .Dependency(dependency2)
-               .Build();
+               .Build(m_device);
         } else {
-            // colorAttachment.description.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
+            colorAttachment.description
+                .setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                .setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
             RenderPass::Attachment resolveAttachment = {
                 .description = vk::AttachmentDescription()
-                    .setFormat(surfaceFormat.format)
+                    .setFormat(m_surfaceFormat.format)
                     .setSamples(vk::SampleCountFlagBits::e1)
                     .setLoadOp(vk::AttachmentLoadOp::eDontCare)
                     .setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -180,19 +184,24 @@ namespace Graphics {
                 .clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
             };
 
-            for (uint32_t i = 0; i < settings.imageCount; i++) {
-                colorAttachment.images.emplace_back(Memory::Image::Builder()
-                    .Format(surfaceFormat.format)
+            for (uint32_t i = 0; i < m_imageCount; i++) {
+                auto msaaImage = Memory::Image::Builder()
+                    .Format(m_surfaceFormat.format)
                     .Extent({ m_extent.width, m_extent.height, 1 })
                     .UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
                     .MipLevels(1)
                     .LayersCount(1)
-                    .SampleCount(settings.sampleCount)
-                    .InitialLayout(vk::ImageLayout::eUndefined)
-                    .Build());
+                    .SampleCount(m_sampleCount)
+                    .InitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                    .Build(m_device);
+
+                colorAttachment.images.emplace_back(msaaImage.get());
+                m_multiSampledImages.emplace_back(std::move(msaaImage));
             }
 
-            resolveAttachment.images = std::move(swapChainImages);
+            for (const auto& image : m_swapChainImages) {
+                resolveAttachment.images.emplace_back(image.get());
+            }
 
             auto subpass = vk::SubpassDescription()
                 .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
@@ -201,7 +210,7 @@ namespace Graphics {
                 .setPResolveAttachments(&resolveAttachment.reference);
 
             m_renderPass = RenderPass::Builder()
-                .ImageCount(settings.imageCount)
+                .ImageCount(m_imageCount)
                 .OutputImageIndex(1)
                 .Extent(m_extent)
                 .Attachment(0, std::move(colorAttachment))
@@ -209,28 +218,29 @@ namespace Graphics {
                 .Subpass(subpass)
                 .Dependency(dependency1)
                 .Dependency(dependency2)
-                .Build();
-
-            if (oldSwapChain) {
-                for (auto& program : oldSwapChain->m_renderPass->Programs()) {
-                    m_renderPass->AddProgram(program);
-                }
-            }
+                .Build(m_device);
         }
     }
 
     SwapChain::~SwapChain() {
-        (*Core::Device::Get()).waitIdle();
+        m_device.Handle().waitIdle();
         if (m_swapChain) {
-            (*Core::Device::Get()).destroySwapchainKHR(m_swapChain);
+            m_device.Handle().destroySwapchainKHR(m_swapChain);
         }
     }
 
     vk::SampleCountFlagBits SwapChain::SampleCount() const { return m_renderPass->SampleCount(); }
 
-    vk::Result SwapChain::Acquire(const mgv::Frame &frame) {
+    void SwapChain::Resize(const vk::Extent2D newSize) {
+        m_extent = newSize;
+        m_device.Handle().waitIdle();
+        CreateSwapChain();
+        CreateRenderPass();
+    }
+
+    vk::Result SwapChain::Acquire(const Core::Frame &frame) {
         try {
-            const auto result = (*Core::Device::Get()).acquireNextImageKHR(
+            const auto result = m_device.Handle().acquireNextImageKHR(
                 m_swapChain,
                 UINT64_MAX,
                 frame.imageAvailable);
@@ -242,13 +252,13 @@ namespace Graphics {
     }
 
     void SwapChain::Render(const vk::CommandBuffer commandBuffer) const {
-        m_renderPass->Begin(commandBuffer, mgv::Renderer::CurrentFrame().imageIndex);
+        m_renderPass->Begin(commandBuffer, m_imageIndex);
         m_renderPass->Draw(commandBuffer);
-        GUI::Manager::Render(commandBuffer);
+        GUI::Render(commandBuffer);
         m_renderPass->End(commandBuffer);
     }
 
-    vk::Result SwapChain::Present(const mgv::Frame &frame) {
+    vk::Result SwapChain::Present(const Core::Frame &frame) {
         std::array waitSemaphores = {
             frame.renderFinished
         };
@@ -263,7 +273,7 @@ namespace Graphics {
             .setImageIndices(m_imageIndex);
 
         try {
-            return (**m_presentQueue).presentKHR(presentInfo);
+            return m_presentQueue->Handle().presentKHR(presentInfo);
         } catch (const vk::OutOfDateKHRError &) {
             return vk::Result::eErrorOutOfDateKHR;
         }

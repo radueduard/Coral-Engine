@@ -8,7 +8,7 @@
 
 namespace Ext {
     struct DebugUtils {
-        static void importFunctions(vk::Instance instance);
+        static void ImportFunctions(vk::Instance instance);
 
         static VkResult createDebugUtilsMessengerEXT(
             vk::Instance instance,

@@ -1,0 +1,147 @@
+//
+// Created by radue on 10/17/2024.
+//
+
+#include "shader.h"
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <unordered_map>
+
+#include <glslang/Public/ResourceLimits.h>
+#include <glslang/Public/ShaderLang.h>
+#include <glslang/SPIRV/GlslangToSpv.h>
+
+#include "core/device.h"
+#include "utils/file.h"
+
+#include <spirv_cross/spirv_glsl.hpp>
+
+static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage) {
+    switch (stage) {
+        case vk::ShaderStageFlagBits::eVertex:
+            return EShLangVertex;
+        case vk::ShaderStageFlagBits::eTessellationControl:
+            return EShLangTessControl;
+        case vk::ShaderStageFlagBits::eTessellationEvaluation:
+            return EShLangTessEvaluation;
+        case vk::ShaderStageFlagBits::eGeometry:
+            return EShLangGeometry;
+        case vk::ShaderStageFlagBits::eFragment:
+            return EShLangFragment;
+        case vk::ShaderStageFlagBits::eCompute:
+            return EShLangCompute;
+        case vk::ShaderStageFlagBits::eTaskEXT:
+            return EShLangTask;
+        case vk::ShaderStageFlagBits::eMeshEXT:
+            return EShLangMesh;
+        default:
+            throw std::runtime_error("Unsupported shader stage");
+    }
+}
+
+namespace Core {
+    Shader::Shader(const Device& device, const std::string &path, const vk::ShaderStageFlagBits &stage)
+    : m_device(device), m_path(path), m_stage(stage) {
+        auto extension = path.substr(path.find_last_of('.') + 1);
+
+        const auto glslExtensions = std::unordered_map<std::string, vk::ShaderStageFlagBits> {
+            {"vert", vk::ShaderStageFlagBits::eVertex},
+            {"tesc", vk::ShaderStageFlagBits::eTessellationControl},
+            {"tese", vk::ShaderStageFlagBits::eTessellationEvaluation},
+            {"geom", vk::ShaderStageFlagBits::eGeometry},
+            {"frag", vk::ShaderStageFlagBits::eFragment},
+            {"comp", vk::ShaderStageFlagBits::eCompute},
+            {"task", vk::ShaderStageFlagBits::eTaskEXT},
+            {"mesh", vk::ShaderStageFlagBits::eMeshEXT},
+        };
+
+        if (extension == "spv") {
+            const auto pathWithoutExtension = path.substr(0, path.find_last_of('.'));
+            extension = pathWithoutExtension.substr(pathWithoutExtension.find_last_of('.') + 1);
+            if (!glslExtensions.contains(extension)) {
+                throw std::runtime_error("Unsupported shader extension: " + extension);
+            }
+            m_stage = glslExtensions.at(extension);
+            const auto code = Utils::ReadBinaryFile(path);
+            m_spirVCode.resize(code.size() / sizeof(uint32_t));
+            std::memcpy(m_spirVCode.data(), code.data(), code.size());
+            m_shaderModule = LoadSpirVShader(m_spirVCode);
+        } else if (glslExtensions.contains(extension)) {
+            m_stage = glslExtensions.at(extension);
+            const auto code = Utils::ReadTextFile(path);
+            m_spirVCode = CompileGLSLToSpirV(code, m_stage);
+            m_shaderModule = LoadSpirVShader(m_spirVCode);
+        } else {
+            throw std::runtime_error("Unsupported shader extension: " + extension);
+        }
+    }
+
+    Shader::~Shader() {
+        m_device.Handle().destroyShaderModule(m_shaderModule);
+    }
+
+
+    void Shader::GetReflection() const {
+        const auto module = spirv_cross::Compiler(m_spirVCode);
+        const auto resources = module.get_shader_resources();
+
+        for (const auto& image : resources.storage_images) {
+            const auto set = module.get_decoration(image.id, spv::DecorationDescriptorSet);
+            const auto binding = module.get_decoration(image.id, spv::DecorationBinding);
+
+            std::cout << "(set = " << set << ", binding = " << binding << ") uniform image2D " << module.get_name(image.id) << std::endl;
+            std::cout << std::endl;
+        }
+    }
+
+    vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) const {
+        const auto createInfo = vk::ShaderModuleCreateInfo()
+            .setCode(buffer);
+
+        return m_device.Handle().createShaderModule(createInfo);
+    }
+
+    std::vector<uint32_t> Shader::CompileGLSLToSpirV(const std::string &source, const vk::ShaderStageFlagBits & stage) {
+        glslang::InitializeProcess();
+
+        const auto eShStage = ShaderStageToEShLanguage(stage);
+
+        const auto shader = new glslang::TShader(eShStage);
+        const auto shaderStrings = new std::string(source);
+        const auto shaderStringsPointer = shaderStrings->c_str();
+        shader->setStrings(&shaderStringsPointer, 1);
+
+        shader->setEnvInput(glslang::EShSourceGlsl, eShStage, glslang::EShClientVulkan, 130);
+        shader->setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
+        shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_6);
+
+        constexpr auto messages = static_cast<EShMessages>(EShMsgSpvRules | EShMsgVulkanRules | EShMsgDefault);
+
+        if (!shader->parse(GetDefaultResources(), 100, false, messages)) {
+            std::cerr << shader->getInfoLog() << std::endl;
+            throw std::runtime_error("GLSL parsing failed for stage: " + std::to_string(eShStage));
+        }
+
+        const auto program = new glslang::TProgram;
+        program->addShader(shader);
+
+        if (!program->link(messages)) {
+            throw std::runtime_error("GLSL linking failed for stage: " + std::to_string(eShStage));
+        }
+
+        std::vector<uint32_t> spirV;
+        GlslangToSpv(*program->getIntermediate(eShStage), spirV);
+
+        // analyze the shader for its capabilities
+        program->dumpReflection();
+
+        delete program;
+        delete shader;
+        delete shaderStrings;
+
+        glslang::FinalizeProcess();
+        return spirV;
+    }
+}

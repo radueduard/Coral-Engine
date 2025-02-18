@@ -15,24 +15,14 @@
 namespace Core {
     Queue::Queue(const Device& device, const uint32_t familyIndex, const uint32_t index)
         : familyIndex(familyIndex), index(index) {
-        queue = (*device).getQueue(familyIndex, index);
+        queue = device.Handle().getQueue(familyIndex, index);
     }
 
-    void Device::Init() {
-        m_instance = std::make_unique<Device>();
-    }
-
-    void Device::Destroy() {
-        m_instance.reset();
-    }
-
-    std::unique_ptr<Device> Device::m_instance = nullptr;
-
-    Device::Device() {
-        const auto& physicalDevice = Core::Runtime::Get().PhysicalDevice();
+    Device::Device(const CreateInfo& createInfo) : m_runtime(createInfo.runtime) {
+        const auto& physicalDevice = m_runtime.PhysicalDevice();
         for (const auto& queueFamily : physicalDevice.QueueFamilyProperties()) {
             const auto queueFamilyIndex = static_cast<uint32_t>(&queueFamily - physicalDevice.QueueFamilyProperties().data());
-            const bool canPresent = (*physicalDevice).getSurfaceSupportKHR(queueFamilyIndex, physicalDevice.Surface());
+            const bool canPresent = physicalDevice.Handle().getSurfaceSupportKHR(queueFamilyIndex, physicalDevice.Surface());
 
             m_queueFamilies.emplace_back(QueueFamily {
                 .index = queueFamilyIndex,
@@ -59,18 +49,14 @@ namespace Core {
             .setMaintenance4(true)
             .setPNext(&deviceMeshShaderFeatures);
 
-        const auto shaderBufferFloat32Atomics = vk::PhysicalDeviceShaderAtomicFloatFeaturesEXT()
-            .setShaderBufferFloat32Atomics(true)
-            .setPNext(&maintenance4Features);
-
         const auto deviceCreateInfo = vk::DeviceCreateInfo()
             .setQueueCreateInfos(queueCreateInfos)
-            .setPEnabledFeatures(&Runtime::settings.deviceFeatures)
-            .setPNext(&shaderBufferFloat32Atomics)
-            .setPEnabledExtensionNames(Runtime::settings.deviceExtensions)
-            .setPEnabledLayerNames(Runtime::settings.deviceLayers);
+            .setPEnabledFeatures(&m_runtime.m_deviceFeatures)
+            .setPNext(&maintenance4Features)
+            .setPEnabledExtensionNames(m_runtime.m_deviceExtensions)
+            .setPEnabledLayerNames(m_runtime.m_deviceLayers);
 
-        m_device = (*physicalDevice).createDevice(deviceCreateInfo);
+        m_device = physicalDevice.Handle().createDevice(deviceCreateInfo);
 
         for (const auto& queueFamily : m_queueFamilies) {
             for (uint32_t i = 0; i < queueFamily.properties.queueCount; i++) {
@@ -160,15 +146,17 @@ namespace Core {
         }
     }
 
-    void Device::QuerySurfaceCapabilities() const {
-        Core::Runtime::Get().PhysicalDevice().QuerySurfaceCapabilities();
+    const PhysicalDevice& Device::QuerySurfaceCapabilities() const {
+        auto& physicalDevice = m_runtime.PhysicalDevice();
+        physicalDevice.QuerySurfaceCapabilities();
+        return physicalDevice;
     }
 
     std::optional<uint32_t> Device::FindMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const {
-        const auto& physicalDevice = Core::Runtime::Get().PhysicalDevice();
-        const auto memoryTypes = (*physicalDevice).getMemoryProperties().memoryTypes;
+        const auto& physicalDevice = m_runtime.PhysicalDevice();
+        const auto memoryTypes = physicalDevice.Handle().getMemoryProperties().memoryTypes;
         for (uint32_t i = 0; i < memoryTypes.size(); i++) {
-            if ((typeFilter & (1 << i)) &&
+            if (typeFilter & 1 << i &&
                 (memoryTypes[i].propertyFlags & properties) == properties) {
                 return i;
             }

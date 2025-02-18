@@ -7,18 +7,25 @@
 #include <vulkan/vulkan.hpp>
 
 namespace Core {
-    /**
-     * @brief Wrapper for VkPhysicalDevice and its properties
-     */
+    class Runtime;
+}
+
+namespace Core {
     class PhysicalDevice {
         friend class Runtime;
     public:
-        explicit PhysicalDevice(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface);
+        struct CreateInfo {
+            const Runtime& runtime;
+            vk::PhysicalDevice physicalDevice;
+            vk::SurfaceKHR surface;
+        };
+
+        explicit PhysicalDevice(const CreateInfo& createInfo);
         ~PhysicalDevice() = default;
         PhysicalDevice(const PhysicalDevice &) = delete;
         PhysicalDevice &operator=(const PhysicalDevice &) = delete;
 
-        vk::PhysicalDevice operator *() const { return m_physicalDevice; }
+        vk::PhysicalDevice Handle() const { return m_physicalDevice; }
 
         [[nodiscard]] bool isSuitable() const;
         [[nodiscard]] const std::vector<vk::QueueFamilyProperties>& QueueFamilyProperties() const { return m_queueFamilyProperties; }
@@ -35,10 +42,12 @@ namespace Core {
 
         void QuerySurfaceCapabilities();
     private:
-        bool hasRequiredQueueFamilies(const std::unordered_set<vk::QueueFlagBits>&) const;
-        bool hasRequiredExtensions(std::unordered_set<std::string>& requiredExtensions) const;
-        bool hasRequiredFeatures(const vk::PhysicalDeviceFeatures& requiredFeatures) const;
-        bool isSwapchainSupported() const { return !m_formats.empty() && !m_presentModes.empty(); }
+        [[nodiscard]] bool hasRequiredQueueFamilies(const std::unordered_set<vk::QueueFlagBits>&) const;
+        [[nodiscard]] bool hasRequiredExtensions(std::unordered_set<std::string>& requiredExtensions) const;
+        [[nodiscard]] bool hasRequiredFeatures(const vk::PhysicalDeviceFeatures& requiredFeatures) const;
+        [[nodiscard]] bool isSwapChainSupported() const { return !m_formats.empty() && !m_presentModes.empty(); }
+
+        const Runtime& m_runtime;
 
         vk::PhysicalDevice m_physicalDevice;
 
@@ -55,4 +64,4 @@ namespace Core {
         std::vector<vk::SurfaceFormatKHR> m_formats;
         std::vector<vk::PresentModeKHR> m_presentModes;
     };
-} // namespace Core
+}

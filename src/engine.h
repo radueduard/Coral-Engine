@@ -3,14 +3,26 @@
 //
 
 #pragma once
+#include <memory>
 
-namespace mgv {
-    class Engine {
-    public:
-        Engine();
-        ~Engine();
+#include "core/scheduler.h"
 
-        static void Run();
-    };
-
+namespace Core {
+    class Window;
+    class Runtime;
+    class Device;
 }
+
+class Engine {
+public:
+    Engine();
+    ~Engine();
+
+    void Run() const;
+
+private:
+    std::unique_ptr<Core::Window> m_window;
+    std::unique_ptr<Core::Runtime> m_runtime;
+    std::unique_ptr<Core::Device> m_device;
+    std::unique_ptr<Core::Scheduler> m_scheduler;
+};

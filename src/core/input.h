@@ -7,12 +7,13 @@
 #include <unordered_map>
 #include <glm/glm.hpp>
 
-namespace Window {
-    struct Callbacks;
-}
+#include "window.h"
 
-namespace mgv {
-    class Engine;
+class Engine;
+
+namespace Core {
+    class Window;
+    class Window::Callbacks;
 }
 
 enum Key {
@@ -66,7 +67,7 @@ enum Key {
     GraveAccent = 96,
     World1 = 161,
     World2 = 162,
-    Escape = 256,
+    Esc = 256,
     Enter = 257,
     Tab = 258,
     Backspace = 259,
@@ -170,7 +171,7 @@ enum KeyState {
 
 namespace Core {
     class Input {
-        friend class mgv::Engine;
+        friend class Engine;
         friend struct Window::Callbacks;
     public:
         static KeyState GetKeyState(Key key);

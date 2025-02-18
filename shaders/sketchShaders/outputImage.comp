@@ -1,0 +1,36 @@
+#version 460 core
+
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, rgba32f) uniform image2D hash;
+layout(set = 0, binding = 1, rgba32f) uniform image2D sobel;
+
+layout(set = 0, binding = 2, rgba32f) uniform image2D outputImage;
+
+float hash1Get(float grayscaleValue, vec2 pixel) {
+    if (grayscaleValue > 0.01) {
+        return 0.0;
+    }
+
+    vec2 line = vec2(400.0, 400.0);
+
+    if (sin(dot(pixel, line)) > 0.0)
+    return 0.0;
+    else
+    return 1.0;
+}
+
+void main() {
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 resolution = imageSize(sobel);
+    if (pixelCoords.x >= resolution.x || pixelCoords.y >= resolution.y) {
+        return;
+    }
+
+    vec4 hashColor = imageLoad(hash, pixelCoords);
+    vec4 sobelColor = imageLoad(sobel, pixelCoords);
+
+    float color = hashColor.r * sobelColor.r;
+    vec4 result = vec4(color, color, color, 1.0);
+    imageStore(outputImage, pixelCoords, result);
+}

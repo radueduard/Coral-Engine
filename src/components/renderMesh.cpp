@@ -16,14 +16,6 @@ namespace mgv {
         m_targets.emplace_back(mesh, material);
     }
 
-    void RenderMesh::OnUIRender() {
-        ImGui::BeginListBox("Meshes");
-        for (const auto &[mesh, material]: m_targets) {
-            ImGui::Text("%s - %s", mesh->Name().c_str(), material->Name().c_str());
-        }
-        ImGui::EndListBox();
-    }
-
     void RenderMesh::Update(double deltaTime) {
     }
 }

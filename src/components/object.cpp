@@ -16,7 +16,6 @@ namespace mgv {
     }
 
     boost::uuids::random_generator Object::generator = boost::uuids::random_generator();
-    boost::unordered_map<boost::uuids::uuid, Object*> Object::objects;
 
     Object::Object(std::string name) : m_id(generator()), m_name(std::move(name)) {
         objects[m_id] = this;
@@ -24,15 +23,6 @@ namespace mgv {
 
     Object::~Object() {
         objects.erase(m_id);
-    }
-
-    std::vector<Object*> Object::Children() const {
-        std::vector<Object*> result;
-        result.reserve(m_children.size());
-        for (const auto &child: m_children | std::views::values) {
-            result.push_back(child.get());
-        }
-        return result;
     }
 
     std::vector<Component*> Object::Components() const {
@@ -44,20 +34,11 @@ namespace mgv {
         return result;
     }
 
-    void Object::AddChild(std::unique_ptr<Object> child) {
-        child->m_parent = this;
-        m_children[child->m_id] = std::move(child);
-    }
-
-    void Object::RemoveChild(const boost::uuids::uuid &id) {
-        m_children.erase(id);
-    }
-
     std::optional<Object *> Object::Find(const boost::uuids::uuid &id) {
-        if (m_children.contains(id)) {
-            return m_children[id].get();
+        if (id == m_id) {
+            return this;
         }
-        for (const auto& [id, child] : m_children) {
+        for (const auto &child: m_children) {
             if (auto result = child->Find(id); result.has_value()) {
                 return result;
             }

@@ -6,42 +6,34 @@
 #include <memory>
 
 #include "gui/layer.h"
+#include "components/object.h"
+#include "graphics/objects/texture.h"
+#include "gui/container.h"
+#include "gui/templates/object.h"
 
-#include "graphics/programs/skyBox.h"
-#include "graphics/programs/debugCamera.h"
-
-namespace mgv {
-    class Object;
-}
 
 namespace mgv {
     class Scene final : public GUI::Layer {
         friend class CalculateMVP;
     public:
-        explicit Scene();
+        explicit Scene(const Core::Device& device);
         ~Scene() override = default;
 
-        void Init();
+        void OnGUIAttach() override;
+        void OnGUIDetach() override {}
+
         void Update(double deltaTime) const;
         void LateUpdate(double deltaTime) const;
 
 
         [[nodiscard]] const std::unique_ptr<Object>& Root() const { return m_root; }
 
-        void OnUIAttach() override {}
-        void OnUIUpdate() override {}
-        void OnUIRender() override;
-        void OnUIReset() override {}
-        void OnUIDetach() override {}
-
     private:
-        bool NodeRender(Object* object);
-        Object* m_selectedObject = nullptr;
-
+        const Core::Device& m_device;
         std::unique_ptr<Object> m_root;
 
-        std::unique_ptr<SkyBox> m_skyBoxProgram;
-        std::unique_ptr<::DebugCamera> m_debugCamera;
+        std::unique_ptr<Texture> m_testTexture;
 
+        GUI::Container<GUI::InspectorPanel> m_inspectorPanel;
     };
 }

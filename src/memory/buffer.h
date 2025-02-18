@@ -12,6 +12,7 @@ namespace Memory {
     class Buffer {
     public:
         Buffer(
+            const Core::Device& device,
             vk::DeviceSize instanceSize,
             uint32_t instanceCount,
             vk::BufferUsageFlags usage,
@@ -54,6 +55,8 @@ namespace Memory {
 
 
     private:
+        const Core::Device& m_device;
+
         vk::Buffer m_buffer;
         vk::DeviceMemory m_memory;
 
@@ -92,7 +95,7 @@ std::span<T> Memory::Buffer::Map(vk::DeviceSize instanceCount, const vk::DeviceS
         instanceCount *= m_alignmentSize;
     }
 
-    m_mapped = (*Core::Device::Get()).mapMemory(
+    m_mapped = m_device.Handle().mapMemory(
         m_memory,
         offset * m_alignmentSize,
         instanceCount,

@@ -7,14 +7,14 @@
 #include <iostream>
 
 Memory::Buffer::Buffer(
+    const Core::Device &device,
     const vk::DeviceSize instanceSize,
     const uint32_t instanceCount,
     const vk::BufferUsageFlags usage,
     const vk::MemoryPropertyFlags properties,
     const vk::DeviceSize minOffsetAlignment)
-    : m_instanceSize(instanceSize), m_instanceCount(instanceCount), m_usageFlags(usage), m_memoryPropertyFlags(properties)
+    : m_device(device), m_instanceSize(instanceSize), m_instanceCount(instanceCount), m_usageFlags(usage), m_memoryPropertyFlags(properties)
 {
-    const auto& device = Core::Device::Get();
     m_alignmentSize = GetAlignment(instanceSize, minOffsetAlignment);
     const auto bufferSize = m_alignmentSize * m_instanceCount;
 
@@ -23,10 +23,10 @@ Memory::Buffer::Buffer(
         .setUsage(usage)
         .setSharingMode(vk::SharingMode::eExclusive);
 
-    m_buffer = (*device).createBuffer(bufferInfo);
+    m_buffer = m_device.Handle().createBuffer(bufferInfo);
 
-    const auto memRequirements = (*device).getBufferMemoryRequirements(m_buffer);
-    const auto memoryTypeIndex = device.FindMemoryType(memRequirements.memoryTypeBits, properties);
+    const auto memRequirements = m_device.Handle().getBufferMemoryRequirements(m_buffer);
+    const auto memoryTypeIndex = m_device.FindMemoryType(memRequirements.memoryTypeBits, properties);
 
     if (!memoryTypeIndex.has_value()) {
         std::cerr << "Buffer : Failed to find suitable memory type" << std::endl;
@@ -36,20 +36,19 @@ Memory::Buffer::Buffer(
         .setAllocationSize(memRequirements.size)
         .setMemoryTypeIndex(memoryTypeIndex.value());
 
-    m_memory = (*device).allocateMemory(allocInfo);
-    (*device).bindBufferMemory(m_buffer, m_memory, 0);
+    m_memory = m_device.Handle().allocateMemory(allocInfo);
+    m_device.Handle().bindBufferMemory(m_buffer, m_memory, 0);
 }
 
 Memory::Buffer::~Buffer() {
     Unmap();
-    const auto& device = Core::Device::Get();
-    (*device).destroyBuffer(m_buffer);
-    (*device).freeMemory(m_memory);
+    m_device.Handle().destroyBuffer(m_buffer);
+    m_device.Handle().freeMemory(m_memory);
 }
 
 void Memory::Buffer::Unmap() {
     if (m_mapped) {
-        (*Core::Device::Get()).unmapMemory(m_memory);
+        m_device.Handle().unmapMemory(m_memory);
         m_mapped = nullptr;
     }
 }
@@ -63,7 +62,7 @@ void Memory::Buffer::Flush(const vk::DeviceSize instanceCount, const vk::DeviceS
     }
 
     if (instanceCount == vk::WholeSize) {
-        (*Core::Device::Get()).flushMappedMemoryRanges(m_mappedRange);
+        m_device.Handle().flushMappedMemoryRanges(m_mappedRange);
         return;
     }
 
@@ -71,7 +70,7 @@ void Memory::Buffer::Flush(const vk::DeviceSize instanceCount, const vk::DeviceS
         .setMemory(m_memory)
         .setSize(instanceCount * m_alignmentSize)
         .setOffset(offset * m_alignmentSize);
-    (*Core::Device::Get()).flushMappedMemoryRanges(range);
+    m_device.Handle().flushMappedMemoryRanges(range);
 }
 
 vk::DescriptorBufferInfo Memory::Buffer::DescriptorInfo(vk::DeviceSize instanceCount, vk::DeviceSize offset) const {
@@ -97,14 +96,14 @@ void Memory::Buffer::Invalidate(const vk::DeviceSize instanceCount, const vk::De
     }
 
     if (instanceCount == vk::WholeSize) {
-        (*Core::Device::Get()).invalidateMappedMemoryRanges(m_mappedRange);
+        m_device.Handle().invalidateMappedMemoryRanges(m_mappedRange);
         return;
     }
     const auto range = vk::MappedMemoryRange()
         .setMemory(m_memory)
         .setSize(instanceCount * m_alignmentSize)
         .setOffset(offset * m_alignmentSize);
-    (*Core::Device::Get()).invalidateMappedMemoryRanges(range);
+    m_device.Handle().invalidateMappedMemoryRanges(range);
 }
 
 void Memory::Buffer::FlushAt(const uint32_t index) {
@@ -154,7 +153,7 @@ void Memory::Buffer::CopyBuffer(const std::unique_ptr<Buffer> &srcBuffer, const 
         dstOffset = 0;
     }
 
-    Core::Device::Get().RunSingleTimeCommand([this, srcOffset, dstOffset, &srcBuffer, size](const vk::CommandBuffer &commandBuffer) {
+    m_device.RunSingleTimeCommand([this, srcOffset, dstOffset, &srcBuffer, size](const vk::CommandBuffer &commandBuffer) {
         const auto copyRegion = vk::BufferCopy()
             .setSrcOffset(srcOffset)
             .setDstOffset(dstOffset)

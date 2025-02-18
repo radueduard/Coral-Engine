@@ -11,10 +11,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "memory/image.h"
-
-namespace Graphics {
-    class Program;
-}
+#include "memory/imageView.h"
 
 namespace Graphics {
     class RenderPass {
@@ -22,7 +19,7 @@ namespace Graphics {
         struct Attachment {
             vk::AttachmentDescription description;
             vk::AttachmentReference reference;
-            std::vector<std::unique_ptr<Memory::Image>> images;
+            std::vector<Memory::Image*> images;
             vk::ClearValue clearValue;
 
             void Resize(vk::Extent2D extent) const;
@@ -67,8 +64,8 @@ namespace Graphics {
                 return *this;
             }
 
-            std::unique_ptr<RenderPass> Build() {
-                return std::make_unique<RenderPass>(this);
+            std::unique_ptr<RenderPass> Build(const Core::Device& device) {
+                return std::make_unique<RenderPass>(device, this);
             }
 
 
@@ -82,21 +79,18 @@ namespace Graphics {
         };
 
 
-        explicit RenderPass(Builder *builder);
+        explicit RenderPass(const Core::Device& device, Builder *builder);
         ~RenderPass();
 
         RenderPass(const RenderPass &) = delete;
         RenderPass &operator=(const RenderPass &) = delete;
-
-        void AddProgram(Program *program) { m_programs.emplace_back(program); }
-        void RemoveProgram(Program *program) { std::erase(m_programs, program); }
 
         void Begin(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
         void Update(float deltaTime) const;
         void Draw(vk::CommandBuffer commandBuffer) const;
         void End(vk::CommandBuffer commandBuffer);
 
-        const vk::RenderPass& operator*() const { return m_renderPass; }
+        [[nodiscard]] const vk::RenderPass& Handle() const { return m_renderPass; }
         [[nodiscard]] const vk::Framebuffer& FrameBuffer(const uint32_t index) const { return m_frameBuffers[index]; }
         [[nodiscard]] const vk::Extent2D& Extent() const { return m_extent; }
         [[nodiscard]] const vk::SampleCountFlagBits& SampleCount() const { return m_sampleCount; }
@@ -112,8 +106,6 @@ namespace Graphics {
         [[nodiscard]] Memory::Image& OutputImage(uint32_t index) const;
         [[nodiscard]] Memory::Image& CurrentOutputImage() const;
 
-        [[nodiscard]] std::vector<Program*>& Programs() { return m_programs; }
-
         void CreateRenderPass();
         void DestroyRenderPass();
         void CreateFrameBuffers();
@@ -122,6 +114,8 @@ namespace Graphics {
         bool Resize(uint32_t imageCount, vk::Extent2D extent);
 
     private:
+        const Core::Device& m_device;
+
         uint32_t m_outputAttachmentIndex = 0;
         uint32_t m_outputImageIndex = 0;
         std::optional<uint32_t> m_inFlightImageIndex;
@@ -132,10 +126,11 @@ namespace Graphics {
         std::vector<vk::Framebuffer> m_frameBuffers;
 
         std::vector<Attachment> m_attachments;
+        std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;
+
         std::vector<vk::SubpassDescription> m_subpasses;
         std::vector<vk::SubpassDependency> m_dependencies;
 
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
-        std::vector<Program*> m_programs;
     };
 }

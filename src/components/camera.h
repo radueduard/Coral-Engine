@@ -84,19 +84,17 @@ namespace mgv {
         [[nodiscard]] const glm::mat4& FlippedInverseView() const { return m_flippedInverseView; }
         [[nodiscard]] bool Moved() const { return m_moved; }
         [[nodiscard]] glm::uvec2 Resolution() const { return m_viewportSize; }
-        [[nodiscard]] Memory::Buffer* FrustumsBuffer() const { return m_frustumBuffer.get(); }
+        // [[nodiscard]] Memory::Buffer* FrustumsBuffer() const { return m_frustumBuffer.get(); }
         [[nodiscard]] Info BufferData() const;
 
         [[nodiscard]] static Camera* Main() { return mainCamera; }
         [[nodiscard]] static const std::vector<Camera*>& All() { return cameras; }
 
-        void OnUIRender() override;
-
     private:
         void RecalculateProjection();
         void RecalculateView();
 
-        void CalculateScreenFrustums(uint32_t chunksOnX, uint32_t chunksOnY);
+        // void CalculateScreenFrustums(uint32_t chunksOnX, uint32_t chunksOnY);
 
         glm::mat4 m_projection { 1.0f };
         glm::mat4 m_view { 1.0f };
@@ -115,7 +113,7 @@ namespace mgv {
         bool m_changed = false;
         const glm::vec3 m_up = glm::vec3(0, 1, 0);
 
-        std::unique_ptr<Memory::Buffer> m_frustumBuffer = nullptr;
+        // std::unique_ptr<Memory::Buffer> m_frustumBuffer = nullptr;
 
         void Rotate(float yaw, float pitch);
         void MoveForward(float amount);

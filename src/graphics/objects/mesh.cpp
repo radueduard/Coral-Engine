@@ -4,8 +4,6 @@
 
 #include "mesh.h"
 
-#include "assets/importer.h"
-#include "assets/manager.h"
 #include "memory/buffer.h"
 
 namespace mgv {
@@ -19,12 +17,12 @@ namespace mgv {
         return *this;
     }
 
-    std::unique_ptr<Mesh> Mesh::Builder::Build() {
-        return std::make_unique<Mesh>(*this);
+    std::unique_ptr<Mesh> Mesh::Builder::Build(const Core::Device &device) const {
+        return std::make_unique<Mesh>(device, *this);
     }
 
-    Mesh::Mesh(const Builder &builder)
-        : m_name(builder.m_name)
+    Mesh::Mesh(const Core::Device& device, const Builder &builder)
+        : m_device(device), m_name(builder.m_name)
     {
         CreateVertexBuffer(builder.m_vertices);
         CreateIndexBuffer(builder.m_indices);
@@ -38,6 +36,7 @@ namespace mgv {
 
     void Mesh::CreateVertexBuffer(const std::vector<Vertex> &vertices) {
         const auto stagingBuffer = std::make_unique<Memory::Buffer>(
+            m_device,
             sizeof(Vertex), static_cast<uint32_t>(vertices.size()),
             vk::BufferUsageFlagBits::eTransferSrc,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -49,6 +48,7 @@ namespace mgv {
         stagingBuffer->Unmap();
 
         m_vertexBuffer = std::make_unique<Memory::Buffer>(
+            m_device,
             sizeof(Vertex), static_cast<uint32_t>(vertices.size()),
             vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -57,6 +57,7 @@ namespace mgv {
 
     void Mesh::CreateIndexBuffer(const std::vector<uint32_t> &indices) {
         const auto stagingBuffer = std::make_unique<Memory::Buffer>(
+            m_device,
             sizeof(uint32_t), static_cast<uint32_t>(indices.size()),
             vk::BufferUsageFlagBits::eTransferSrc,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -68,6 +69,7 @@ namespace mgv {
         stagingBuffer->Unmap();
 
         m_indexBuffer = std::make_unique<Memory::Buffer>(
+            m_device,
             sizeof(uint32_t), static_cast<uint32_t>(indices.size()),
             vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);

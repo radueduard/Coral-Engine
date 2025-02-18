@@ -49,7 +49,7 @@ namespace mgv {
             Builder& AddIndex(uint32_t index);
             Builder& AddVertex(const Vertex &vertex);
 
-            std::unique_ptr<Mesh> Build();
+            std::unique_ptr<Mesh> Build(const Core::Device &device) const;
         private:
             std::string m_name;
 
@@ -57,7 +57,7 @@ namespace mgv {
             std::vector<Vertex> m_vertices;
         };
 
-        explicit Mesh(const Builder &builder);
+        explicit Mesh(const Core::Device& device, const Builder &builder);
         ~Mesh();
 
         Mesh(const Mesh &) = delete;
@@ -69,6 +69,7 @@ namespace mgv {
         void Draw(const vk::CommandBuffer &commandBuffer, uint32_t instanceCount) const;
 
     private:
+        const Core::Device& m_device;
         std::string m_name;
 
         std::unique_ptr<Memory::Buffer> m_indexBuffer;
@@ -78,10 +79,8 @@ namespace mgv {
         void CreateIndexBuffer(const std::vector<uint32_t> &indices);
 
     public:
-        static const Mesh *Cube();
-        static const Mesh *Sphere();
-        static std::unique_ptr<Mesh> Frustum(const Camera *camera);
-    private:
-        inline static std::unordered_map<std::string, boost::uuids::uuid> m_meshes;
+        static std::unique_ptr<Mesh> Cube(const Core::Device &device);
+        static std::unique_ptr<Mesh> Sphere(const Core::Device &device);
+        static std::unique_ptr<Mesh> Frustum(const Core::Device& device, const Camera *camera);
     };
 }

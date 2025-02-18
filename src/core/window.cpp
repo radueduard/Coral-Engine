@@ -8,13 +8,15 @@
 #include <iostream>
 
 namespace Core {
-    Window::Window(const Info& createInfo) : m_info(createInfo) {
+    Window::Window(const CreateInfo& createInfo) : m_info(createInfo) {
         if (const auto result = glfwInit(); result == GLFW_FALSE) {
             std::cerr << "Failed to initialize GLFW" << std::endl;
         }
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, createInfo.resizable);
+        // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        // glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
         auto [width, height] = createInfo.extent;
 
@@ -59,16 +61,16 @@ namespace Core {
         glfwTerminate();
     }
 
-    std::vector <const char*> Window::GetRequiredExtensions() {
+    std::vector <const char*> Window::GetRequiredExtensions() const {
         uint32_t glfwExtensionCount = 0;
         const auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
         std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
         return extensions;
     }
 
-    vk::SurfaceKHR Window::CreateSurface(const vk::Instance& instance) {
+    vk::SurfaceKHR Window::CreateSurface(const vk::Instance& instance) const {
         VkSurfaceKHR surface;
-        if (const auto result = glfwCreateWindowSurface(instance, m_instance->m_window, nullptr, &surface); result != VK_SUCCESS) {
+        if (const auto result = glfwCreateWindowSurface(instance, m_window, nullptr, &surface); result != VK_SUCCESS) {
             std::cerr << "Failed to create window surface: " << vk::to_string(static_cast<vk::Result>(result)) << std::endl;
         }
 
@@ -77,11 +79,11 @@ namespace Core {
 
     void Window::UpdateDeltaTime() {
         const double currentTime = glfwGetTime();
-        m_instance->m_deltaTime = currentTime - m_instance->m_lastTime;
-        m_instance->m_lastTime = currentTime;
+        m_deltaTime = currentTime - m_lastTime;
+        m_lastTime = currentTime;
     }
 
-    void Window::Callbacks::keyCallback(GLFWwindow *window, int key, int _, const int action, int mods) {
+    void Window::Callbacks::keyCallback(GLFWwindow *, int key, int, const int action, int) {
         const auto k = static_cast<Key>(key);
         switch (action) {
             case GLFW_PRESS:
@@ -95,14 +97,14 @@ namespace Core {
         }
     }
 
-    void Window::Callbacks::mouseMoveCallback(GLFWwindow *window, const double x, const double y) {
+    void Window::Callbacks::mouseMoveCallback(GLFWwindow *, const double x, const double y) {
         const glm::ivec2 pos { static_cast<int>(x), static_cast<int>(y) };
         Input::m_mouseDelta = pos - Input::m_mousePosition;
         Input::m_mousePosition = pos;
 
     }
 
-    void Window::Callbacks::mouseButtonCallback(GLFWwindow *window, int button, const int action, int mods) {
+    void Window::Callbacks::mouseButtonCallback(GLFWwindow *, int button, const int action, int) {
         const auto b = static_cast<MouseButton>(button);
         switch (action) {
             case GLFW_PRESS:
@@ -116,7 +118,7 @@ namespace Core {
         }
     }
 
-    void Window::Callbacks::scrollCallback(GLFWwindow *window, const double x, const double y) {
+    void Window::Callbacks::scrollCallback(GLFWwindow *, const double x, const double y) {
         Input::m_scrollDelta = { x, y };
     }
 
@@ -129,15 +131,5 @@ namespace Core {
         } else {
             app->UnPause();
         }
-    }
-
-    std::unique_ptr<Window> Window::m_instance = nullptr;
-
-    void Window::Init(const Info &info) {
-        m_instance = std::make_unique<Window>(info);
-    }
-
-    void Window::Destroy() {
-        m_instance.reset();
     }
 }

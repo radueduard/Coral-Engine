@@ -12,12 +12,12 @@
 #include "memory/descriptor/set.h"
 
 namespace Compute {
-    Pipeline::Builder & Pipeline::Builder::Shader(const std::string& path) {
-        m_shaderModule = std::make_unique<Core::Shader>(path, vk::ShaderStageFlagBits::eCompute);
+    Pipeline::Builder & Pipeline::Builder::Shader(Core::Shader* shaderModule) {
+        m_shaderModule = shaderModule;
         return *this;
     }
 
-    Pipeline::Builder& Pipeline::Builder::BasePipeline(const vk::Pipeline& basePipeline, int32_t basePipelineIndex) {
+    Pipeline::Builder& Pipeline::Builder::BasePipeline(const vk::Pipeline& basePipeline, const int32_t basePipelineIndex) {
         m_basePipeline = basePipeline;
         m_basePipelineIndex = basePipelineIndex;
         return *this;
@@ -39,30 +39,32 @@ namespace Compute {
         return *this;
     }
 
-    std::unique_ptr<Pipeline> Pipeline::Builder::Build() {
+    std::unique_ptr<Pipeline> Pipeline::Builder::Build(const Core::Device& device) {
         const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
             .setSetLayouts(m_descriptorSetLayouts)
             .setPushConstantRanges(m_pushConstantRanges);
 
-        m_pipelineLayout = (*Core::Device::Get()).createPipelineLayout(pipelineLayoutInfo);
+        m_pipelineLayout = device.Handle().createPipelineLayout(pipelineLayoutInfo);
 
         m_shaderStage = vk::PipelineShaderStageCreateInfo()
             .setStage(vk::ShaderStageFlagBits::eCompute)
             .setModule(**m_shaderModule)
             .setPName("main");
 
-        return std::make_unique<Pipeline>(*this);
+        return std::make_unique<Pipeline>(device, *this);
     }
 
-    Pipeline::Pipeline(const Builder& builder) : m_pipelineLayout(builder.m_pipelineLayout)
-    {
+    Pipeline::Pipeline(const Core::Device& device, Builder& builder)
+        : m_device(device), m_pipelineLayout(builder.m_pipelineLayout), m_shader(std::move(builder.m_shaderModule)) {
+        m_shader->GetReflection();
+
         const auto createInfo = vk::ComputePipelineCreateInfo()
             .setLayout(m_pipelineLayout)
             .setStage(builder.m_shaderStage)
             .setBasePipelineHandle(builder.m_basePipeline)
             .setBasePipelineIndex(builder.m_basePipelineIndex);
 
-        const auto pipeline = (*Core::Device::Get()).createComputePipeline(nullptr, createInfo);
+        const auto pipeline = m_device.Handle().createComputePipeline(nullptr, createInfo);
         if (pipeline.result != vk::Result::eSuccess) {
             std::cerr << "Failed to create compute pipeline" << std::endl;
         }
@@ -70,10 +72,9 @@ namespace Compute {
     }
 
     Pipeline::~Pipeline() {
-        const auto &device = Core::Device::Get();
-        (*device).waitIdle();
-        (*device).destroyPipeline(m_pipeline);
-        (*device).destroyPipelineLayout(m_pipelineLayout);
+        m_device.Handle().waitIdle();
+        m_device.Handle().destroyPipeline(m_pipeline);
+        m_device.Handle().destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer commandBuffer) const {
@@ -85,14 +86,14 @@ namespace Compute {
             vk::PipelineBindPoint::eCompute,
             m_pipelineLayout,
             setNumber,
-            *descriptorSet,
+            descriptorSet.Handle(),
             nullptr);
     }
 
     void Pipeline::BindDescriptorSets(const uint32_t startingSet, const vk::CommandBuffer commandBuffer, const std::vector<Memory::Descriptor::Set> & descriptorSets) const {
         std::vector<vk::DescriptorSet> sets;
         for (const auto &descriptorSet : descriptorSets) {
-            sets.push_back(*descriptorSet);
+            sets.push_back(descriptorSet.Handle());
         }
 
         commandBuffer.bindDescriptorSets(

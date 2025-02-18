@@ -18,8 +18,6 @@ namespace mgv {
 
         void Add(const Mesh *mesh, const Material *material);
 
-        void OnUIRender() override;
-
         void Update(double deltaTime) override;
 
         [[nodiscard]] const std::vector<std::pair<const Mesh*, const Material*>>& Targets() const { return m_targets; }

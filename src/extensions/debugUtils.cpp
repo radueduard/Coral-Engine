@@ -5,7 +5,7 @@
 #include "debugUtils.h"
 
 namespace Ext {
-    void DebugUtils::importFunctions(const vk::Instance instance) {
+    void DebugUtils::ImportFunctions(const vk::Instance instance) {
         vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
             instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
         vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(

@@ -6,14 +6,20 @@
 
 #include <queue>
 
-#include "imgui.h"
+#include "IconsFontAwesome6.h"
+
 #include "components/camera.h"
 #include "graphics/objects/cubeMap.h"
-#include "graphics/programs/debugCamera.h"
-#include "graphics/programs/skyBox.h"
+#include "gui/elements/button.h"
+#include "gui/elements/center.h"
+#include "gui/elements/column.h"
+#include "gui/elements/dockable.h"
+#include "gui/elements/image.h"
+#include "gui/elements/row.h"
+#include "gui/elements/treeView.h"
 
 namespace mgv {
-    Scene::Scene() : m_root(std::make_unique<Object>()) {
+    Scene::Scene(const Core::Device& device) : m_device(device), m_root(std::make_unique<Object>()) {
         auto firstCamera = std::make_unique<Object>("Main Camera");
         auto firstCameraCreateInfo = Camera::CreateInfo {
             .primary = true,
@@ -41,22 +47,8 @@ namespace mgv {
         };
         secondCamera->Add<mgv::Camera>(secondCameraCreateInfo);
         m_root->AddChild(std::move(secondCamera));
-    }
 
-    void Scene::Init() {
-        SkyBox::CreateInfo skyBoxCreateInfo {
-            .cubeMap = Graphics::CubeMap::Builder()
-                .PositiveX("models/textures/cubeMapNight/pos_x.png")
-                .NegativeX("models/textures/cubeMapNight/neg_x.png")
-                .PositiveY("models/textures/cubeMapNight/pos_y.png")
-                .NegativeY("models/textures/cubeMapNight/neg_y.png")
-                .PositiveZ("models/textures/cubeMapNight/pos_z.png")
-                .NegativeZ("models/textures/cubeMapNight/neg_z.png")
-                .Build()
-        };
-        m_skyBoxProgram = std::make_unique<SkyBox>(skyBoxCreateInfo);
-
-        m_debugCamera = std::make_unique<DebugCamera>();
+        m_testTexture = Texture::FromFile(m_device, "assets/textures/brick-wall/brick-wall_albedo.png");
     }
 
     void Scene::Update(const double deltaTime) const {
@@ -93,38 +85,69 @@ namespace mgv {
         }
     }
 
-    bool Scene::NodeRender(Object* object) {
-        bool wasChildClicked = false;
-        if (ImGui::TreeNode(object->Name().c_str())) {
-            for (const auto& child : object->Children()) {
-                wasChildClicked |= NodeRender(child);
-            }
-            ImGui::TreePop();
-        }
-        if (ImGui::IsItemClicked() && !wasChildClicked) {
-            m_selectedObject = object;
-        }
-        return !wasChildClicked;
+    void Scene::OnGUIAttach() {
+        // m_guiObject = std::make_unique<GUI::Dockable>("Scene View",
+        //     new GUI::Column("Vertical Layout", std::vector<GUI::Element*>
+        //         {
+        //             new GUI::Center(
+        //                 new GUI::Row("Action Buttons", std::vector<GUI::Element*>
+        //                     {
+        //                         new GUI::IconButton("Run", ICON_FA_PLAY,
+        //                             [] {
+        //                                 std::cout << "Run button clicked" << std::endl;
+        //                             },
+        //                             glm::uvec2(30, 30)
+        //                         ),
+        //                         new GUI::IconButton("Pause", ICON_FA_PAUSE,
+        //                             [] {
+        //                                 std::cout << "Pause button clicked" << std::endl;
+        //                             },
+        //                             glm::uvec2(30, 30)
+        //                         ),
+        //                         new GUI::IconButton("Stop", ICON_FA_STOP,
+        //                             [] {
+        //                                 std::cout << "Stop button clicked" << std::endl;
+        //                             },
+        //                             glm::uvec2(30, 30)
+        //                         ),
+        //                     },
+        //                     10.0f
+        //                 ),
+        //             true, false),
+        //             new GUI::Expanded(
+        //                 new GUI::Image(
+        //                     m_testTexture->ImageView().Handle(),
+        //                     m_testTexture->Sampler().Handle(),
+        //                     vk::ImageLayout::eShaderReadOnlyOptimal, 10, GUI::Image::Cover
+        //                 )
+        //             ),
+        //         },
+        //         10.0f
+        //     ),
+        //     glm::vec2(10, 10)
+        // );
+
+        m_inspectorPanel = GUI::MakeContainer<GUI::InspectorPanel>();
+
+        m_guiObject = std::make_unique<GUI::Dockable>(
+            "Scene tree",
+            new GUI::Column("Vertical Layout", std::vector<GUI::Element*>
+                {
+                    new GUI::Text("Scene tree",
+                        GUI::Text::Style {
+                            .color = glm::vec4 { 0.5f, 0.5f, 0.5f, 1.f },
+                            .fontSize = 20.f,
+                            .fontType = GUI::FontType::Black
+                        }
+                    ),
+                    new GUI::Separator(),
+                    new GUI::Expanded(
+                        new GUI::TreeView(Root().get())
+                    ),
+                },
+                10.f
+            ),
+            glm::vec2(10, 10)
+        );
     }
-
-    void Scene::OnUIRender() {
-        ImGui::Begin("Scene Tree");
-        NodeRender(m_root.get());
-        ImGui::End();
-
-        if (m_selectedObject != nullptr) {
-            ImGui::Begin("Selected Object");
-            ImGui::Text("Name: %s", m_selectedObject->Name().c_str());
-            ImGui::DragFloat3("Position", &m_selectedObject->position.x, 0.1f);
-            ImGui::DragFloat3("Rotation", &m_selectedObject->rotation.x, 0.1f);
-            ImGui::DragFloat3("Scale", &m_selectedObject->scale.x, 0.1f);
-
-            for (const auto& component : m_selectedObject->Components()) {
-                component->OnUIRender();
-            }
-
-            ImGui::End();
-        }
-    }
-
 }

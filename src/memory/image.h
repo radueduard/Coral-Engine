@@ -54,21 +54,18 @@ namespace Memory {
                 return *this;
             }
 
-            Builder& ViewType(const vk::ImageViewType viewType) {
-                m_viewType = viewType;
-                return *this;
-            }
+
 
             Builder& InitialLayout(const vk::ImageLayout layout) {
                 m_layout = layout;
                 return *this;
             }
 
-            std::unique_ptr<Memory::Image> Build() {
+            std::unique_ptr<Memory::Image> Build(const Core::Device& device) const {
                 if (m_extent.width == 0 || m_extent.height == 0 || m_extent.depth == 0) {
                     throw std::runtime_error("Image : Extent must be set");
                 }
-                return std::make_unique<Memory::Image>(*this);
+                return std::make_unique<Memory::Image>(device, *this);
             }
         private:
             vk::Format m_format = vk::Format::eUndefined;
@@ -83,38 +80,42 @@ namespace Memory {
             std::optional<vk::Image> m_image = std::nullopt;
         };
 
-        Image(const Builder& builder);
+        Image(const Core::Device& device, const Builder& builder);
         ~Image();
 
         Image(const Image&) = delete;
         Image& operator=(const Image&) = delete;
 
-        const vk::Image& operator*() const { return m_image; }
-        [[nodiscard]] const vk::ImageView& ImageView() const { return m_imageView; }
+        [[nodiscard]] const vk::Image& Handle() const { return m_image; }
         [[nodiscard]] const vk::ImageLayout& Layout() const { return m_layout; }
         [[nodiscard]] const vk::Extent3D& Extent() const { return m_extent; }
+        [[nodiscard]] const vk::Format& Format() const { return m_format; }
+        [[nodiscard]] const vk::ImageUsageFlags& UsageFlags() const { return m_usageFlags; }
+        [[nodiscard]] const vk::SampleCountFlagBits& SampleCount() const { return m_sampleCount; }
+        [[nodiscard]] const uint32_t& MipLevels() const { return m_mipLevels; }
+        [[nodiscard]] const uint32_t& LayerCount() const { return m_layerCount; }
 
         void Copy(const vk::Buffer& buffer, uint32_t mipLevel = 0, uint32_t layer = 0, uint32_t thread = 0) const;
         void TransitionLayout(vk::ImageLayout newLayout);
+        void Barrier(const vk::CommandBuffer& commandBuffer, vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage) const;
         void GenerateMipmaps();
         void Resize(const vk::Extent3D& extent);
 
-        [[nodiscard]] std::vector<vk::ImageView> IndividualMipLevels() const;
-
     private:
+        const Core::Device& m_device;
+
         vk::Image m_image;
         vk::DeviceMemory m_imageMemory;
-        vk::ImageView m_imageView;
 
         vk::Format m_format;
         vk::Extent3D m_extent;
         vk::ImageLayout m_layout = vk::ImageLayout::eUndefined;
         vk::ImageUsageFlags m_usageFlags;
         vk::SampleCountFlagBits m_sampleCount;
-        vk::ImageAspectFlags m_aspectMask;
+        // vk::ImageAspectFlags m_aspectMask;
 
         uint32_t m_mipLevels;
-        uint32_t m_layersCount;
+        uint32_t m_layerCount;
     };
 
 }

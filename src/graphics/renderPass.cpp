@@ -6,7 +6,6 @@
 
 #include "core/device.h"
 #include "memory/image.h"
-#include "programs/program.h"
 
 namespace Graphics {
 
@@ -16,13 +15,12 @@ namespace Graphics {
         }
     }
 
-    RenderPass::RenderPass(Builder* builder)
-        : m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
+    RenderPass::RenderPass(const Core::Device& device, Builder* builder)
+        : m_device(device), m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
         m_attachments = std::move(builder->m_attachments);
         m_subpasses = builder->m_subpasses;
         m_dependencies = builder->m_dependencies;
         m_sampleCount = m_attachments[0].description.samples;
-        m_programs.resize(m_subpasses.size());
 
         CreateRenderPass();
         CreateFrameBuffers();
@@ -45,7 +43,7 @@ namespace Graphics {
             .setSubpasses(m_subpasses)
             .setDependencies(m_dependencies);
 
-        m_renderPass = (*Core::Device::Get()).createRenderPass(renderPassInfo);
+        m_renderPass = m_device.Handle().createRenderPass(renderPassInfo);
     }
 
     void RenderPass::CreateFrameBuffers() {
@@ -53,7 +51,13 @@ namespace Graphics {
         for (size_t i = 0; i < m_imageCount; i++) {
             auto frameBufferAttachments = std::vector<vk::ImageView>();
             for (const auto &attachment : m_attachments) {
-                frameBufferAttachments.emplace_back(attachment.images[i]->ImageView());
+                auto imageView = Memory::ImageView::Builder(*attachment.images[i])
+                    .ViewType(vk::ImageViewType::e2D)
+                    .BaseMipLevel(0)
+                    .LevelCount(1)
+                    .Build(m_device);
+                frameBufferAttachments.emplace_back(imageView->Handle());
+                m_imageViews.emplace_back(std::move(imageView));
             }
 
             const auto frameBufferInfo = vk::FramebufferCreateInfo()
@@ -63,22 +67,26 @@ namespace Graphics {
                 .setHeight(m_extent.height)
                 .setLayers(1);
 
-            m_frameBuffers[i] = (*Core::Device::Get()).createFramebuffer(frameBufferInfo);
+            m_frameBuffers[i] = m_device.Handle().createFramebuffer(frameBufferInfo);
         }
     }
 
     void RenderPass::DestroyRenderPass() {
         if (m_renderPass) {
-            (*Core::Device::Get()).destroyRenderPass(m_renderPass);
+            m_device.Handle().destroyRenderPass(m_renderPass);
             m_renderPass = nullptr;
         }
     }
 
     void RenderPass::DestroyFrameBuffers() {
         for (const auto &frameBuffer : m_frameBuffers) {
-            (*Core::Device::Get()).destroyFramebuffer(frameBuffer);
+            m_device.Handle().destroyFramebuffer(frameBuffer);
         }
         m_frameBuffers.clear();
+
+        for (auto &imageView : m_imageViews) {
+            imageView.reset();
+        }
     }
 
     void RenderPass::Begin(const vk::CommandBuffer commandBuffer, const uint32_t imageIndex) {
@@ -113,17 +121,19 @@ namespace Graphics {
     }
 
     void RenderPass::Update(const float deltaTime) const {
-        for (const auto& program : m_programs) {
-            if (program)
-                program->Update(deltaTime);
-        }
+        // for (const auto& program : m_programs) {
+        //     if (program) {
+        //         program->Update(deltaTime);
+        //     }
+        // }
     }
 
     void RenderPass::Draw(const vk::CommandBuffer commandBuffer) const {
-        for (const auto& program : m_programs) {
-            if (program)
-                program->Draw(commandBuffer, this);
-        }
+        // for (const auto& program : m_programs) {
+        //     if (program) {
+        //         program->Draw(commandBuffer, this);
+        //     }
+        // }
     }
 
     void RenderPass::End(const vk::CommandBuffer commandBuffer)  {
@@ -145,7 +155,7 @@ namespace Graphics {
             return false;
         }
 
-        (*Core::Device::Get()).waitIdle();
+        m_device.Handle().waitIdle();
 
         DestroyFrameBuffers();
 
@@ -156,11 +166,6 @@ namespace Graphics {
             attachment.Resize(extent);
         }
         CreateFrameBuffers();
-
-        for (const auto &program : m_programs) {
-            if (program)
-                program->ResetDescriptorSets();
-        }
         return true;
     }
 }

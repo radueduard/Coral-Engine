@@ -5,7 +5,7 @@
 #include "meshShader.h"
 
 namespace Ext {
-    void MeshShader::importFunctions(vk::Instance instance) {
+    void MeshShader::ImportFunctions(vk::Instance instance) {
         vkCmdDrawMeshTasksEXT = reinterpret_cast<PFN_vkCmdDrawMeshTasksEXT>(
             instance.getProcAddr("vkCmdDrawMeshTasksEXT"));
     }

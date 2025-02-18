@@ -1,0 +1,59 @@
+#version 460 core
+
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D inputImage;
+layout(set = 0, binding = 1, rgba32f) uniform image2D sobel;
+
+layout(push_constant) uniform Data {
+    float treshold;
+} data;
+
+const mat3 sobelX = mat3(
+    1.0, 0.0, -1.0,
+    2.0, 0.0, -2.0,
+    1.0, 0.0, -1.0
+);
+
+const mat3 sobelY = mat3(
+    1.0, 2.0, 1.0,
+    0.0, 0.0, 0.0,
+    -1.0, -2.0, -1.0
+);
+
+float grayscale(vec2 uv) {
+    vec4 color = texture(inputImage, uv);
+    return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+}
+
+vec4 Sobel(vec2 texelCoords, vec2 texelSize, float treshold) {
+    float gx = 0.0;
+    float gy = 0.0;
+
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            float grayscaleValue = grayscale(texelCoords + vec2(i, j) * texelSize);
+            gx += sobelX[i + 1][j + 1] * grayscaleValue;
+            gy += sobelY[i + 1][j + 1] * grayscaleValue;
+        }
+    }
+
+    float g = sqrt(gx * gx + gy * gy);
+    g = g > treshold ? 0.0 : 1.0;
+    vec4 result = vec4(g, g, g, 1.0);
+    return result;
+}
+
+void main() {
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 resolution = imageSize(sobel);
+    if (pixelCoords.x >= resolution.x || pixelCoords.y >= resolution.y) {
+        return;
+    }
+
+    vec2 texelSize = 1.0 / vec2(resolution);
+    vec2 texelCoords = (vec2(pixelCoords) + 0.5) * texelSize;
+
+    vec4 sobelColor = Sobel(texelCoords, texelSize, data.treshold);
+    imageStore(sobel, pixelCoords, sobelColor);
+}

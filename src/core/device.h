@@ -10,6 +10,12 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "core/runtime.h"
+
+namespace Core {
+    class PhysicalDevice;
+}
+
 namespace Core {
     class Device;
 
@@ -19,7 +25,7 @@ namespace Core {
         bool inUse = false;
         vk::Queue queue;
 
-        vk::Queue operator *() const { return queue; }
+        [[nodiscard]] vk::Queue Handle() const { return queue; }
 
         Queue(const Device& device, uint32_t familyIndex, uint32_t index);
     };
@@ -52,7 +58,7 @@ namespace Core {
         uint32_t familyIndex;
         vk::CommandBuffer commandBuffer;
 
-        vk::CommandBuffer operator *() const { return commandBuffer; }
+        vk::CommandBuffer Handle() const { return commandBuffer; }
     };
 
     struct QueueFamily
@@ -65,15 +71,17 @@ namespace Core {
 
     class Device {
     public:
-        static void Init();
-        static void Destroy();
+        struct CreateInfo {
+            const Runtime& runtime;
+        };
 
-        static Device& Get() { return *m_instance; }
+        explicit Device(const CreateInfo &createInfo);
+        ~Device();
 
         Device(const Device &) = delete;
         Device &operator=(const Device &) = delete;
 
-        vk::Device operator *() const { return m_device; }
+        [[nodiscard]] const vk::Device& Handle() const { return m_device; }
         [[nodiscard]] std::optional<Queue*> RequestQueue(vk::QueueFlags type) const;
         [[nodiscard]] std::optional<Queue*> RequestPresentQueue() const;
 
@@ -81,15 +89,12 @@ namespace Core {
         [[nodiscard]] std::vector<CommandBuffer> RequestCommandBuffers(uint32_t familyIndex, uint32_t count, uint32_t thread = 0) const;
         void FreeCommandBuffers(const std::vector<CommandBuffer> &commandBuffers, uint32_t thread = 0) const;
 
-        void QuerySurfaceCapabilities() const;
+        [[nodiscard]] const PhysicalDevice& QuerySurfaceCapabilities() const;
         [[nodiscard]] std::optional<uint32_t> FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 
         void RunSingleTimeCommand(const std::function<void(vk::CommandBuffer)> &command, vk::QueueFlags requiredFlags, vk::Fence fence = nullptr, uint32_t thread = 0) const;
-
-        explicit Device();
-        ~Device();
     private:
-        static std::unique_ptr<Device> m_instance;
+        const Runtime& m_runtime;
 
         vk::Device m_device;
         std::vector<QueueFamily> m_queueFamilies;

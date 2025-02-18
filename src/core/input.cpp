@@ -56,7 +56,7 @@ std::unordered_set allKeys = {
     GraveAccent,
     World1,
     World2,
-    Escape,
+    Esc,
     Enter,
     Tab,
     Backspace,

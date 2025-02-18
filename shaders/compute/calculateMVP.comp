@@ -30,7 +30,7 @@ void main() {
     mat4 model = models.get[myIndex];
 //    uint parentIndex = parents.get[myIndex];
 //    while (parentIndex != 0) {
-//        model = model * models.get[parentIndex];
+//        model = model * assets.get[parentIndex];
 //        parentIndex = parents.get[parentIndex];
 //    }
     outModels.get[myIndex] = model;

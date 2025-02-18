@@ -66,7 +66,11 @@ namespace Utils {
             return glm::vec4(Color(), UniformRealValue(0.0f, 1.0f));
         }
 
-        static glm::vec3 Direction() {
+        static glm::vec2 Direction2D() {
+            return glm::normalize(glm::vec2(UniformRealValue(-1.0f, 1.0f), UniformRealValue(-1.0f, 1.0f)));
+        }
+
+        static glm::vec3 Direction3D() {
             return glm::normalize(glm::vec3(UniformRealValue(-1.0f, 1.0f), UniformRealValue(-1.0f, 1.0f), UniformRealValue(-1.0f, 1.0f)));
         }
 

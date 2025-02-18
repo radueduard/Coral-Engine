@@ -4,28 +4,27 @@
 
 #pragma once
 
+#include <iostream>
+
 #include "manager.h"
+#include "elements/element.h"
 
 namespace GUI {
     class Layer {
-        friend class Manager;
     public:
-        Layer() { Manager::AddLayer(this); }
-        virtual ~Layer() { Manager::RemoveLayer(this); }
+        Layer() = default;
+        virtual ~Layer() = default;
 
-    private:
-        virtual void OnUIAttach() = 0;
-        virtual void OnUIUpdate() = 0;
-        virtual void OnUIRender() = 0;
-        virtual void OnUIReset() { OnUIDetach(); OnUIAttach(); }
-        virtual void OnUIDetach() = 0;
-    };
+        Layer(const Layer&) = delete;
+        Layer& operator=(const Layer&) = delete;
 
-    class SubLayer {
-    public:
-        virtual ~SubLayer() = default;
+        virtual void OnGUIAttach() { std::cout << "Attach Called from Layer" << std::endl; }
+        virtual void OnGUIUpdate() {}
+        void OnGUIRender() const { m_guiObject->Render(); }
+        void OnGUIReset() { OnGUIDetach(); OnGUIAttach(); }
+        virtual void OnGUIDetach() { std::cout << "Detach Called from Layer" << std::endl; }
 
-    private:
-        virtual void OnUIRender() = 0;
+    protected:
+        std::unique_ptr<Element> m_guiObject = nullptr;
     };
 }

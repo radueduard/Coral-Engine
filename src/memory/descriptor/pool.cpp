@@ -23,11 +23,12 @@ namespace Memory::Descriptor {
         return *this;
     }
 
-    std::unique_ptr<Pool> Pool::Builder::Build() const {
-        return std::make_unique<Pool>(*this);
+    std::unique_ptr<Pool> Pool::Builder::Build(const Core::Device& device) const {
+        return std::make_unique<Pool>(device, *this);
     }
 
-    Pool::Pool(const Builder &builder) :
+    Pool::Pool(const Core::Device& device, const Builder &builder) :
+        m_device(device),
         m_poolSizes(builder.m_poolSizes),
         m_flags(builder.m_flags),
         m_maxSets(builder.m_maxSets)
@@ -37,11 +38,11 @@ namespace Memory::Descriptor {
             .setMaxSets(m_maxSets)
             .setFlags(m_flags);
 
-        m_pool = (*Core::Device::Get()).createDescriptorPool(poolCreateInfo);
+        m_pool = m_device.Handle().createDescriptorPool(poolCreateInfo);
     }
 
     Pool::~Pool() {
-        (*Core::Device::Get()).destroyDescriptorPool(m_pool);
+        m_device.Handle().destroyDescriptorPool(m_pool);
     }
 
     vk::DescriptorSet Pool::Allocate(const SetLayout &layout) const {
@@ -49,7 +50,7 @@ namespace Memory::Descriptor {
         const auto allocateInfo = vk::DescriptorSetAllocateInfo()
             .setDescriptorPool(m_pool)
             .setSetLayouts({layoutHandle});
-        return (*Core::Device::Get()).allocateDescriptorSets(allocateInfo).front();
+        return m_device.Handle().allocateDescriptorSets(allocateInfo).front();
     }
 
     std::vector<vk::DescriptorSet> Pool::Allocate(const std::vector<SetLayout> &layouts) const {
@@ -62,15 +63,15 @@ namespace Memory::Descriptor {
             .setDescriptorPool(m_pool)
             .setSetLayouts(layoutHandles);
 
-        return (*Core::Device::Get()).allocateDescriptorSets(allocateInfo);
+        return m_device.Handle().allocateDescriptorSets(allocateInfo);
     }
 
     void Pool::Free(const vk::DescriptorSet &descriptorSet) const {
-        (*Core::Device::Get()).freeDescriptorSets(m_pool, descriptorSet);
+        m_device.Handle().freeDescriptorSets(m_pool, descriptorSet);
     }
 
     void Pool::Free(const std::vector<vk::DescriptorSet> &descriptorSets) const {
-        (*Core::Device::Get()).freeDescriptorSets(m_pool, descriptorSets);
+        m_device.Handle().freeDescriptorSets(m_pool, descriptorSets);
     }
 
 }

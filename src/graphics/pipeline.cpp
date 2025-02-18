@@ -7,8 +7,7 @@
 #include <iostream>
 #include <ranges>
 
-#include "core/shader.h"
-#include "memory/descriptor/pool.h"
+#include "../shader/shader.h"
 #include "memory/descriptor/set.h"
 
 namespace Graphics {
@@ -37,8 +36,7 @@ namespace Graphics {
             .setStencilTestEnable(vk::False);
     }
 
-    Pipeline::Builder &Pipeline::Builder::AddShader(const std::string& path) {
-        auto shader = std::make_unique<Core::Shader>(path);
+    Pipeline::Builder &Pipeline::Builder::AddShader(Core::Shader* shader) {
         const auto stage = shader->Stage();
         const auto vtgStages = std::unordered_set {
             vk::ShaderStageFlagBits::eVertex,
@@ -192,13 +190,13 @@ namespace Graphics {
         }
     }
 
-    std::unique_ptr<Pipeline> Pipeline::Builder::Build()
+    std::unique_ptr<Pipeline> Pipeline::Builder::Build(const Core::Device &device)
     {
         const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
             .setSetLayouts(m_descriptorSetLayouts)
             .setPushConstantRanges(m_pushConstantRanges);
 
-        m_pipelineLayout = (*Core::Device::Get()).createPipelineLayout(pipelineLayoutInfo);
+        m_pipelineLayout = device.Handle().createPipelineLayout(pipelineLayoutInfo);
 
         CheckShaderStagesValidity();
 
@@ -228,11 +226,11 @@ namespace Graphics {
             .setLogicOp(vk::LogicOp::eCopy)
             .setAttachments(m_colorBlendAttachments);
 
-        return std::make_unique<Pipeline>(*this);
+        return std::make_unique<Pipeline>(device, *this);
     }
 
-    Pipeline::Pipeline(const Builder &builder)
-        : m_pipelineLayout(builder.m_pipelineLayout)
+    Pipeline::Pipeline(const Core::Device& device, const Builder &builder)
+        : m_device(device), m_pipelineLayout(builder.m_pipelineLayout)
     {
         const auto m_createInfo = vk::GraphicsPipelineCreateInfo()
             .setStages(builder.m_stages)
@@ -251,7 +249,7 @@ namespace Graphics {
             .setBasePipelineHandle(builder.m_basePipeline)
             .setBasePipelineIndex(builder.m_basePipelineIndex);
 
-        const auto pipeline = (*Core::Device::Get()).createGraphicsPipeline(nullptr, m_createInfo);
+        const auto pipeline = m_device.Handle().createGraphicsPipeline(nullptr, m_createInfo);
 
         if (pipeline.result != vk::Result::eSuccess) {
             std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
@@ -262,10 +260,9 @@ namespace Graphics {
 
     Pipeline::~Pipeline()
     {
-        const auto &device = Core::Device::Get();
-        (*device).waitIdle();
-        (*device).destroyPipeline(m_pipeline);
-        (*device).destroyPipelineLayout(m_pipelineLayout);
+        m_device.Handle().waitIdle();
+        m_device.Handle().destroyPipeline(m_pipeline);
+        m_device.Handle().destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer& commandBuffer) const {
@@ -277,14 +274,14 @@ namespace Graphics {
             vk::PipelineBindPoint::eGraphics,
             m_pipelineLayout,
             setNumber,
-            *descriptorSet,
+            descriptorSet.Handle(),
             nullptr);
     }
 
     void Pipeline::BindDescriptorSets(const uint32_t startingSet, const vk::CommandBuffer commandBuffer, const std::vector<Memory::Descriptor::Set>& descriptorSets) const {
         std::vector<vk::DescriptorSet> sets;
         for (const auto &descriptorSet : descriptorSets) {
-            sets.push_back(*descriptorSet);
+            sets.push_back(descriptorSet.Handle());
         }
 
         commandBuffer.bindDescriptorSets(

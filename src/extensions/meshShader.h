@@ -9,7 +9,7 @@
 namespace Ext {
     class MeshShader {
     public:
-        static void importFunctions(vk::Instance instance);
+        static void ImportFunctions(vk::Instance instance);
 
         static void cmdDrawMeshTasks(vk::CommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
