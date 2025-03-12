@@ -14,8 +14,12 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/unordered_map.hpp>
 
-#include "gui/layer.h"
+#include "gui/templates/template.h"
 #include "utils/narryTree.h"
+
+namespace GUI {
+    class ObjectInspector;
+}
 
 namespace mgv {
     struct Transform {
@@ -48,6 +52,7 @@ namespace mgv {
 
     class Object final : public Transform, public NarryTree<Object> {
         friend class Component;
+        friend class GUI::ObjectInspector;
 
         static boost::uuids::random_generator generator;
         inline static boost::unordered_map<boost::uuids::uuid, Object*> objects;

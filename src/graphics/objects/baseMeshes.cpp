@@ -4,12 +4,14 @@
 
 #include <glm/ext/scalar_constants.hpp>
 
-#include "mesh.h"
+#include "baseMeshes.h"
+#include "memory/buffer.h"
 #include "components/camera.h"
+#include "components/renderMesh.h"
 
 namespace mgv {
-    std::unique_ptr<Mesh> Mesh::Cube(const Core::Device &device) {
-        return Builder("Cube")
+    std::unique_ptr<Mesh> Cube() {
+        return mgv::Mesh::Builder("Cube")
             .AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
             .AddVertex({{ 1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
             .AddVertex({{ 1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
@@ -24,11 +26,11 @@ namespace mgv {
             .AddIndex(1).AddIndex(5).AddIndex(6).AddIndex(6).AddIndex(2).AddIndex(1)
             .AddIndex(0).AddIndex(1).AddIndex(5).AddIndex(5).AddIndex(4).AddIndex(0)
             .AddIndex(2).AddIndex(6).AddIndex(7).AddIndex(7).AddIndex(3).AddIndex(2)
-            .Build(device);
+            .Build();
     }
 
-    std::unique_ptr<Mesh> Mesh::Sphere(const Core::Device &device) {
-        auto sphere = Builder("Sphere");
+    std::unique_ptr<Mesh> Sphere() {
+        auto sphere = Mesh::Builder("Sphere");
 
         int density = 5;
         for (int i = 0; i <= density; i++) {
@@ -60,14 +62,14 @@ namespace mgv {
                 sphere.AddIndex(second).AddIndex(second + 1).AddIndex(first + 1);
             }
         }
-        return sphere.Build(device);
+        return sphere.Build();
     }
 
-    std::unique_ptr<Mesh> Mesh::Frustum(const Core::Device &device, const Camera *camera) {
-        const float near = camera->m_projectionData.perspective.near;
-        const float far = camera->m_projectionData.perspective.near + 5.0f;
-        const float aspect = static_cast<float>(camera->m_viewportSize.x) / static_cast<float>(camera->m_viewportSize.y);
-        const float fov = camera->m_projectionData.perspective.fov;
+    std::unique_ptr<Mesh> Frustum(Camera *camera) {
+        const float near = camera->ProjectionData().data.perspective.near;
+        const float far = camera->ProjectionData().data.perspective.near + 5.0f;
+        const float aspect = camera->AspectRatio();
+        const float fov = camera->ProjectionData().data.perspective.fov;
 
         float tanHalfFov = tan(glm::radians(fov) / 2.0f);
         float nearHeight = tanHalfFov * near;
@@ -87,7 +89,7 @@ namespace mgv {
         glm::vec3 farBottomLeft = farCenter + glm::vec3(-farWidth, -farHeight, 0.0f);
         glm::vec3 farBottomRight = farCenter + glm::vec3(farWidth, -farHeight, 0.0f);
 
-        return Builder("Perspective frustum volume")
+        return Mesh::Builder("Perspective frustum volume")
             .AddVertex({nearTopLeft, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
             .AddVertex({nearTopRight, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
             .AddVertex({nearBottomLeft, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
@@ -102,7 +104,7 @@ namespace mgv {
             .AddIndex(2).AddIndex(3).AddIndex(7).AddIndex(7).AddIndex(6).AddIndex(2)
             .AddIndex(0).AddIndex(2).AddIndex(6).AddIndex(6).AddIndex(4).AddIndex(0)
             .AddIndex(1).AddIndex(3).AddIndex(7).AddIndex(7).AddIndex(5).AddIndex(1)
-            .Build(device);
+            .Build();
     }
 }
 

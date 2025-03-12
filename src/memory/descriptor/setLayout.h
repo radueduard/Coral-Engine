@@ -7,33 +7,31 @@
 #include <core/device.h>
 
 namespace Memory::Descriptor {
-    class SetLayout {
+    class SetLayout final : public EngineWrapper<vk::DescriptorSetLayout> {
     public:
         class Builder {
             friend class SetLayout;
         public:
             Builder &AddBinding(uint32_t binding, vk::DescriptorType type, vk::ShaderStageFlags stageFlags, uint32_t count = 1);
-            [[nodiscard]] std::unique_ptr<SetLayout> Build(const Core::Device& device) const;
+
+            [[nodiscard]] bool HasBinding(uint32_t binding) const;
+            [[nodiscard]] vk::DescriptorSetLayoutBinding &Binding(uint32_t binding);
+            [[nodiscard]] std::unique_ptr<SetLayout> Build() const;
 
         private:
             std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> m_bindings;
         };
 
-        vk::DescriptorSetLayout operator *() const { return m_layout; }
-
-        explicit SetLayout(const Core::Device& device, const Builder &builder);
-        ~SetLayout();
+        explicit SetLayout(const Builder &builder);
+        ~SetLayout() override;
         SetLayout(const SetLayout &) = delete;
         SetLayout &operator=(const SetLayout &) = delete;
 
-        [[nodiscard]] bool HasBinding(uint32_t binding) const;
-        [[nodiscard]] const vk::DescriptorSetLayoutBinding &Binding(uint32_t binding) const;
+        [[nodiscard]] bool HasBinding(const uint32_t binding) const { return m_bindings.contains(binding); }
+        [[nodiscard]] const vk::DescriptorSetLayoutBinding &Binding(const uint32_t binding) const { return m_bindings.at(binding); }
         [[nodiscard]] const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> &Bindings() const { return m_bindings; }
 
     private:
-        const Core::Device& m_device;
-
-        vk::DescriptorSetLayout m_layout;
         std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> m_bindings;
     };
 }

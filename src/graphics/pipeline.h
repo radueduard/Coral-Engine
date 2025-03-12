@@ -19,10 +19,6 @@ namespace Memory::Descriptor {
 
 namespace Graphics {
     class Pipeline {
-        enum Type {
-            VTG,
-            TM,
-        };
     public:
         class Builder {
             friend class Pipeline;
@@ -51,28 +47,11 @@ namespace Graphics {
             Builder &RenderPass(const vk::RenderPass &);
             Builder &Subpass(uint32_t);
 
-            Builder &BasePipeline(const vk::Pipeline &, int32_t);
-
-            template<typename T>
-            Builder &PushConstantRange(const vk::ShaderStageFlags &stageFlags, const uint32_t offset = 0) {
-                const auto pushConstantRange = vk::PushConstantRange()
-                    .setStageFlags(stageFlags)
-                    .setOffset(offset)
-                    .setSize(sizeof(T));
-                m_pushConstantRanges.push_back(pushConstantRange);
-                return *this;
-            }
-
-            Builder &DescriptorSetLayout(uint32_t setNumber, const Memory::Descriptor::SetLayout &layout);
-            Builder &DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts);
-
-            std::unique_ptr<Pipeline> Build(const Core::Device&);
+            std::unique_ptr<Pipeline> Build();
         private:
-            void CheckShaderStagesValidity() const;
+            std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
 
             std::unordered_map<vk::ShaderStageFlagBits, Core::Shader*> m_shaders;
-            std::unordered_set<Type> m_yetPossibleTypes;
-
             std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
 
             vk::PipelineVertexInputStateCreateInfo m_vertexInputInfo;
@@ -99,14 +78,9 @@ namespace Graphics {
             vk::PipelineLayout m_pipelineLayout;
             vk::RenderPass m_renderPass;
             uint32_t m_subpass = 0;
-            vk::Pipeline m_basePipeline = nullptr;
-            int32_t m_basePipelineIndex = -1;
-
-            std::vector<vk::PushConstantRange> m_pushConstantRanges;
-            std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
         };
 
-        explicit Pipeline(const Core::Device& device, const Builder &);
+        explicit Pipeline(Builder &);
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
@@ -127,10 +101,9 @@ namespace Graphics {
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
 
     private:
-        const Core::Device& m_device;
-
-        Type m_type;
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
+        std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
+        std::unordered_map<vk::ShaderStageFlagBits, Core::Shader*> m_shaders;
     };
 }

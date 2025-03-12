@@ -8,19 +8,16 @@
 #include "gui/layer.h"
 #include "components/object.h"
 #include "graphics/objects/texture.h"
-#include "gui/container.h"
-#include "gui/templates/object.h"
+#include "gui/templates/inspector.h"
 
 
 namespace mgv {
     class Scene final : public GUI::Layer {
-        friend class CalculateMVP;
     public:
-        explicit Scene(const Core::Device& device);
+        explicit Scene();
         ~Scene() override = default;
 
         void OnGUIAttach() override;
-        void OnGUIDetach() override {}
 
         void Update(double deltaTime) const;
         void LateUpdate(double deltaTime) const;
@@ -29,11 +26,11 @@ namespace mgv {
         [[nodiscard]] const std::unique_ptr<Object>& Root() const { return m_root; }
 
     private:
-        const Core::Device& m_device;
         std::unique_ptr<Object> m_root;
 
-        std::unique_ptr<Texture> m_testTexture;
+        GUI::ObjectInspector m_inspectorTemplate;
+        Object* m_selectedObject = nullptr;
 
-        GUI::Container<GUI::InspectorPanel> m_inspectorPanel;
+        std::unique_ptr<Texture> m_testTexture;
     };
 }

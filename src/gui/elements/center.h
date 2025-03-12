@@ -20,28 +20,34 @@ namespace GUI {
         ~Center() override = default;
 
         void Render() override {
-            m_startPoint = m_parent->StartPoint(this);
-            m_availableArea = m_parent->AllocatedArea(this);
-            m_allocatedArea = m_child->Size();
+            m_requiredArea = m_child->RequiredArea();
+            m_outerBounds = m_parent->AllocatedArea(this);
+            const auto childArea = m_child->RequiredArea();
+            if (m_horizontal && !m_vertical) {
+                m_innerBounds.min.x = m_outerBounds.min.x + (m_outerBounds.max.x - m_outerBounds.min.x - childArea.x) / 2.0f;
+                m_innerBounds.max.x = m_innerBounds.min.x + childArea.x;
+
+                m_innerBounds.min.y = m_outerBounds.min.y;
+                m_innerBounds.max.y = m_outerBounds.max.y;
+            } else if (m_vertical && !m_horizontal) {
+                m_innerBounds.min.y = m_outerBounds.min.y + (m_outerBounds.max.y - m_outerBounds.min.y - childArea.y) / 2.0f;
+                m_innerBounds.max.y = m_innerBounds.min.y + childArea.y;
+
+                m_innerBounds.min.x = m_outerBounds.min.x;
+                m_innerBounds.max.x = m_outerBounds.max.x;
+            } else {
+                m_innerBounds.min = m_outerBounds.min + (m_outerBounds.max - m_outerBounds.min - childArea) / 2.0f;
+                m_innerBounds.max = m_innerBounds.min + childArea;
+            }
 
             m_child->Render();
         }
 
-        glm::vec2 StartPoint(Element *element) override {
-            // Debug();
-
-            if (m_horizontal && m_vertical) {
-                return m_startPoint + glm::vec2 { (m_availableArea.x - m_allocatedArea.x) / 2, (m_availableArea.y - m_allocatedArea.y) / 2 };
-            } if (m_horizontal) {
-                return m_startPoint + glm::vec2 { (m_availableArea.x - m_allocatedArea.x) / 2, 0.f };
-            } if (m_vertical) {
-                return m_startPoint + glm::vec2 { 0.f, (m_availableArea.y - m_allocatedArea.y) / 2 };
+        Math::Rect AllocatedArea(Element *element) const override {
+            if (element == m_child.get()) {
+                return m_innerBounds;
             }
-            throw std::runtime_error("How did we get here?");
-        }
-
-        glm::vec2 AllocatedArea(Element *element) override {
-            return m_allocatedArea;
+            return Math::Rect::Zero();
         }
 
     private:

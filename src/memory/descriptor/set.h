@@ -18,7 +18,7 @@ namespace Memory::Descriptor {
             Builder &WriteBuffer(uint32_t binding, const vk::DescriptorBufferInfo& bufferInfo);
             Builder &WriteImage(uint32_t binding, const vk::DescriptorImageInfo& imageInfo);
 
-            [[nodiscard]] std::unique_ptr<Set> Build(const Core::Device& device);
+            [[nodiscard]] std::unique_ptr<Set> Build();
 
         private:
             const Pool &m_pool;
@@ -28,13 +28,12 @@ namespace Memory::Descriptor {
 
         [[nodiscard]] vk::DescriptorSet Handle() const { return m_set; }
 
-        explicit Set(const Core::Device& device, Builder &builder);
+        explicit Set(Builder &builder);
         ~Set();
         Set(const Set &) = delete;
         Set &operator=(const Set &) = delete;
 
     private:
-        const Core::Device& m_device;
         const Pool &m_pool;
         const SetLayout &m_layout;
 

@@ -13,7 +13,6 @@ namespace mgv {
     class Camera final : public Component
     {
         friend class DebugCamera;
-        friend class Mesh;
 
         inline static std::vector<Camera*> cameras;
         inline static Camera* mainCamera;
@@ -27,34 +26,47 @@ namespace mgv {
             glm::vec4 far;
         };
 
-        enum Type {
-            Perspective = 0,
-            Orthographic = 1
+        enum class Type {
+            Perspective,
+            Orthographic,
+            Count
         };
 
-        union ProjectionData {
-            struct Perspective {
-                float fov = 45.0f;
-                float near = 0.1f;
-                float far = 100.0f;
-            } perspective;
-            struct Orthographic {
-                float left = -1.0f;
-                float right = 1.0f;
-                float top = 1.0f;
-                float bottom = -1.0f;
-                float near = 100.0f;
-                float far = 0.1f;
-            } orthographic;
+        struct Perspective {
+            float fov = 45.0f;
+            float near = 0.1f;
+            float far = 100.0f;
+        } perspective;
 
-            ProjectionData() : perspective() {}
-            explicit ProjectionData(const Perspective &perspective) : perspective(perspective) {}
-            explicit ProjectionData(const Orthographic &orthographic) : orthographic(orthographic) {}
+        struct Orthographic {
+            float left = -1.0f;
+            float right = 1.0f;
+            float top = 1.0f;
+            float bottom = -1.0f;
+            float near = 100.0f;
+            float far = 0.1f;
+        } orthographic;
+
+        union Projection {
+            Perspective perspective;
+            Orthographic orthographic;
+
+            Projection() : perspective() {}
+            explicit Projection(const Perspective &perspective) : perspective(perspective) {}
+            explicit Projection(const Orthographic &orthographic) : orthographic(orthographic) {}
+        };
+
+        struct ProjectionData {
+            Type type;
+            Projection data;
+
+            ProjectionData(): type(Type::Perspective), data(Perspective()) {}
+            explicit ProjectionData(const Perspective &perspective) : type(Type::Perspective), data(perspective) {}
+            explicit ProjectionData(const Orthographic &orthographic) : type(Type::Orthographic), data(orthographic) {}
         };
 
         struct CreateInfo {
             bool primary = true;
-            Type type = Perspective;
             ProjectionData projectionData;
             glm::uvec2 size = { 800, 600 };
         };
@@ -84,8 +96,10 @@ namespace mgv {
         [[nodiscard]] const glm::mat4& FlippedInverseView() const { return m_flippedInverseView; }
         [[nodiscard]] bool Moved() const { return m_moved; }
         [[nodiscard]] glm::uvec2 Resolution() const { return m_viewportSize; }
-        // [[nodiscard]] Memory::Buffer* FrustumsBuffer() const { return m_frustumBuffer.get(); }
         [[nodiscard]] Info BufferData() const;
+
+        [[nodiscard]] float AspectRatio() const { return static_cast<float>(m_viewportSize.x) / static_cast<float>(m_viewportSize.y); }
+        [[nodiscard]] ProjectionData& ProjectionData() { return m_projectionData; }
 
         [[nodiscard]] static Camera* Main() { return mainCamera; }
         [[nodiscard]] static const std::vector<Camera*>& All() { return cameras; }
@@ -93,8 +107,6 @@ namespace mgv {
     private:
         void RecalculateProjection();
         void RecalculateView();
-
-        // void CalculateScreenFrustums(uint32_t chunksOnX, uint32_t chunksOnY);
 
         glm::mat4 m_projection { 1.0f };
         glm::mat4 m_view { 1.0f };
@@ -104,8 +116,7 @@ namespace mgv {
         glm::mat4 m_flippedView { 1.0f };
         glm::mat4 m_flippedInverseView { 1.0f };
 
-        Type m_type = Perspective;
-        ProjectionData m_projectionData {};
+        struct ProjectionData m_projectionData {};
         glm::uvec2 m_viewportSize{0, 0};
 
         bool m_primary = true;
@@ -113,11 +124,22 @@ namespace mgv {
         bool m_changed = false;
         const glm::vec3 m_up = glm::vec3(0, 1, 0);
 
-        // std::unique_ptr<Memory::Buffer> m_frustumBuffer = nullptr;
-
         void Rotate(float yaw, float pitch);
         void MoveForward(float amount);
         void MoveRight(float amount);
         void MoveUp(float amount);
     };
+}
+
+namespace std {
+    inline string to_string(const mgv::Camera::Type& type) {
+        switch (type) {
+            case mgv::Camera::Type::Perspective:
+                return "Perspective";
+            case mgv::Camera::Type::Orthographic:
+                return "Orthographic";
+            default:
+                return "Unknown";
+        }
+    }
 }

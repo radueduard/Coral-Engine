@@ -22,53 +22,199 @@
 
 #include "IconsFontAwesome6.h"
 
+static void check_vk_result(VkResult err) {
+    if (err == VK_SUCCESS)
+        return;
+
+    std::cerr << "[ImGui] Error: " << vk::to_string(static_cast<vk::Result>(err)) << std::endl;
+
+    if (err < 0)
+        abort();
+}
+
 namespace GUI {
-    void AddLayer(Layer *layer) {
-        g_layers.emplace_back(layer);
+    Manager::Manager(const CreateInfo& createInfo)
+        : m_queue(createInfo.queue), m_renderPass(createInfo.renderPass), m_frameCount(createInfo.frameCount),
+          m_sampleCount(createInfo.sampleCount), m_imageFormat(createInfo.imageFormat)
+    {
+        InitDescriptorPool();
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImNodes::CreateContext();
+        ImGuiIO &io = ImGui::GetIO(); (void)io;
+
+        for (int baseFontSize = 8; baseFontSize <= 32; baseFontSize++) {
+            const auto fontSize = static_cast<float>(baseFontSize);
+            AddFont("assets/fonts/Roboto-Light.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+            AddFont("assets/fonts/Roboto-Medium.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+            AddFont("assets/fonts/Roboto-Regular.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+            AddFont("assets/fonts/Roboto-Bold.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+            AddFont("assets/fonts/Roboto-Italic.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+            AddFont("assets/fonts/Roboto-Black.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+        }
+
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+        ImGui::StyleColorsDark();
+
+        ImGuiStyle &style = ImGui::GetStyle();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            style.WindowRounding = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        }
+        style.AntiAliasedFill = true;
+
+        ImGui_ImplGlfw_InitForVulkan(createInfo.window.GetHandle(), true);
+        ImGui_ImplVulkan_InitInfo init_info = {
+            .Instance = createInfo.runtime.Instance(),
+            .PhysicalDevice = *createInfo.runtime.PhysicalDevice(),
+            .Device = *Core::GlobalDevice(),
+            .QueueFamily = m_queue.Family().Index(),
+            .Queue = *m_queue,
+            .DescriptorPool = m_descriptorPool->Handle(),
+            .RenderPass = *m_renderPass,
+            .MinImageCount = 2,
+            .ImageCount = m_frameCount,
+            .MSAASamples = static_cast<VkSampleCountFlagBits>(m_sampleCount),
+            .PipelineCache = nullptr,
+            .Subpass = 0,
+            .Allocator = nullptr,
+            .CheckVkResultFn = check_vk_result,
+        };
+        ImGui_ImplVulkan_Init(&init_info);
+
+        io.FontDefault = GetFont(FontType::Regular, 13.0f);
+
     }
 
-    void RemoveLayer(Layer *layer) {
-        std::erase(g_layers, layer);
+    Manager::~Manager() {
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImNodes::DestroyContext();
+        ImGui::DestroyContext();
+        m_descriptorPool.reset();
     }
 
-    void Render(const vk::CommandBuffer& commandBuffer) {
+    void Manager::AddLayer(Layer *layer) {
+        m_layers.emplace_back(layer);
+    }
+
+    void Manager::RemoveLayer(Layer *layer) {
+        std::erase(m_layers, layer);
+    }
+
+    void Manager::Update(const float deltaTime) const {
+        for (auto* layer : m_layers) {
+            layer->OnGUIUpdate();
+        }
+
+        for (auto* layer : m_layers) {
+            layer->OnGUIReset();
+        }
+    }
+
+    void Manager::Render(const Core::CommandBuffer& commandBuffer) const {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        static ImGuiDockNodeFlags dockSpaceFlags = ImGuiDockNodeFlags_None;
+        static ImGuiDockNodeFlags dockSpaceFlags = ImGuiDockNodeFlags_NoWindowMenuButton;
 
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::SetNextWindowViewport(viewport->ID);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
         window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
-        if (dockSpaceFlags & ImGuiDockNodeFlags_PassthruCentralNode)
-            window_flags |= ImGuiWindowFlags_NoBackground;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin("DockSpace Demo", nullptr, window_flags);
-        ImGui::PopStyleVar(3);
 
-        if (const ImGuiIO& io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-        {
-            const ImGuiID dockSpaceId = ImGui::GetID("VulkanAppDockSpace");
-            ImGui::DockSpace(dockSpaceId, ImVec2(0.0f, 0.0f), dockSpaceFlags);
-        }
+        ImGui::PushStyleVar(ImGuiStyleVar_TabBarBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 10.f, 10.f });
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, { 10.f, 10.f });
+        ImGui::PushStyleVar(ImGuiStyleVar_TabBarOverlineSize, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 10.0f, 5.0f });
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 34.0f);
 
-        for (const auto* layer : g_layers) {
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 5.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f);
+
+        // set selectable item spacing
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 5.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(11.0f, 5.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.0f, 0.5f));
+
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
+
+
+        ImVec4 bgColor = ImColor(.1f, .1f, .1f, 1.f);
+        ImVec4 highlightColor = ImColor(1.f, 1.f, 1.f, 1.f);
+        ImVec4 dimmedHighlightColor = ImColor(1.f, 1.f, 1.f, 0.5f);
+        auto buttonColor = IM_COL32(32, 32, 32, 255);
+        auto buttonHoveredColor = IM_COL32(64, 64, 64, 255);
+
+        ImGui::PushStyleColor(ImGuiCol_TitleBg, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_Tab, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TabActive, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TabSelected, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TabHovered, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TabUnfocused, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, bgColor);
+        ImGui::PushStyleColor(ImGuiCol_TabSelectedOverline, highlightColor);
+        ImGui::PushStyleColor(ImGuiCol_TabDimmedSelectedOverline, dimmedHighlightColor);
+        ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, dimmedHighlightColor);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, buttonColor);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, buttonColor);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, buttonHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, dimmedHighlightColor);
+        ImGui::PushStyleColor(ImGuiCol_Header, buttonColor);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, buttonHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, dimmedHighlightColor);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, dimmedHighlightColor);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+        ImGui::PushFont(GetFont(FontType::Black, 15.f));
+
+        const ImGuiID dockSpaceId = ImGui::GetID("MainDockSpace");
+        ImGui::DockSpace(dockSpaceId, ImVec2(0.0f, 0.0f), dockSpaceFlags);
+
+        ImGui::PushFont(GetFont(FontType::Regular, 13.f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
+
+        for (const auto* layer : m_layers) {
             layer->OnGUIRender();
         }
 
+        ImGui::PopFont();
+        ImGui::PopFont();
+
+        ImGui::PopStyleColor(24);
+        ImGui::PopStyleVar(16);
+
         ImGui::End();
+
+        ImGui::PopStyleVar(3);
+
         ImGui::Render();
         ImDrawData* draw_data = ImGui::GetDrawData();
         if (const bool main_is_minimized = draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f; !main_is_minimized) {
-            ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
+            ImGui_ImplVulkan_RenderDrawData(draw_data, *commandBuffer);
         }
 
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -77,8 +223,8 @@ namespace GUI {
         }
     }
 
-    void InitDescriptorPool(const Core::Device& device) {
-        s_descriptorPool = Memory::Descriptor::Pool::Builder()
+    void Manager::InitDescriptorPool() {
+        m_descriptorPool = Memory::Descriptor::Pool::Builder()
             .AddPoolSize(vk::DescriptorType::eSampler, 1000)
             .AddPoolSize(vk::DescriptorType::eCombinedImageSampler, 1000)
             .AddPoolSize(vk::DescriptorType::eSampledImage, 1000)
@@ -92,20 +238,10 @@ namespace GUI {
             .AddPoolSize(vk::DescriptorType::eInputAttachment, 1000)
             .PoolFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
             .MaxSets(1000)
-            .Build(device);
+            .Build();
     }
 
-    void check_vk_result(VkResult err) {
-        if (err == VK_SUCCESS)
-            return;
-
-        std::cerr << "[ImGui] Error: " << vk::to_string(static_cast<vk::Result>(err)) << std::endl;
-
-        if (err < 0)
-            abort();
-    }
-
-    void AddFont(std::string path, const float size, const ImWchar* ranges) {
+    void Manager::AddFont(std::string path, const float size, const ImWchar* ranges) {
         const std::string runPath = std::filesystem::current_path().string() + "/";
         path = runPath + path;
         const std::string iconPath = runPath + FONT_ICON_FILE_NAME_FAS;
@@ -129,77 +265,13 @@ namespace GUI {
 
     }
 
-    ImFont* GetFont(const FontType type, const float size) {
-        std::string fontName = std::to_string(type) + "_" + std::to_string(size);
+    ImFont* Manager::GetFont(const FontType type, const float size) {
+        const std::string fontName = std::to_string(type) + "_" + std::to_string(size);
         for (const auto font : ImGui::GetIO().Fonts->Fonts) {
             if (strcmp(font->ConfigData->Name, fontName.c_str()) == 0) {
                 return font;
             }
         }
         return ImGui::GetIO().Fonts->Fonts[0];
-    }
-
-    void SetupContext(const CreateInfo& createInfo) {
-        const auto& [window, runtime, device, scheduler] = createInfo;
-        InitDescriptorPool(device);
-
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImNodes::CreateContext();
-        ImGuiIO &io = ImGui::GetIO(); (void)io;
-
-        for (int baseFontSize = 8; baseFontSize <= 32; baseFontSize++) {
-            const float fontSize = static_cast<float>(baseFontSize);
-            AddFont("assets/fonts/Roboto-Light.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Medium.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Regular.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Bold.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Italic.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Black.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-        }
-
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-        ImGui::StyleColorsDark();
-
-        ImGuiStyle &style = ImGui::GetStyle();
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-            style.WindowRounding = 0.0f;
-            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-        }
-
-        const auto msaaSamples = static_cast<VkSampleCountFlagBits>(scheduler.SwapChain().SampleCount());
-
-        ImGui_ImplGlfw_InitForVulkan(window.GetHandle(), true);
-        ImGui_ImplVulkan_InitInfo init_info = {
-            .Instance = runtime.Instance(),
-            .PhysicalDevice = runtime.PhysicalDevice().Handle(),
-            .Device = device.Handle(),
-            .QueueFamily = scheduler.Queue(vk::QueueFlagBits::eGraphics).familyIndex,
-            .Queue = scheduler.Queue(vk::QueueFlagBits::eGraphics).queue,
-            .DescriptorPool = s_descriptorPool->Handle(),
-            .RenderPass = scheduler.SwapChain().RenderPass().Handle(),
-            .MinImageCount = scheduler.SwapChain().MinImageCount(),
-            .ImageCount = scheduler.SwapChain().ImageCount(),
-            .MSAASamples = msaaSamples,
-            .PipelineCache = nullptr,
-            .Subpass = 0,
-            .Allocator = nullptr,
-            .CheckVkResultFn = check_vk_result,
-        };
-        ImGui_ImplVulkan_Init(&init_info);
-
-        // set default font
-        io.FontDefault = GetFont(FontType::Regular, 13.0f);
-    }
-
-    void DestroyContext() {
-        ImGui_ImplVulkan_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImNodes::DestroyContext();
-        ImGui::DestroyContext();
-        s_descriptorPool.reset();
     }
 }

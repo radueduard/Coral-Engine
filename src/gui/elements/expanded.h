@@ -11,25 +11,28 @@
 namespace GUI {
     class Expanded : public Element {
     public:
-        explicit Expanded(Element* child)
+        explicit Expanded(Element* child = nullptr)
             : m_child(child) {
-            child->AttachTo(this);
+            if (m_child != nullptr) {
+                child->AttachTo(this);
+            }
         }
         ~Expanded() override = default;
 
         void Render() override {
-            m_startPoint = m_parent->StartPoint(this);
-            m_allocatedArea = m_parent->AllocatedArea(this);
+            m_outerBounds = m_parent->AllocatedArea(this);
+            m_innerBounds = m_outerBounds;
 
-            m_child->Render();
+            if (m_child != nullptr) {
+                m_child->Render();
+            }
         }
 
-        glm::vec2 StartPoint(Element *element) override {
-            return m_parent->StartPoint(this);
-        }
-
-        glm::vec2 AllocatedArea(Element *element) override {
-            return m_parent->AllocatedArea(this);
+        Math::Rect AllocatedArea(Element *element) const override {
+            if (element == m_child.get()) {
+                return m_innerBounds;
+            }
+            return Math::Rect::Zero();
         }
 
     private:

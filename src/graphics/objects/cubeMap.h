@@ -53,11 +53,11 @@ namespace Graphics {
                 return *this;
             }
 
-            [[nodiscard]] std::unique_ptr<CubeMap> Build(const Core::Device& device) const {
+            [[nodiscard]] std::unique_ptr<CubeMap> Build() const {
                 if (m_positiveX.empty() || m_negativeX.empty() || m_positiveY.empty() || m_negativeY.empty() || m_positiveZ.empty() || m_negativeZ.empty()) {
                     throw std::runtime_error("CubeMap images not provided");
                 }
-                return std::make_unique<CubeMap>(device, *this);
+                return std::make_unique<CubeMap>(*this);
             }
         private:
             std::string m_positiveX;
@@ -68,7 +68,7 @@ namespace Graphics {
             std::string m_negativeZ;
         };
 
-        CubeMap(const Core::Device& device, const Builder& builder);
+        explicit CubeMap(const Builder& builder);
         ~CubeMap() = default;
 
         CubeMap(const CubeMap&) = delete;
@@ -79,8 +79,6 @@ namespace Graphics {
         [[nodiscard]] vk::DescriptorImageInfo DescriptorInfo() const;
 
     private:
-        const Core::Device& m_device;
-
         uint32_t m_size;
         std::unique_ptr<Memory::Image> m_image;
         std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;

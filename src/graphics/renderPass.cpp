@@ -4,19 +4,23 @@
 
 #include "renderPass.h"
 
+#include <ranges>
+
+#include "framebuffer.h"
 #include "core/device.h"
+#include "math/mathMGV.h"
 #include "memory/image.h"
 
 namespace Graphics {
 
-    void RenderPass::Attachment::Resize(vk::Extent2D extent) const {
-        for (auto &image : images) {
-            image->Resize({extent.width, extent.height, 1});
+    void RenderPass::Attachment::Resize(Math::Vector2<uint32_t> extent) const {
+        for (auto* image : images) {
+            image->Resize({extent.x, extent.y, 1});
         }
     }
 
-    RenderPass::RenderPass(const Core::Device& device, Builder* builder)
-        : m_device(device), m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
+    RenderPass::RenderPass(Builder* builder)
+        : m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
         m_attachments = std::move(builder->m_attachments);
         m_subpasses = builder->m_subpasses;
         m_dependencies = builder->m_dependencies;
@@ -43,45 +47,24 @@ namespace Graphics {
             .setSubpasses(m_subpasses)
             .setDependencies(m_dependencies);
 
-        m_renderPass = m_device.Handle().createRenderPass(renderPassInfo);
+        m_handle = Core::GlobalDevice()->createRenderPass(renderPassInfo);
     }
 
     void RenderPass::CreateFrameBuffers() {
         m_frameBuffers.resize(m_imageCount);
-        for (size_t i = 0; i < m_imageCount; i++) {
-            auto frameBufferAttachments = std::vector<vk::ImageView>();
-            for (const auto &attachment : m_attachments) {
-                auto imageView = Memory::ImageView::Builder(*attachment.images[i])
-                    .ViewType(vk::ImageViewType::e2D)
-                    .BaseMipLevel(0)
-                    .LevelCount(1)
-                    .Build(m_device);
-                frameBufferAttachments.emplace_back(imageView->Handle());
-                m_imageViews.emplace_back(std::move(imageView));
-            }
-
-            const auto frameBufferInfo = vk::FramebufferCreateInfo()
-                .setRenderPass(m_renderPass)
-                .setAttachments(frameBufferAttachments)
-                .setWidth(m_extent.width)
-                .setHeight(m_extent.height)
-                .setLayers(1);
-
-            m_frameBuffers[i] = m_device.Handle().createFramebuffer(frameBufferInfo);
+        for (uint32_t i = 0; i < m_imageCount; i++) {
+            m_frameBuffers[i] = std::make_unique<Graphics::Framebuffer>(*this, i);
         }
     }
 
     void RenderPass::DestroyRenderPass() {
-        if (m_renderPass) {
-            m_device.Handle().destroyRenderPass(m_renderPass);
-            m_renderPass = nullptr;
+        if (m_handle) {
+            Core::GlobalDevice()->destroyRenderPass(m_handle);
+            m_handle = nullptr;
         }
     }
 
     void RenderPass::DestroyFrameBuffers() {
-        for (const auto &frameBuffer : m_frameBuffers) {
-            m_device.Handle().destroyFramebuffer(frameBuffer);
-        }
         m_frameBuffers.clear();
 
         for (auto &imageView : m_imageViews) {
@@ -89,26 +72,26 @@ namespace Graphics {
         }
     }
 
-    void RenderPass::Begin(const vk::CommandBuffer commandBuffer, const uint32_t imageIndex) {
+    void RenderPass::Begin(const Core::CommandBuffer& commandBuffer, const uint32_t imageIndex) {
         m_inFlightImageIndex = imageIndex;
-        auto clearValues = std::vector<vk::ClearValue>();
-        for (const auto &attachment : m_attachments) {
-            clearValues.emplace_back(attachment.clearValue);
-        }
+
+        auto clearValues = m_attachments
+            | std::views::transform([](const auto& attachment) { return attachment.clearValue; })
+            | std::ranges::to<std::vector>();
 
         const auto renderPassInfo = vk::RenderPassBeginInfo()
-            .setRenderPass(m_renderPass)
-            .setFramebuffer(m_frameBuffers[imageIndex])
+            .setRenderPass(m_handle)
+            .setFramebuffer(**m_frameBuffers[imageIndex])
             .setRenderArea(vk::Rect2D().setExtent(m_extent))
             .setClearValues(clearValues);
 
-        commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+        commandBuffer->beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
         const auto viewport = vk::Viewport()
             .setX(0.0f)
             .setY(0.0f)
-            .setWidth(static_cast<float>(m_extent.width))
-            .setHeight(static_cast<float>(m_extent.height))
+            .setWidth(static_cast<float>(m_extent.x))
+            .setHeight(static_cast<float>(m_extent.y))
             .setMinDepth(0.0f)
             .setMaxDepth(1.0f);
 
@@ -116,8 +99,8 @@ namespace Graphics {
             .setOffset({0, 0})
             .setExtent(m_extent);
 
-        commandBuffer.setViewport(0, viewport);
-        commandBuffer.setScissor(0, scissor);
+        commandBuffer->setViewport(0, viewport);
+        commandBuffer->setScissor(0, scissor);
     }
 
     void RenderPass::Update(const float deltaTime) const {
@@ -128,7 +111,7 @@ namespace Graphics {
         // }
     }
 
-    void RenderPass::Draw(const vk::CommandBuffer commandBuffer) const {
+    void RenderPass::Draw(const Core::CommandBuffer& commandBuffer) const {
         // for (const auto& program : m_programs) {
         //     if (program) {
         //         program->Draw(commandBuffer, this);
@@ -136,8 +119,8 @@ namespace Graphics {
         // }
     }
 
-    void RenderPass::End(const vk::CommandBuffer commandBuffer)  {
-        commandBuffer.endRenderPass();
+    void RenderPass::End(const Core::CommandBuffer& commandBuffer)  {
+        commandBuffer->endRenderPass();
         m_inFlightImageIndex = std::nullopt;
     }
 
@@ -150,12 +133,12 @@ namespace Graphics {
     }
 
 
-    bool RenderPass::Resize(const uint32_t imageCount, const vk::Extent2D extent) {
-        if ((m_imageCount == imageCount && m_extent == extent) || (extent.width == 0 || extent.height == 0)) {
+    bool RenderPass::Resize(const uint32_t imageCount, const Math::Vector2<uint32_t> extent) {
+        if ((m_imageCount == imageCount && m_extent == extent) || (extent.x == 0 || extent.y == 0)) {
             return false;
         }
 
-        m_device.Handle().waitIdle();
+        Core::GlobalDevice()->waitIdle();
 
         DestroyFrameBuffers();
 

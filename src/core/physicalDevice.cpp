@@ -9,21 +9,22 @@
 
 namespace Core {
     PhysicalDevice::PhysicalDevice(const CreateInfo& createInfo)
-        : m_runtime(createInfo.runtime), m_physicalDevice(createInfo.physicalDevice), m_surface(createInfo.surface)
+        : m_runtime(createInfo.runtime), m_surface(createInfo.surface)
     {
-        m_properties = m_physicalDevice.getProperties();
-        m_features = m_physicalDevice.getFeatures();
-        m_memoryProperties = m_physicalDevice.getMemoryProperties();
-        m_extensionProperties = m_physicalDevice.enumerateDeviceExtensionProperties();
-        m_queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
+        m_handle = createInfo.physicalDevice;
+        m_properties = m_handle.getProperties();
+        m_features = m_handle.getFeatures();
+        m_memoryProperties = m_handle.getMemoryProperties();
+        m_extensionProperties = m_handle.enumerateDeviceExtensionProperties();
+        m_queueFamilyProperties = m_handle.getQueueFamilyProperties();
 
         QuerySurfaceCapabilities();
     }
 
     void PhysicalDevice::QuerySurfaceCapabilities() {
-        m_capabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
-        m_formats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
-        m_presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
+        m_capabilities = m_handle.getSurfaceCapabilitiesKHR(m_surface);
+        m_formats = m_handle.getSurfaceFormatsKHR(m_surface);
+        m_presentModes = m_handle.getSurfacePresentModesKHR(m_surface);
     }
 
 
@@ -46,7 +47,7 @@ namespace Core {
                     supportedQueueFamilies.insert(requiredQueueFamily);
                 }
             }
-            presentSupported |= m_physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, m_surface);
+            presentSupported |= m_handle.getSurfaceSupportKHR(queueFamilyIndex, m_surface);
         }
 
         return requiredQueueFamilies == supportedQueueFamilies && presentSupported;

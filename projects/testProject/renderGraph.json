@@ -1,0 +1,117 @@
+{
+  "images": {
+    "id1": {
+      "format": "eD32Sfloat",
+      "usage": "eDepthStencilAttachment",
+      "sampleCount": "e1",
+      "initialLayout": "eDepthStencilAttachmentOptimal"
+    },
+    "id2": {
+      "format": "eR8G8B8A8Unorm",
+      "usage": ["eColorAttachment", "eSampled"],
+      "sampleCount": "e1",
+      "initialLayout": "eShaderReadOnlyOptimal"
+    }
+  },
+  "renderPasses": {
+    "depth": {
+      "outputIndex": 0,
+      "attachments": [
+        {
+          "description": {
+            "format": "eD32Sfloat",
+            "samples": "e1",
+            "loadOp": "eClear",
+            "storeOp": "eStore",
+            "stencilLoadOp": "eDontCare",
+            "stencilStoreOp": "eDontCare",
+            "initialLayout": "eDepthStencilAttachmentOptimal",
+            "finalLayout": "eDepthStencilAttachmentOptimal"
+          },
+          "reference": {
+              "attachment": 0,
+              "layout": "eDepthStencilAttachmentOptimal"
+          },
+          "image": "id1",
+          "clearValue": {
+            "depthStencil": {
+              "depth": 1.0,
+              "stencil": 0
+            }
+          }
+        }
+      ],
+      "subpasses": [
+        {
+          "depthStencilAttachment": {
+            "attachment": 0,
+            "layout": "eDepthStencilAttachmentOptimal"
+          }
+        }
+      ]
+    },
+    "color": {
+      "outputIndex": 0,
+      "attachments": [
+        {
+          "description": {
+            "format": "eR8G8B8A8Unorm",
+            "samples": "e1",
+            "loadOp": "eClear",
+            "storeOp": "eStore",
+            "initialLayout": "eShaderReadOnlyOptimal",
+            "finalLayout": "eShaderReadOnlyOptimal"
+          },
+          "reference": {
+              "attachment": 0,
+              "layout": "eColorAttachmentOptimal"
+          },
+          "image": "id2",
+          "clearValue": {
+            "color": [0.0, 0.0, 0.0, 1.0]
+          }
+        },
+        {
+            "description": {
+                "format": "eD32Sfloat",
+                "samples": "e1",
+                "loadOp": "eLoad",
+                "storeOp": "eDontCare",
+                "initialLayout": "eDepthStencilAttachmentOptimal",
+                "finalLayout": "eDepthStencilAttachmentOptimal"
+            },
+            "reference": {
+                "attachment": 1,
+                "layout": "eDepthStencilAttachmentOptimal"
+            },
+            "image": "id1"
+        }
+      ],
+      "subpasses": [
+        {
+          "colorAttachments": [
+            {
+              "attachment": 0,
+              "layout": "eColorAttachmentOptimal"
+            }
+          ],
+          "depthStencilAttachment": {
+            "attachment": 1,
+            "layout": "eDepthStencilAttachmentOptimal"
+          }
+        }
+      ]
+    }
+  },
+  "commandBuffers": {
+    "cmd1": {
+      "renderPass": "depth"
+    },
+    "cmd2": {
+      "computeShader": "computeShader"
+    },
+    "cmd3": {
+      "renderPass": "color"
+    }
+  }
+}

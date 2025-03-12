@@ -6,15 +6,18 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "core/device.h"
+#include "gui/elements/image.h"
+#include "math/mathMGV.h"
+
 namespace Memory {
     class Image;
 }
 
 namespace Core {
-    class Device;
-    struct Frame;
+    class Frame;
     class Scheduler;
-    struct Queue;
+    class Queue;
 }
 
 namespace Graphics {
@@ -22,35 +25,30 @@ namespace Graphics {
 }
 
 namespace Graphics {
-    class SwapChain {
+    class SwapChain : public EngineWrapper<vk::SwapchainKHR> {
     public:
         struct CreateInfo {
-            vk::Extent2D extent;
             uint32_t minImageCount;
             uint32_t imageCount;
             vk::SampleCountFlagBits sampleCount;
-            std::vector<uint32_t> queueFamilyIndices;
         };
 
-        explicit SwapChain(const Core::Device& device, const CreateInfo& createInfo);
-        ~SwapChain();
+        explicit SwapChain(const CreateInfo& createInfo);
+        ~SwapChain() override;
 
-        vk::SwapchainKHR operator *() const { return m_swapChain; }
-        [[nodiscard]] const vk::Extent2D &Extent() const { return m_extent; }
+        [[nodiscard]] const Math::Vector2<uint32_t> &Extent() const { return m_extent; }
         [[nodiscard]] uint32_t MinImageCount() const { return m_minImageCount; }
         [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
-        [[nodiscard]] vk::SampleCountFlagBits SampleCount() const;
-        [[nodiscard]] RenderPass &RenderPass() const { return *m_renderPass; }
+        [[nodiscard]] vk::SampleCountFlagBits SampleCount() const { return m_sampleCount; }
+        [[nodiscard]] std::vector<Memory::Image*> SwapChainImages() const;
+        [[nodiscard]] vk::Format ImageFormat() const { return m_surfaceFormat.format; }
 
-        void Resize(vk::Extent2D newSize);
+        void Resize(const Math::Vector2<uint32_t>& newSize);
         vk::Result Acquire(const Core::Frame &frame);
-        void Render(vk::CommandBuffer commandBuffer) const;
         vk::Result Present(const Core::Frame &frame);
 
     private:
-        const Core::Device &m_device;
-
-        vk::Extent2D m_extent = {};
+        Math::Vector2<uint32_t> m_extent = {};
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
         uint32_t m_minImageCount = 0;
         uint32_t m_imageCount = 0;
@@ -58,20 +56,13 @@ namespace Graphics {
         vk::SurfaceFormatKHR m_surfaceFormat = {};
         vk::PresentModeKHR m_presentMode = {};
 
-        std::vector<unsigned> m_queueFamilyIndices;
-        Core::Queue *m_presentQueue;
-
-        std::unique_ptr<Graphics::RenderPass> m_renderPass;
-
-        vk::SwapchainKHR m_swapChain = nullptr;
+        std::unique_ptr<Core::Queue> m_presentQueue;
         std::vector<std::unique_ptr<Memory::Image>> m_swapChainImages;
-        std::vector<std::unique_ptr<Memory::Image>> m_multiSampledImages;
 
         void CreateSwapChain();
-        void CreateRenderPass();
 
         static vk::SurfaceFormatKHR ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
         static vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
-        static vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR &capabilities, vk::Extent2D extent);
+        static Math::Vector2<uint32_t> ChooseExtent(const vk::SurfaceCapabilitiesKHR &capabilities, const Math::Vector2<uint32_t>& extent);
     };
 }

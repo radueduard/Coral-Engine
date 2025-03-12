@@ -5,24 +5,31 @@
 #pragma once
 #include <type_traits>
 
+#include "manager.h"
+
 namespace GUI {
     class Layer;
 
     template <typename T>
     class Container {
         static_assert(std::is_base_of_v<Layer, T>, "T must derive from Layer");
+        friend class Layer;
     public:
         Container() = default;
         explicit Container(T *layer) : m_layer(layer) {
-            AddLayer(m_layer);
-            m_layer->OnGUIAttach();
+            g_manager->AddLayer(m_layer);
+            static_cast<Layer *>(m_layer)->OnGUIAttach();
+            for (const auto& [name, builder] : static_cast<Layer *>(m_layer)->m_guiBuilder) {
+                static_cast<Layer *>(m_layer)->m_guiObjectReset[name] = false;
+                static_cast<Layer *>(m_layer)->m_guiObjects.emplace(name, builder());
+            }
         }
         ~Container() {
             if (m_layer == nullptr) {
                 return;
             }
-            m_layer->OnGUIDetach();
-            RemoveLayer(m_layer);
+            static_cast<Layer *>(m_layer)->OnGUIDetach();
+            g_manager->RemoveLayer(m_layer);
             delete m_layer;
         }
 
@@ -39,7 +46,7 @@ namespace GUI {
                 return *this;
             }
             if (m_layer != nullptr) {
-                m_layer->OnGUIDetach();
+                static_cast<Layer *>(m_layer)->OnGUIDetach();
                 RemoveLayer(m_layer);
                 delete m_layer;
             }
@@ -47,6 +54,15 @@ namespace GUI {
             other.m_layer = nullptr;
             return *this;
         }
+
+        T operator *() {
+            return *m_layer;
+        }
+
+        T* operator ->() const {
+            return m_layer;
+        }
+
 
     private:
         T* m_layer = nullptr;

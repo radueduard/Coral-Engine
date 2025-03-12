@@ -11,22 +11,28 @@
 #include "../extensions/debugUtils.h"
 #include "../extensions/meshShader.h"
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageType,
-            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-            void *pUserData) {
-
-    switch (messageSeverity) {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-            std::cerr << pCallbackData->pMessage << std::endl;
-        return VK_FALSE;
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-            std::cerr << pCallbackData->pMessage << std::endl;
-        return VK_TRUE;
-        default:
-            return VK_FALSE;
-    }
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugReportFlagsEXT msgFlags,
+    VkDebugReportObjectTypeEXT objType,
+    uint64_t srcObject,
+    size_t /*location*/,
+    int32_t msgCode,
+    const char* pLayerPrefix,
+    const char* pMsg,
+    void* /*pUserData*/
+){
+    // if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+    //     std::cerr << "ERROR: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    // } else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+    //     std::cerr << "WARNING: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    // } else if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+    //     std::cerr << "PERFORMANCE: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    // } else if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+    //     std::cerr << "INFO: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    // } else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+    //     std::cerr << "DEBUG: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    // }
+    return VK_FALSE;
 }
 
 namespace Core {
@@ -73,7 +79,7 @@ namespace Core {
     }
 
     void Runtime::SetupDebugMessenger() {
-        constexpr auto debugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT()
+        const auto debugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT()
             .setMessageSeverity(
                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
@@ -83,7 +89,7 @@ namespace Core {
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
                 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
-            .setPfnUserCallback(debugCallback);
+            .setPfnUserCallback(reinterpret_cast<vk::PFN_DebugUtilsMessengerCallbackEXT>(debugCallback));
 
         Ext::DebugUtils::createDebugUtilsMessengerEXT(m_instance, debugCreateInfo, nullptr, &m_debugMessenger);
     }
@@ -94,14 +100,16 @@ namespace Core {
 
     void Runtime::SelectPhysicalDevice() {
         m_surface = m_window.CreateSurface(m_instance);
-        for (const auto physicalDeviceCandidates = m_instance.enumeratePhysicalDevices(); const auto &physicalDeviceCandidate : physicalDeviceCandidates) {
+        m_physicalDevices = m_instance.enumeratePhysicalDevices();
+        for (auto physicalDeviceCandidate : m_physicalDevices) {
             const PhysicalDevice::CreateInfo createInfo = {
                 .runtime = *this,
                 .physicalDevice = physicalDeviceCandidate,
                 .surface = m_surface,
             };
 
-            if (auto physicalDevice = std::make_unique<Core::PhysicalDevice>(createInfo); physicalDevice->isSuitable()) {
+            auto physicalDevice = std::make_unique<Core::PhysicalDevice>(createInfo);
+            if (physicalDevice->isSuitable()) {
                 m_physicalDevice = std::move(physicalDevice);
                 return;
             }

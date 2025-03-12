@@ -4,17 +4,16 @@
 
 #pragma once
 
-#include <ranges>
 #include <vector>
 
 #include "element.h"
 #include "imgui.h"
 
 namespace GUI {
-	class Text : public Element {
+	class Text final : public Element {
 	public:
 		struct Style {
-			glm::vec4 color = { 1.f, 1.f, 1.f, 1.f };
+			Math::Color color = { 1.f, 1.f, 1.f, 1.f };
 			float fontSize = 13.f;
 			FontType fontType = FontType::Regular;
 		};
@@ -32,7 +31,7 @@ namespace GUI {
 			}
 
 		private:
-			std::vector<std::pair<std::string, Style>> m_text;
+			std::vector<std::pair<std::string, Style>> m_text {};
 		};
 
 		~Text() override = default;
@@ -46,29 +45,27 @@ namespace GUI {
 		}
 
 		void Render() override {
-			m_startPoint = m_parent->StartPoint(this);
-			m_availableArea = m_parent->AllocatedArea(this);
+			m_outerBounds = m_parent->AllocatedArea(this);
+			m_innerBounds = m_outerBounds;
 
-			ImGui::SetCursorPos({ m_startPoint.x, m_startPoint.y });
-
-			m_allocatedArea = { 0, 0 };
+			ImGui::SetCursorScreenPos(m_innerBounds.min);
+			m_requiredArea = { 0, 0 };
 			for (const auto& [text, style] : m_text) {
-				ImGui::PushFont(GetFont(style.fontType, style.fontSize));
+				ImGui::PushFont(g_manager->GetFont(style.fontType, style.fontSize));
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(style.color.r, style.color.g, style.color.b, style.color.a));
 
 				auto [width, height] = ImGui::CalcTextSize(text.c_str());
-				m_allocatedArea.x = std::max(m_allocatedArea.x, width);
-				m_allocatedArea.y += height;
+				m_requiredArea.x = std::max(m_requiredArea.x, width);
+				m_requiredArea.y += height;
 
 				ImGui::Text(text.c_str());
 				ImGui::SameLine();
 				ImGui::PopStyleColor();
 				ImGui::PopFont();
 			}
-			ImGui::NewLine();
 		}
 
 	private:
-		std::vector<std::pair<std::string, Style>> m_text;
+		std::vector<std::pair<std::string, Style>> m_text {};
 	};
 }

@@ -7,8 +7,8 @@
 #include "core/device.h"
 
 namespace Memory {
-    Sampler::Sampler(const Core::Device& device, const CreateInfo& createInfo)
-        : m_device(device), m_magFilter(createInfo.magFilter), m_minFilter(createInfo.minFilter), m_addressMode(createInfo.addressMode), m_mipmapMode(createInfo.mipmapMode) {
+    Sampler::Sampler(const CreateInfo& createInfo)
+        : m_magFilter(createInfo.magFilter), m_minFilter(createInfo.minFilter), m_addressMode(createInfo.addressMode), m_mipmapMode(createInfo.mipmapMode) {
         const auto samplerInfo = vk::SamplerCreateInfo()
             .setMagFilter(m_magFilter)
             .setMinFilter(m_minFilter)
@@ -26,10 +26,10 @@ namespace Memory {
             .setMinLod(0.0f)
             .setMaxLod(vk::LodClampNone);
 
-        m_sampler = m_device.Handle().createSampler(samplerInfo);
+        m_handle = Core::GlobalDevice()->createSampler(samplerInfo);
     }
 
     Sampler::~Sampler() {
-        m_device.Handle().destroySampler(m_sampler);
+        Core::GlobalDevice()->destroySampler(m_handle);
     }
 }

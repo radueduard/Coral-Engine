@@ -7,15 +7,18 @@
 #include <string>
 #include <utility>
 
+#include "contextMenu.h"
 #include "element.h"
 #include "imgui.h"
 
 namespace GUI {
-    class Dockable : public Element {
+    class Dockable final : public Element {
     public:
-        Dockable(std::string name, Element* child, const glm::vec2 padding)
-            : Element(std::move(name)), m_child(child), m_padding(padding) {
-            child->AttachTo(this);
+        Dockable(std::string  name, Element* child = nullptr, const Math::Vector2<float>& padding = 0.f, ContextMenu* contextMenu = nullptr)
+            : m_name(std::move(name)), m_child(child), m_contextMenu(contextMenu), m_padding(padding) {
+            if (m_child != nullptr) {
+                m_child->AttachTo(this);
+            }
         }
         ~Dockable() override = default;
 
@@ -23,34 +26,49 @@ namespace GUI {
         Dockable& operator=(const Dockable&) = delete;
 
         void Render() override {
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
-            ImGui::Begin(Name().c_str(), nullptr, ImGuiWindowFlags_NoCollapse);
-            auto windowSize = ImGui::GetWindowSize();
-            auto contentRegionAvail = ImGui::GetContentRegionAvail();
-            m_availableArea = { windowSize.x, windowSize.y };
-            m_allocatedArea = { contentRegionAvail.x, contentRegionAvail.y };
+            ImGui::Begin(m_name.c_str(), nullptr, ImGuiWindowFlags_NoCollapse);
 
-            m_child->Render();
+            if (m_contextMenu != nullptr)
+                m_contextMenu->Show();
+
+            const auto startPoint = ImGui::GetCursorScreenPos();
+            const auto contentRegionAvail = ImGui::GetContentRegionAvail();
+
+            const Math::Vector2 outerTopLeft = { startPoint.x, startPoint.y };
+            const Math::Vector2 outerBottomRight = { startPoint.x + contentRegionAvail.x, startPoint.y + contentRegionAvail.y };
+
+            const Math::Vector2 innerTopLeft = {
+                startPoint.x + m_padding.x,
+                startPoint.y + m_padding.y
+            };
+
+            const Math::Vector2 innerBottomRight = outerBottomRight - m_padding;
+
+            m_outerBounds = Math::Rect { outerTopLeft, outerBottomRight };
+            m_innerBounds = Math::Rect { innerTopLeft, innerBottomRight };
+
+            if (m_child != nullptr) {
+                m_child->Render();
+            }
 
             ImGui::End();
-            ImGui::PopStyleVar();
         }
 
-        glm::vec2 StartPoint(Element *element) override {
-            return glm::vec2 { m_availableArea.x - m_allocatedArea.x, m_availableArea.y - m_allocatedArea.y } + m_padding;
-        }
-
-        glm::vec2 AllocatedArea(Element *element) override {
+        Math::Rect AllocatedArea(Element *element) const override {
             if (element == m_child.get()) {
-                return m_allocatedArea - 2.f * m_padding;
+                return m_innerBounds;
             }
-            throw std::runtime_error("There is no area allocated for elements that are not children");
+            return Math::Rect::Zero();
         }
 
         [[nodiscard]] const Element& Child() const { return *m_child; }
 
     private:
+        std::string m_name;
+
         std::unique_ptr<Element> m_child;
-        glm::vec2 m_padding = { 0.f, 0.f };
+        std::unique_ptr<ContextMenu> m_contextMenu = nullptr;
+
+        Math::Vector2<float> m_padding = { 0.f, 0.f };
     };
 }

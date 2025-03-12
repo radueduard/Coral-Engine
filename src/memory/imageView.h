@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "utils/globalWrapper.h"
 #include "vulkan/vulkan.hpp"
 
 namespace Memory {
@@ -14,7 +15,7 @@ namespace Core {
 }
 
 namespace Memory {
-    class ImageView {
+    class ImageView final : public EngineWrapper<vk::ImageView> {
     public:
         class Builder {
             friend class ImageView;
@@ -47,8 +48,8 @@ namespace Memory {
                 return *this;
             }
 
-            [[nodiscard]] std::unique_ptr<ImageView> Build(const Core::Device& device) const {
-                return std::make_unique<ImageView>(device, *this);
+            [[nodiscard]] std::unique_ptr<ImageView> Build() const {
+                return std::make_unique<ImageView>(*this);
             }
 
         private:
@@ -60,13 +61,12 @@ namespace Memory {
             uint32_t m_layerCount = 1;
         };
 
-        ImageView(const Core::Device& device, const Builder& builder);
-        ~ImageView();
+        explicit ImageView(const Builder& builder);
+        ~ImageView() override;
 
         ImageView(const ImageView&) = delete;
         ImageView& operator=(const ImageView&) = delete;
 
-        [[nodiscard]] const vk::ImageView& Handle() const { return m_imageView; }
         [[nodiscard]] const Memory::Image& Image() const { return m_image; }
         [[nodiscard]] const vk::ImageViewType& ViewType() const { return m_viewType; }
         [[nodiscard]] const uint32_t& BaseMipLevel() const { return m_baseMipLevel; }
@@ -77,10 +77,8 @@ namespace Memory {
         bool Has(uint32_t baseArrayLayer, uint32_t arrayLayerCount, uint32_t baseMipLevel, uint32_t mipLevelCount) const;
 
     private:
-        const Core::Device& m_device;
         const Memory::Image& m_image;
 
-        vk::ImageView m_imageView;
         vk::ImageViewType m_viewType;
         uint32_t m_baseMipLevel;
         uint32_t m_mipLevelCount;

@@ -27,7 +27,7 @@ namespace ImGui {
 }
 
 namespace GUI {
-    class Image : public Element {
+    class Image final : public Element {
     public:
         enum Mode {
             Contain,
@@ -35,53 +35,47 @@ namespace GUI {
             Stretch
         };
 
-
-        Image(const vk::ImageView imageView, const vk::Sampler sampler, vk::ImageLayout imageLayout, const float cornerRadius = 0.f, const Mode mode = Contain)
-            : m_texture(ImGui_ImplVulkan_AddTexture(sampler, imageView, static_cast<VkImageLayout>(imageLayout))), m_cornerRadius(cornerRadius), m_mode(mode) {
-            m_allocatedArea = { 512, 512 };
-        }
-        ~Image() override {
-            ImGui_ImplVulkan_RemoveTexture(static_cast<VkDescriptorSet>(m_texture));
-        }
+        explicit Image(const ImTextureID id, const Math::Vector2<float> size = Math::Vector2<float>::Zero(), const float cornerRadius = 0.f, const Mode mode = Contain)
+            : m_texture(id), m_cornerRadius(cornerRadius), m_mode(mode) { m_requiredArea = size; }
+        ~Image() override = default;
 
         void Render() override {
-            m_startPoint = m_parent->StartPoint(this);
-            m_availableArea = m_parent->AllocatedArea(this);
+            // if (m_requiredArea == Math::Vector2<float>::Zero()) {
+            //     m_requiredArea = m_parent->InnerBounds().max - m_parent->InnerBounds().min;
+            // }
+            m_outerBounds = m_parent->AllocatedArea(this);
 
-            glm::vec2 size = { 0, 0 };
-            glm::vec2 uv1 = { 0, 0 };
-            glm::vec2 uv2 = { 1, 1 };
+            Math::Vector2<float> uv1 = { 0, 0 };
+            Math::Vector2<float> uv2 = { 1, 1 };
 
             if (m_mode == Stretch) {
-                size = m_availableArea;
+                m_innerBounds = m_outerBounds;
             } else if (m_mode == Cover) {
-                size = m_availableArea;
-                if (size.x > size.y) {
-                    const float ratio = size.y / size.x;
+                m_innerBounds = m_outerBounds;
+                if (m_requiredArea.x > m_requiredArea.y) {
+                    const float ratio = m_requiredArea.y / m_requiredArea.x;
                     uv1 = { 0.f, (1.f - ratio) / 2.f };
                     uv2 = { 1.f, (1.f + ratio) / 2.f };
                 } else {
-                    const float ratio = size.x / size.y;
+                    const float ratio = m_requiredArea.x / m_requiredArea.y;
                     uv1 = { (1.f - ratio) / 2.f, 0.f };
                     uv2 = { (1.f + ratio) / 2.f, 1.f };
                 }
             } else if (m_mode == Contain) {
-                size = m_allocatedArea;
+                if (const auto size = m_outerBounds.max - m_outerBounds.min; size.x > size.y) {
+                    m_innerBounds.min = { m_outerBounds.min.x + (size.x - size.y) / 2.f, m_outerBounds.min.y };
+                    m_innerBounds.max = { m_innerBounds.min.x + size.y, m_outerBounds.max.y };
+                } else {
+                    m_innerBounds.min = { m_outerBounds.min.x, m_outerBounds.min.y + (size.y - size.x) / 2.f };
+                    m_innerBounds.max = { m_outerBounds.max.x, m_innerBounds.min.y + size.x };
+                }
             }
 
-            ImGui::SetCursorPos({ m_startPoint.x, m_startPoint.y });
+            ImGui::SetCursorScreenPos({ m_innerBounds.min.x, m_innerBounds.min.y });
             ImGui::RoundedImage(
                 m_texture,
-                ImVec2(size.x, size.y), m_cornerRadius,
-                ImVec2(uv1.x, uv1.y), ImVec2(uv2.x, uv2.y));
-        }
-
-        glm::vec2 StartPoint(Element *element) override {
-            return { 0, 0 };
-        }
-
-        glm::vec2 AllocatedArea(Element *element) override {
-            return { 0, 0 };
+                m_innerBounds.max - m_innerBounds.min, m_cornerRadius,
+                uv1, uv2);
         }
 
     private:

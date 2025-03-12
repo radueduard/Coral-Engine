@@ -11,6 +11,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "core/runtime.h"
+#include "utils/globalWrapper.h"
 
 namespace Core {
     class PhysicalDevice;
@@ -19,85 +20,92 @@ namespace Core {
 namespace Core {
     class Device;
 
-    struct Queue {
-        uint32_t familyIndex;
-        uint32_t index;
-        bool inUse = false;
-        vk::Queue queue;
+    inline Device* g_device = nullptr;
+    inline Device& GlobalDevice() { return *g_device; }
 
-        [[nodiscard]] vk::Queue Handle() const { return queue; }
+    class Queue final : public EngineWrapper<vk::Queue> {
+    public:
+        class Family
+        {
+            friend class Queue;
+        public:
+            explicit Family(uint32_t index, const vk::QueueFamilyProperties &properties, bool canPresent);
+            ~Family() = default;
 
-        Queue(const Device& device, uint32_t familyIndex, uint32_t index);
-    };
+            [[nodiscard]] uint32_t Index() const { return m_index; }
+            [[nodiscard]] const vk::QueueFamilyProperties& Properties() const { return m_properties; }
+            [[nodiscard]] bool CanPresent() const { return m_canPresent; }
 
-    struct CommandBuffer {
-        enum class Usage {
-            DepthPrePass,
-            Updates,
-            Graphics,
-            PostProcess,
-            Present,
+            [[nodiscard]] std::unique_ptr<Queue> RequestQueue();
+            [[nodiscard]] std::unique_ptr<Queue> RequestPresentQueue();
+
+        private:
+            uint32_t m_index;
+            vk::QueueFamilyProperties m_properties;
+            uint32_t m_remainingQueues = 0;
+            bool m_canPresent = false;
         };
 
-        static std::string UsageToString(const Usage usage) {
-            switch (usage) {
-                case Usage::DepthPrePass:
-                    return "DepthPrePass";
-                case Usage::Updates:
-                    return "Updates";
-                case Usage::Graphics:
-                    return "Graphics";
-                case Usage::PostProcess:
-                    return "PostProcess";
-                case Usage::Present:
-                    return "Present";
-            }
-            return "Unknown";
-        }
+        explicit Queue(Family& family);
+        ~Queue() override;
 
-        uint32_t familyIndex;
-        vk::CommandBuffer commandBuffer;
+        [[nodiscard]] uint32_t Index() const { return m_index; }
+        [[nodiscard]] const Family& Family() const { return m_family; }
 
-        vk::CommandBuffer Handle() const { return commandBuffer; }
+    private:
+        uint32_t m_index;
+        class Family& m_family;
     };
 
-    struct QueueFamily
-    {
-        uint32_t index;
-        vk::QueueFamilyProperties properties;
-        bool presentSupport;
-        std::vector<std::unique_ptr<Queue>> queues;
+    class CommandBuffer final : public EngineWrapper<vk::CommandBuffer> {
+    public:
+        CommandBuffer(uint32_t familyIndex, vk::CommandBuffer commandBuffer, const vk::CommandPool& parentCommandPool);
+        ~CommandBuffer() override;
+
+        [[nodiscard]] const vk::CommandPool& ParentPool() const { return m_parentPool; }
+        [[nodiscard]] const vk::Semaphore& SignalSemaphore() const { return m_signalSemaphore; }
+        [[nodiscard]] const vk::Fence& Fence() const { return m_fence; }
+        [[nodiscard]] uint32_t FamilyIndex() const { return m_familyIndex; }
+
+    private:
+        uint32_t m_familyIndex;
+        const vk::CommandPool& m_parentPool;
+
+        vk::Semaphore m_signalSemaphore;
+        vk::Fence m_fence;
     };
 
-    class Device {
+    class Device final : public EngineWrapper<vk::Device> {
     public:
         struct CreateInfo {
             const Runtime& runtime;
         };
 
         explicit Device(const CreateInfo &createInfo);
-        ~Device();
+        ~Device() override;
 
         Device(const Device &) = delete;
         Device &operator=(const Device &) = delete;
 
-        [[nodiscard]] const vk::Device& Handle() const { return m_device; }
-        [[nodiscard]] std::optional<Queue*> RequestQueue(vk::QueueFlags type) const;
-        [[nodiscard]] std::optional<Queue*> RequestPresentQueue() const;
+        [[nodiscard]] std::unique_ptr<Queue> RequestQueue(vk::QueueFlags type);
+        [[nodiscard]] std::unique_ptr<Queue> RequestPresentQueue();
 
-        [[nodiscard]] uint32_t GetQueueFamilyIndex(vk::QueueFlags type) const;
-        [[nodiscard]] std::vector<CommandBuffer> RequestCommandBuffers(uint32_t familyIndex, uint32_t count, uint32_t thread = 0) const;
-        void FreeCommandBuffers(const std::vector<CommandBuffer> &commandBuffers, uint32_t thread = 0) const;
+        void CreateCommandPools(uint32_t threadId);
+        void FreeCommandPools(uint32_t threadId);
+
+        [[nodiscard]] std::unique_ptr<CommandBuffer> RequestCommandBuffer(uint32_t familyIndex, uint32_t thread = 0) const;
+        void FreeCommandBuffer(const CommandBuffer &commandBuffer) const;
 
         [[nodiscard]] const PhysicalDevice& QuerySurfaceCapabilities() const;
         [[nodiscard]] std::optional<uint32_t> FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 
-        void RunSingleTimeCommand(const std::function<void(vk::CommandBuffer)> &command, vk::QueueFlags requiredFlags, vk::Fence fence = nullptr, uint32_t thread = 0) const;
+        void RunSingleTimeCommand(const std::function<void(const Core::CommandBuffer&)> &command, vk::QueueFlags requiredFlags,
+            vk::Fence fence = nullptr, vk::Semaphore waitSemaphore = nullptr, vk::Semaphore signalSemaphore = nullptr);
+
     private:
         const Runtime& m_runtime;
 
-        vk::Device m_device;
-        std::vector<QueueFamily> m_queueFamilies;
-        std::unordered_map<uint32_t, std::vector<vk::CommandPool>> m_commandPools;
+        std::vector<class Queue::Family> m_queueFamilies;
+        std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::CommandPool>> m_commandPools;
     };
 }

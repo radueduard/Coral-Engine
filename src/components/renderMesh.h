@@ -4,9 +4,9 @@
 
 #pragma once
 #include "object.h"
+#include "graphics/objects/mesh.h"
 
 namespace mgv {
-    class Mesh;
     class Material;
 }
 

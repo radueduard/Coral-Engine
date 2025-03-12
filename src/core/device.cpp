@@ -12,31 +12,71 @@
 #include "physicalDevice.h"
 #include "runtime.h"
 
+inline static std::thread::id mainThreadId = std::this_thread::get_id();
+
 namespace Core {
-    Queue::Queue(const Device& device, const uint32_t familyIndex, const uint32_t index)
-        : familyIndex(familyIndex), index(index) {
-        queue = device.Handle().getQueue(familyIndex, index);
+    Queue::Family::Family(const uint32_t index, const vk::QueueFamilyProperties &properties, const bool canPresent): m_index(index), m_properties(properties), m_canPresent(canPresent) {
+        m_remainingQueues = properties.queueCount;
+    }
+
+    std::unique_ptr<Queue> Queue::Family::RequestQueue() {
+        try {
+            return std::make_unique<Queue>(*this);
+        } catch (const std::runtime_error& err) {
+            throw std::runtime_error("QueueFamily::RequestQueue : \n" + std::string(err.what()));
+        }
+    }
+
+    std::unique_ptr<Queue> Queue::Family::RequestPresentQueue() {
+        if (m_canPresent) {
+            return std::make_unique<Queue>(*this);
+        }
+        throw std::runtime_error("QueueFamily::RequestPresentQueue : Queue family cannot present");
+    }
+
+    Queue::Queue(class Family &family): m_family(family) {
+        if (m_family.m_remainingQueues == 0) {
+            throw std::runtime_error("Queue::Queue : No more queues available in this family");
+        }
+        m_index = m_family.m_properties.queueCount - m_family.m_remainingQueues--;
+        m_handle = GlobalDevice()->getQueue(m_family.Index(), m_index);
+    }
+
+    Queue::~Queue() {
+        m_family.m_remainingQueues++;
+    }
+
+    CommandBuffer::CommandBuffer(const uint32_t familyIndex, const vk::CommandBuffer commandBuffer, const vk::CommandPool& parentCommandPool)
+        : m_familyIndex(familyIndex), m_parentPool(parentCommandPool) {
+        m_handle = commandBuffer;
+        m_signalSemaphore = Core::GlobalDevice()->createSemaphore({});
+        m_fence = Core::GlobalDevice()->createFence(vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled));
+    }
+
+    CommandBuffer::~CommandBuffer() {
+        Core::GlobalDevice().FreeCommandBuffer(*this);
+
+        Core::GlobalDevice()->destroySemaphore(m_signalSemaphore);
+        Core::GlobalDevice()->destroyFence(m_fence);
     }
 
     Device::Device(const CreateInfo& createInfo) : m_runtime(createInfo.runtime) {
+        g_device = this;
+
         const auto& physicalDevice = m_runtime.PhysicalDevice();
         for (const auto& queueFamily : physicalDevice.QueueFamilyProperties()) {
             const auto queueFamilyIndex = static_cast<uint32_t>(&queueFamily - physicalDevice.QueueFamilyProperties().data());
-            const bool canPresent = physicalDevice.Handle().getSurfaceSupportKHR(queueFamilyIndex, physicalDevice.Surface());
+            const bool canPresent = physicalDevice->getSurfaceSupportKHR(queueFamilyIndex, physicalDevice.Surface());
 
-            m_queueFamilies.emplace_back(QueueFamily {
-                .index = queueFamilyIndex,
-                .properties = queueFamily,
-                .presentSupport = canPresent,
-            });
+            m_queueFamilies.emplace_back(queueFamilyIndex, queueFamily, canPresent);
         }
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
         std::vector<std::vector<float>> queuePriorities;
         for (const auto& queueFamily : m_queueFamilies) {
-            queuePriorities.emplace_back(queueFamily.properties.queueCount, 1.0f);
+            queuePriorities.emplace_back(queueFamily.Properties().queueCount, 1.0f);
             const auto queueCreateInfo = vk::DeviceQueueCreateInfo()
-                .setQueueFamilyIndex(queueFamily.index)
+                .setQueueFamilyIndex(queueFamily.Index())
                 .setQueuePriorities(queuePriorities.back());
             queueCreateInfos.emplace_back(queueCreateInfo);
         }
@@ -56,94 +96,74 @@ namespace Core {
             .setPEnabledExtensionNames(m_runtime.m_deviceExtensions)
             .setPEnabledLayerNames(m_runtime.m_deviceLayers);
 
-        m_device = physicalDevice.Handle().createDevice(deviceCreateInfo);
+        m_handle = physicalDevice->createDevice(deviceCreateInfo);
 
         for (const auto& queueFamily : m_queueFamilies) {
-            for (uint32_t i = 0; i < queueFamily.properties.queueCount; i++) {
-                auto q = std::make_unique<Queue>(*this, queueFamily.index, i);
-                m_queueFamilies[queueFamily.index].queues.emplace_back(std::move(q));
-            }
+            m_commandPools[queueFamily.Index()] = {};
         }
-
-        for (const auto& queueFamily : m_queueFamilies) {
-            m_commandPools[queueFamily.index] = {};
-            for (uint32_t i = 0; i < std::thread::hardware_concurrency(); i++) {
-                const auto commandPoolCreateInfo = vk::CommandPoolCreateInfo()
-                    .setFlags(vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-                    .setQueueFamilyIndex(queueFamily.index);
-                m_commandPools[queueFamily.index].emplace_back(m_device.createCommandPool(commandPoolCreateInfo));
-            }
-        }
+        CreateCommandPools(0);
     }
 
     Device::~Device() {
-        for (const auto &commandPool: m_commandPools | std::views::values) {
-            for (const auto &pool: commandPool) {
-                m_device.destroyCommandPool(pool);
-            }
-        }
-        m_device.destroy();
+        FreeCommandPools(0);
+        m_handle.destroy();
     }
 
-    std::optional<Queue*> Device::RequestQueue(const vk::QueueFlags type) const {
+    void Device::CreateCommandPools(const uint32_t threadId) {
         for (const auto& queueFamily : m_queueFamilies) {
-            if (!(queueFamily.properties.queueFlags & type)) {
+            const auto commandPoolCreateInfo = vk::CommandPoolCreateInfo()
+                .setFlags(vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+                .setQueueFamilyIndex(queueFamily.Index());
+            m_commandPools[queueFamily.Index()].emplace(threadId, m_handle.createCommandPool(commandPoolCreateInfo));
+        }
+    }
+
+    void Device::FreeCommandPools(const uint32_t threadId) {
+        for (const auto& commandPool : m_commandPools | std::views::values) {
+            m_handle.destroyCommandPool(commandPool.at(threadId));
+        }
+        for (const auto& queueFamily : m_queueFamilies) {
+            m_commandPools[queueFamily.Index()].erase(threadId);
+        }
+    }
+
+    std::unique_ptr<Queue> Device::RequestQueue(const vk::QueueFlags type) {
+        for (auto& queueFamily : m_queueFamilies) {
+            if (!(queueFamily.Properties().queueFlags & type)) {
                 continue;
             }
-            for (uint32_t i = 0; i < queueFamily.properties.queueCount; i++) {
-                auto queue = queueFamily.queues[i].get();
-                if (queue->inUse) {
-                    continue;
-                }
-                queue->inUse = true;
-                return queue;
+            try {
+                return queueFamily.RequestQueue();
+            } catch (const std::runtime_error&) {
+                continue;
             }
         }
-        return std::nullopt;
+        throw std::runtime_error("Queue::RequestQueue : Failed to find queue with requested flags");
     }
 
-    std::optional<Queue*> Device::RequestPresentQueue() const {
-        for (const auto& queueFamily : m_queueFamilies) {
-            if (queueFamily.presentSupport) {
-                for (uint32_t i = 0; i < queueFamily.properties.queueCount; i++) {
-                    auto queue = queueFamily.queues[i].get();
-                    if (queue->inUse) {
-                        continue;
-                    }
-                    queue->inUse = true;
-                    return queue;
-                }
+    std::unique_ptr<Queue> Device::RequestPresentQueue() {
+        for (auto& queueFamily : m_queueFamilies) {
+            try {
+                return queueFamily.RequestPresentQueue();
+            } catch (const std::runtime_error&) {
+                continue;
             }
         }
-        return std::nullopt;
+        throw std::runtime_error("Device::RequestPresentQueue: Failed to find suitable present queue!");
     }
 
-    uint32_t Device::GetQueueFamilyIndex(const vk::QueueFlags type) const {
-        for (const auto& queueFamily : m_queueFamilies) {
-            if (queueFamily.properties.queueFlags & type) {
-                return queueFamily.index;
-            }
-        }
-        return -1;
-    }
-
-    std::vector<CommandBuffer> Device::RequestCommandBuffers(const uint32_t familyIndex, const uint32_t count, const uint32_t thread) const {
-        const auto computeBufferAllocInfo = vk::CommandBufferAllocateInfo()
-            .setCommandPool(m_commandPools.at(familyIndex)[thread])
+    std::unique_ptr<CommandBuffer> Device::RequestCommandBuffer(const uint32_t familyIndex, const uint32_t thread) const {
+        const auto& commandPool = m_commandPools.at(familyIndex).at(thread);
+        const auto commandBufferAllocInfo = vk::CommandBufferAllocateInfo()
+            .setCommandPool(commandPool)
             .setLevel(vk::CommandBufferLevel::ePrimary)
-            .setCommandBufferCount(count);
-        const auto commandBuffers = m_device.allocateCommandBuffers(computeBufferAllocInfo);
-        std::vector<CommandBuffer> result;
-        for (const auto& commandBuffer : commandBuffers) {
-            result.emplace_back(familyIndex, commandBuffer);
-        }
-        return result;
+            .setCommandBufferCount(1);
+        const auto commandBuffers = m_handle.allocateCommandBuffers(commandBufferAllocInfo);
+        return std::make_unique<CommandBuffer>(familyIndex, commandBuffers.front(), commandPool);
     }
 
-    void Device::FreeCommandBuffers(const std::vector<CommandBuffer> &commandBuffers, const uint32_t thread) const {
-        for (const auto&[familyIndex, commandBuffer] : commandBuffers) {
-            m_device.freeCommandBuffers(m_commandPools.at(familyIndex)[thread], commandBuffer);
-        }
+    void Device::FreeCommandBuffer(const CommandBuffer &commandBuffer) const {
+        m_handle.freeCommandBuffers(commandBuffer.ParentPool(), *commandBuffer);
     }
 
     const PhysicalDevice& Device::QuerySurfaceCapabilities() const {
@@ -154,7 +174,7 @@ namespace Core {
 
     std::optional<uint32_t> Device::FindMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const {
         const auto& physicalDevice = m_runtime.PhysicalDevice();
-        const auto memoryTypes = physicalDevice.Handle().getMemoryProperties().memoryTypes;
+        const auto memoryTypes = physicalDevice->getMemoryProperties().memoryTypes;
         for (uint32_t i = 0; i < memoryTypes.size(); i++) {
             if (typeFilter & 1 << i &&
                 (memoryTypes[i].propertyFlags & properties) == properties) {
@@ -166,31 +186,36 @@ namespace Core {
         return std::nullopt;
     }
 
-    void Device::RunSingleTimeCommand(const std::function<void(vk::CommandBuffer)> &command, const vk::QueueFlags requiredFlags, const vk::Fence fence, const uint32_t thread) const {
-        const auto maybeQueue = RequestQueue(requiredFlags);
-        if (!maybeQueue.has_value()) {
-            std::cerr << "Failed to find suitable queue for single time commands!" << std::endl;
-            return;
+    void Device::RunSingleTimeCommand(const std::function<void(const Core::CommandBuffer&)> &command, const vk::QueueFlags requiredFlags,
+        const vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSemaphore) {
+        const auto threadId = std::this_thread::get_id();
+        uint32_t thread = threadId._Get_underlying_id();
+        if (threadId == mainThreadId) {
+            thread = 0;
         }
-        const auto queue = maybeQueue.value();
 
-        const auto allocInfo = vk::CommandBufferAllocateInfo()
-            .setCommandPool(m_commandPools.at(queue->familyIndex)[thread])
-            .setLevel(vk::CommandBufferLevel::ePrimary)
-            .setCommandBufferCount(1);
+        const auto queue = RequestQueue(requiredFlags);
+        const auto commandBuffer = RequestCommandBuffer(queue->Family().Index(), thread);
 
-        const auto commandBuffer = m_device.allocateCommandBuffers(allocInfo).front();
+        (*commandBuffer)->begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+        command(*commandBuffer);
+        (*commandBuffer)->end();
 
-        commandBuffer.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-        command(commandBuffer);
-        commandBuffer.end();
+        const auto commandBuffers = std::array { **commandBuffer };
+        const auto dstStageMask = std::vector<vk::PipelineStageFlags> { vk::PipelineStageFlagBits::eAllCommands };
+        auto submitInfo = vk::SubmitInfo()
+            .setCommandBuffers(commandBuffers);
 
-        const auto submitInfo = vk::SubmitInfo()
-            .setCommandBuffers(commandBuffer);
+        if (waitSemaphore != nullptr)
+            submitInfo
+                .setWaitSemaphores(waitSemaphore)
+                .setWaitDstStageMask(dstStageMask);
 
-        queue->queue.submit(submitInfo, fence);
-        queue->queue.waitIdle();
-        queue->inUse = false;
+        if (signalSemaphore != nullptr)
+            submitInfo.setSignalSemaphores(signalSemaphore);
+
+        (*queue)->submit(submitInfo, fence);
+        (*queue)->waitIdle();
     }
 }
 

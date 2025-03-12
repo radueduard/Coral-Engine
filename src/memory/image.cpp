@@ -5,12 +5,13 @@
 #include "image.h"
 
 #include <iostream>
+#include <thread>
 
 #include "core/device.h"
 
 namespace Memory {
-    Image::Image(const Core::Device& device, const Builder &builder)
-        : m_device(device), m_format(builder.m_format), m_extent(builder.m_extent),
+    Image::Image(const Builder &builder)
+        : m_format(builder.m_format), m_extent(builder.m_extent),
             m_usageFlags(builder.m_usageFlags), m_sampleCount(builder.m_sampleCount),
             m_mipLevels(builder.m_mipLevels), m_layerCount(builder.m_layersCount) {
         if (!builder.m_image.has_value()) {
@@ -28,10 +29,10 @@ namespace Memory {
                 .setInitialLayout(vk::ImageLayout::eUndefined)
                 .setFlags(imageCreateFlags);
 
-            m_image = m_device.Handle().createImage(imageCreateInfo);
+            m_handle = Core::GlobalDevice()->createImage(imageCreateInfo);
 
-            const vk::MemoryRequirements memoryRequirements = m_device.Handle().getImageMemoryRequirements(m_image);
-            const auto memoryTypeIndex = device.FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+            const vk::MemoryRequirements memoryRequirements = Core::GlobalDevice()->getImageMemoryRequirements(m_handle);
+            const auto memoryTypeIndex = Core::GlobalDevice().FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
             if (!memoryTypeIndex.has_value()) {
                 std::cerr << "Image : Failed to find suitable memory type" << std::endl;
             }
@@ -40,25 +41,25 @@ namespace Memory {
                 .setAllocationSize(memoryRequirements.size)
                 .setMemoryTypeIndex(memoryTypeIndex.value());
 
-            m_imageMemory = m_device.Handle().allocateMemory(allocInfo);
-            m_device.Handle().bindImageMemory(m_image, m_imageMemory, 0);
+            m_imageMemory = Core::GlobalDevice()->allocateMemory(allocInfo);
+            Core::GlobalDevice()->bindImageMemory(m_handle, m_imageMemory, 0);
         } else {
-            m_image = builder.m_image.value();
+            m_handle = builder.m_image.value();
         }
 
-        if (builder.m_layout != vk::ImageLayout::eUndefined && !builder.m_image.has_value()) {
+        if (builder.m_layout != vk::ImageLayout::eUndefined) {
             TransitionLayout(builder.m_layout);
         }
     }
 
     Image::~Image() {
         if (m_imageMemory) {
-            m_device.Handle().freeMemory(m_imageMemory);
-            m_device.Handle().destroyImage(m_image);
+            Core::GlobalDevice()->freeMemory(m_imageMemory);
+            Core::GlobalDevice()->destroyImage(m_handle);
         }
     }
 
-    void Image::Copy(const vk::Buffer &buffer, const uint32_t mipLevel, const uint32_t layer, const uint32_t thread) const {
+    void Image::Copy(const vk::Buffer &buffer, const uint32_t mipLevel, const uint32_t layer) const {
         if (!(m_usageFlags & vk::ImageUsageFlagBits::eTransferDst)) {
             throw std::runtime_error("Image : Image must have transfer destination usage flag");
         }
@@ -69,7 +70,7 @@ namespace Memory {
             throw std::runtime_error("Image : Layer out of range");
         }
 
-        m_device.RunSingleTimeCommand([this, buffer, layer, mipLevel] (const vk::CommandBuffer commandBuffer) {
+        Core::GlobalDevice().RunSingleTimeCommand([this, buffer, layer, mipLevel] (const Core::CommandBuffer& commandBuffer) {
             vk::Extent3D extent = m_extent;
             for (uint32_t i = 0; i < mipLevel; i++) {
                 extent.width = std::max<uint32_t>(1u, extent.width / 2);
@@ -88,8 +89,8 @@ namespace Memory {
                     .setLayerCount(1))
                 .setImageOffset({ 0, 0, 0 })
                 .setImageExtent(extent);
-            commandBuffer.copyBufferToImage(buffer, m_image, vk::ImageLayout::eTransferDstOptimal, region);
-        }, vk::QueueFlagBits::eTransfer, nullptr, thread);
+            commandBuffer->copyBufferToImage(buffer, m_handle, vk::ImageLayout::eTransferDstOptimal, region);
+        }, vk::QueueFlagBits::eTransfer);
     }
 
     void Image::TransitionLayout(const vk::ImageLayout newLayout) {
@@ -97,13 +98,13 @@ namespace Memory {
             return;
         }
 
-        m_device.RunSingleTimeCommand([this, newLayout] (const vk::CommandBuffer &commandBuffer) {
+        Core::GlobalDevice().RunSingleTimeCommand([this, newLayout] (const Core::CommandBuffer &commandBuffer) {
             auto barrier = vk::ImageMemoryBarrier()
                 .setOldLayout(m_layout)
                 .setNewLayout(newLayout)
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                .setImage(m_image)
+                .setImage(m_handle)
                 .setSubresourceRange(vk::ImageSubresourceRange()
                     .setAspectMask(vk::ImageAspectFlagBits::eColor)
                     .setBaseMipLevel(0)
@@ -152,8 +153,9 @@ namespace Memory {
                             destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
                         break;
                         case vk::ImageLayout::ePresentSrcKHR:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead);
-                            destinationStage = vk::PipelineStageFlagBits::eTopOfPipe;
+                        case vk::ImageLayout::eSharedPresentKHR:
+                            barrier.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+                            destinationStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
                         break;
                         default:
                             throw std::runtime_error("Unsupported new layout transition");
@@ -203,7 +205,7 @@ namespace Memory {
                     throw std::runtime_error("Unsupported old layout transition");
             }
 
-            commandBuffer.pipelineBarrier(
+            commandBuffer->pipelineBarrier(
                 sourceStage,
                 destinationStage,
                 vk::DependencyFlags(),
@@ -212,7 +214,8 @@ namespace Memory {
                 barrier);
 
             m_layout = newLayout;
-        }, vk::QueueFlagBits::eGraphics);
+        },
+        vk::QueueFlagBits::eGraphics);
     }
 
     void Image::Barrier(const vk::CommandBuffer &commandBuffer,
@@ -232,7 +235,7 @@ namespace Memory {
         const auto imageBarrier = vk::ImageMemoryBarrier()
             .setOldLayout(m_layout)
             .setNewLayout(m_layout)
-            .setImage(m_image)
+            .setImage(m_handle)
             .setSubresourceRange(vk::ImageSubresourceRange()
                 .setAspectMask(aspectMask)
                 .setBaseMipLevel(0)
@@ -255,8 +258,8 @@ namespace Memory {
         if (m_extent == extent || (extent.width == 0 || extent.height == 0 || extent.depth == 0))
             return;
 
-        m_device.Handle().freeMemory(m_imageMemory);
-        m_device.Handle().destroyImage(m_image);
+        Core::GlobalDevice()->freeMemory(m_imageMemory);
+        Core::GlobalDevice()->destroyImage(m_handle);
 
 
         m_extent = extent;
@@ -272,18 +275,18 @@ namespace Memory {
             .setSharingMode(vk::SharingMode::eExclusive)
             .setInitialLayout(vk::ImageLayout::eUndefined)
             .setFlags(m_layerCount == 6 ? vk::ImageCreateFlagBits::eCubeCompatible : vk::ImageCreateFlags());
-        m_image = m_device.Handle().createImage(imageCreateInfo);
+        m_handle = Core::GlobalDevice()->createImage(imageCreateInfo);
 
-        const vk::MemoryRequirements memoryRequirements = m_device.Handle().getImageMemoryRequirements(m_image);
-        const auto memoryTypeIndex = m_device.FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        const vk::MemoryRequirements memoryRequirements = Core::GlobalDevice()->getImageMemoryRequirements(m_handle);
+        const auto memoryTypeIndex = Core::GlobalDevice().FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
         if (!memoryTypeIndex.has_value()) {
             std::cerr << "Image : Failed to find suitable memory type" << std::endl;
         }
 
-        m_imageMemory = m_device.Handle().allocateMemory(vk::MemoryAllocateInfo()
+        m_imageMemory = Core::GlobalDevice()->allocateMemory(vk::MemoryAllocateInfo()
             .setAllocationSize(memoryRequirements.size)
             .setMemoryTypeIndex(memoryTypeIndex.value()));
-        m_device.Handle().bindImageMemory(m_image, m_imageMemory, 0);
+        Core::GlobalDevice()->bindImageMemory(m_handle, m_imageMemory, 0);
 
         if (m_layout != vk::ImageLayout::eUndefined) {
             const auto layout = m_layout;
@@ -292,31 +295,12 @@ namespace Memory {
         }
     }
 
-    // std::vector<vk::ImageView> Image::IndividualMipLevels() const {
-    //     std::vector<vk::ImageView> imageViews;
-    //     for (uint32_t i = 0; i < m_mipLevels; i++) {
-    //         const auto viewInfo = vk::ImageViewCreateInfo()
-    //             .setImage(m_image)
-    //             .setViewType(m_layersCount == 6 ? vk::ImageViewType::eCube : vk::ImageViewType::e2D)
-    //             .setFormat(m_format)
-    //             .setSubresourceRange(vk::ImageSubresourceRange()
-    //                 .setAspectMask(m_aspectMask)
-    //                 .setBaseMipLevel(i)
-    //                 .setLevelCount(1)
-    //                 .setBaseArrayLayer(0)
-    //                 .setLayerCount(m_layersCount));
-    //         imageViews.push_back(m_device.Handle().createImageView(viewInfo));
-    //     }
-    //     return imageViews;
-    // }
-
-
     void Image::GenerateMipmaps() {
         if (m_mipLevels == 1) {
             return;
         }
 
-        m_device.RunSingleTimeCommand([this] (const vk::CommandBuffer &commandBuffer) {
+        Core::GlobalDevice().RunSingleTimeCommand([this] (const Core::CommandBuffer &commandBuffer) {
             auto mipWidth = static_cast<int32_t>(m_extent.width);
             auto mipHeight = static_cast<int32_t>(m_extent.height);
 
@@ -327,7 +311,7 @@ namespace Memory {
                     .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
                     .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                     .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setImage(m_image)
+                    .setImage(m_handle)
                     .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
                     .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
                     .setSubresourceRange(vk::ImageSubresourceRange()
@@ -337,7 +321,7 @@ namespace Memory {
                         .setBaseArrayLayer(0)
                         .setLayerCount(m_layerCount));
 
-                commandBuffer.pipelineBarrier(
+                commandBuffer->pipelineBarrier(
                     vk::PipelineStageFlagBits::eTransfer,
                     vk::PipelineStageFlagBits::eTransfer,
                     vk::DependencyFlags(),
@@ -368,10 +352,10 @@ namespace Memory {
                             1)
                     });
 
-                commandBuffer.blitImage(
-                    m_image,
+                commandBuffer->blitImage(
+                    m_handle,
                     vk::ImageLayout::eTransferSrcOptimal,
-                    m_image,
+                    m_handle,
                     vk::ImageLayout::eTransferDstOptimal,
                     imageBlit,
                     vk::Filter::eLinear);
@@ -381,7 +365,7 @@ namespace Memory {
                     .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
                     .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                     .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setImage(m_image)
+                    .setImage(m_handle)
                     .setSrcAccessMask(vk::AccessFlagBits::eTransferRead)
                     .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
                     .setSubresourceRange(vk::ImageSubresourceRange()
@@ -391,7 +375,7 @@ namespace Memory {
                         .setBaseArrayLayer(0)
                         .setLayerCount(m_layerCount));
 
-                commandBuffer.pipelineBarrier(
+                commandBuffer->pipelineBarrier(
                     vk::PipelineStageFlagBits::eTransfer,
                     vk::PipelineStageFlagBits::eFragmentShader,
                     vk::DependencyFlags(),
@@ -412,7 +396,7 @@ namespace Memory {
                 .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                .setImage(m_image)
+                .setImage(m_handle)
                 .setSrcAccessMask(vk::AccessFlagBits::eTransferRead)
                 .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
                 .setSubresourceRange(vk::ImageSubresourceRange()
@@ -422,7 +406,7 @@ namespace Memory {
                     .setBaseArrayLayer(0)
                     .setLayerCount(m_layerCount));
 
-            commandBuffer.pipelineBarrier(
+            commandBuffer->pipelineBarrier(
                 vk::PipelineStageFlagBits::eTransfer,
                 vk::PipelineStageFlagBits::eFragmentShader,
                 vk::DependencyFlags(),
@@ -431,6 +415,7 @@ namespace Memory {
                 barrier);
         }, vk::QueueFlagBits::eGraphics);
 
+        // TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
         m_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
     }
 }

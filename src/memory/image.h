@@ -7,12 +7,14 @@
 #include <optional>
 #include <vulkan/vulkan.hpp>
 
+#include "utils/globalWrapper.h"
+
 namespace Core {
     class Device;
 }
 
 namespace Memory {
-    class Image {
+    class Image final : public EngineWrapper<vk::Image> {
     public:
         class Builder {
             friend class Image;
@@ -61,11 +63,11 @@ namespace Memory {
                 return *this;
             }
 
-            std::unique_ptr<Memory::Image> Build(const Core::Device& device) const {
+            [[nodiscard]] std::unique_ptr<Memory::Image> Build() const {
                 if (m_extent.width == 0 || m_extent.height == 0 || m_extent.depth == 0) {
                     throw std::runtime_error("Image : Extent must be set");
                 }
-                return std::make_unique<Memory::Image>(device, *this);
+                return std::make_unique<Memory::Image>(*this);
             }
         private:
             vk::Format m_format = vk::Format::eUndefined;
@@ -80,13 +82,12 @@ namespace Memory {
             std::optional<vk::Image> m_image = std::nullopt;
         };
 
-        Image(const Core::Device& device, const Builder& builder);
-        ~Image();
+        explicit Image(const Builder& builder);
+        ~Image() override;
 
         Image(const Image&) = delete;
         Image& operator=(const Image&) = delete;
 
-        [[nodiscard]] const vk::Image& Handle() const { return m_image; }
         [[nodiscard]] const vk::ImageLayout& Layout() const { return m_layout; }
         [[nodiscard]] const vk::Extent3D& Extent() const { return m_extent; }
         [[nodiscard]] const vk::Format& Format() const { return m_format; }
@@ -95,16 +96,13 @@ namespace Memory {
         [[nodiscard]] const uint32_t& MipLevels() const { return m_mipLevels; }
         [[nodiscard]] const uint32_t& LayerCount() const { return m_layerCount; }
 
-        void Copy(const vk::Buffer& buffer, uint32_t mipLevel = 0, uint32_t layer = 0, uint32_t thread = 0) const;
+        void Copy(const vk::Buffer& buffer, uint32_t mipLevel = 0, uint32_t layer = 0) const;
         void TransitionLayout(vk::ImageLayout newLayout);
         void Barrier(const vk::CommandBuffer& commandBuffer, vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage) const;
         void GenerateMipmaps();
         void Resize(const vk::Extent3D& extent);
 
     private:
-        const Core::Device& m_device;
-
-        vk::Image m_image;
         vk::DeviceMemory m_imageMemory;
 
         vk::Format m_format;

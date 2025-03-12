@@ -4,72 +4,10 @@
 
 #pragma once
 
+#include <iostream>
 #include <vulkan/vulkan.hpp>
 
 #include "core/device.h"
-
-namespace Memory {
-    class Buffer {
-    public:
-        Buffer(
-            const Core::Device& device,
-            vk::DeviceSize instanceSize,
-            uint32_t instanceCount,
-            vk::BufferUsageFlags usage,
-            vk::MemoryPropertyFlags properties,
-            vk::DeviceSize minOffsetAlignment = 0);
-        ~Buffer();
-
-        Buffer(const Buffer &) = delete;
-        Buffer &operator=(const Buffer &) = delete;
-
-        template <typename T>
-        std::span<T> Map(vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize offset = 0);
-        void Unmap();
-
-        template <typename T>
-        std::span<T> Read(vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize offset = 0);
-        template <typename T>
-        void Write(const std::span<T>&, vk::DeviceSize offset = 0);
-        void Flush(vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize offset = 0) const;
-        [[nodiscard]] vk::DescriptorBufferInfo DescriptorInfo(vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize offset = 0) const;
-        void Invalidate(vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize offset = 0) const;
-
-        template <typename T>
-        [[nodiscard]] T ReadAt(uint32_t index) const;
-        template <typename T>
-        void WriteAt(uint32_t index, const T& data);
-        void FlushAt(uint32_t index);
-        [[nodiscard]] vk::DescriptorBufferInfo DescriptorInfoAt(uint32_t index) const;
-        void InvalidateAt(uint32_t index) const;
-
-        void CopyBuffer(const std::unique_ptr<Buffer> &srcBuffer, vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize srcOffset = 0, vk::DeviceSize dstOffset = 0) const;
-
-        [[nodiscard]] vk::Buffer operator *() const { return m_buffer; }
-        [[nodiscard]] vk::DeviceSize InstanceSize() const { return m_instanceSize; }
-        [[nodiscard]] uint32_t InstanceCount() const { return m_instanceCount; }
-        [[nodiscard]] vk::DeviceSize AlignmentSize() const { return m_alignmentSize; }
-        [[nodiscard]] vk::DeviceSize Size() const { return m_instanceCount * m_alignmentSize; }
-        [[nodiscard]] vk::BufferUsageFlags UsageFlags() const { return m_usageFlags; }
-        [[nodiscard]] vk::MemoryPropertyFlags MemoryPropertyFlags() const { return m_memoryPropertyFlags; }
-
-
-    private:
-        const Core::Device& m_device;
-
-        vk::Buffer m_buffer;
-        vk::DeviceMemory m_memory;
-
-        const vk::DeviceSize m_instanceSize;
-        uint32_t m_instanceCount;
-        void* m_mapped = nullptr;
-        vk::MappedMemoryRange m_mappedRange;
-
-        vk::DeviceSize m_alignmentSize;
-        vk::BufferUsageFlags m_usageFlags;
-        vk::MemoryPropertyFlags m_memoryPropertyFlags;
-    };
-}
 
 static vk::DeviceSize GetAlignment(const vk::DeviceSize size, const vk::DeviceSize alignment) {
     if (alignment > 0) {
@@ -78,111 +16,293 @@ static vk::DeviceSize GetAlignment(const vk::DeviceSize size, const vk::DeviceSi
     return size;
 }
 
-template <typename T>
-std::span<T> Memory::Buffer::Map(vk::DeviceSize instanceCount, const vk::DeviceSize offset) {
-    static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
-    static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
 
-    if (!(m_buffer && m_memory)) {
-        throw std::runtime_error("Buffer::Map : Buffer or memory not ready");
-    }
+namespace Memory {
+    template <typename T, typename = std::enable_if_t<std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>>>
+    class Buffer final : public EngineWrapper<vk::Buffer> {
+    public:
+        class Builder {
+            friend class Buffer;
+        public:
+            Builder() = default;
+            ~Builder() = default;
 
-    if (!(m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostVisible)) {
-        throw std::runtime_error("Buffer::Map : Memory not host visible");
-    }
+            Builder& InstanceCount(const uint32_t instanceCount) {
+                m_instanceCount = instanceCount;
+                return *this;
+            }
 
-    if (instanceCount != vk::WholeSize) {
-        instanceCount *= m_alignmentSize;
-    }
+            Builder& UsageFlags(const vk::BufferUsageFlags usageFlags) {
+                m_usageFlags |= usageFlags;
+                return *this;
+            }
 
-    m_mapped = m_device.Handle().mapMemory(
-        m_memory,
-        offset * m_alignmentSize,
-        instanceCount,
-        vk::MemoryMapFlags());
+            Builder& MemoryProperty(const vk::MemoryPropertyFlags memoryPropertyFlags) {
+                m_memoryPropertyFlags |= memoryPropertyFlags;
+                return *this;
+            }
 
-    m_mappedRange = vk::MappedMemoryRange()
-        .setMemory(m_memory)
-        .setSize(instanceCount)
-        .setOffset(offset * m_alignmentSize);
+            Builder& DeviceAlignment(const vk::DeviceSize deviceAlignment) {
+                m_deviceAlignment = deviceAlignment;
+                return *this;
+            }
 
-    return std::span<T>(static_cast<T *>(m_mapped), instanceCount);
-}
+            std::unique_ptr<Buffer<T>> Build() {
+                return std::make_unique<Buffer<T>>(*this);
+            }
 
-template<typename T>
-std::span<T> Memory::Buffer::Read(vk::DeviceSize instanceCount, vk::DeviceSize offset) {
-    static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
-    static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
+        private:
+            uint32_t m_instanceCount = 1;
+            vk::BufferUsageFlags m_usageFlags = vk::BufferUsageFlags();
+            vk::MemoryPropertyFlags m_memoryPropertyFlags = vk::MemoryPropertyFlags();
+            vk::DeviceSize m_deviceAlignment = 0;
+        };
 
-    if (!m_mapped) {
-        throw std::runtime_error("Buffer::Read : Buffer not mapped");
-    }
+        explicit Buffer(const Builder& builder)
+            : m_instanceCount(builder.m_instanceCount), m_usageFlags(builder.m_usageFlags), m_memoryPropertyFlags(builder.m_memoryPropertyFlags) {
 
-    if (sizeof(T) != m_instanceSize) {
-        throw std::runtime_error("Buffer::Map : Size of type does not match instance size");
-    }
+            m_alignmentSize = GetAlignment(sizeof(T), builder.m_deviceAlignment);
+            const auto bufferSize = m_alignmentSize * m_instanceCount;
 
-    if (instanceCount == vk::WholeSize) {
-        instanceCount = m_instanceCount;
-        offset = 0;
-    }
+            const auto bufferInfo = vk::BufferCreateInfo()
+                .setSize(bufferSize)
+                .setUsage(m_usageFlags)
+                .setSharingMode(vk::SharingMode::eExclusive);
 
-    if (instanceCount + offset > m_instanceCount) {
-        throw std::runtime_error("Buffer::Read : Instance count out of bounds");
-    }
+            m_handle = Core::GlobalDevice()->createBuffer(bufferInfo);
 
-    return std::span<T>(static_cast<T *>(m_mapped + offset * m_alignmentSize), instanceCount);
-}
+            const auto memRequirements = Core::GlobalDevice()->getBufferMemoryRequirements(m_handle);
+            const auto memoryTypeIndex = Core::GlobalDevice().FindMemoryType(memRequirements.memoryTypeBits, m_memoryPropertyFlags);
 
-template<typename T>
-void Memory::Buffer::Write(const std::span<T>& data, vk::DeviceSize offset) {
-    static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
-    static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
+            if (!memoryTypeIndex.has_value()) {
+                std::cerr << "Buffer : Failed to find suitable memory type" << std::endl;
+            }
 
-    if (!m_mapped) {
-        throw std::runtime_error("Buffer::Write : Buffer not mapped");
-    }
+            const auto allocInfo = vk::MemoryAllocateInfo()
+                .setAllocationSize(memRequirements.size)
+                .setMemoryTypeIndex(memoryTypeIndex.value());
 
-    if (sizeof(T) != m_instanceSize) {
-        throw std::runtime_error("Buffer::Write : Size of type does not match instance size");
-    }
+            m_memory = Core::GlobalDevice()->allocateMemory(allocInfo);
+            Core::GlobalDevice()->bindBufferMemory(m_handle, m_memory, 0);
+        }
+        ~Buffer() override {
+            Unmap();
+            Core::GlobalDevice()->destroyBuffer(m_handle);
+            Core::GlobalDevice()->freeMemory(m_memory);
+        }
 
-    if (data.size() + offset > m_instanceCount) {
-        throw std::runtime_error("Buffer::Write : Data size exceeds buffer size");
-    }
+        Buffer(const Buffer &) = delete;
+        Buffer &operator=(const Buffer &) = delete;
 
-    void* mapped = static_cast<uint8_t*>(m_mapped) + offset * m_alignmentSize;
-    std::memcpy(mapped, data.data(), data.size_bytes());
-}
+        std::span<T> Map(vk::DeviceSize instanceCount = vk::WholeSize, const vk::DeviceSize offset = 0) {
+            if (!(m_handle && m_memory)) {
+                throw std::runtime_error("Buffer::Map : Buffer or memory not ready");
+            }
 
-template<typename T>
-T Memory::Buffer::ReadAt(const uint32_t index) const {
-    static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
-    static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
+            if (!(m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostVisible)) {
+                throw std::runtime_error("Buffer::Map : Memory not host visible");
+            }
 
-    if (!m_mapped) {
-        throw std::runtime_error("Buffer::ReadAt : Buffer not mapped");
-    }
+            if (instanceCount != vk::WholeSize) {
+                instanceCount *= m_alignmentSize;
+            }
 
-    if (sizeof(T) != m_instanceSize) {
-        throw std::runtime_error("Buffer::ReadAt : Size of type does not match instance size");
-    }
+            m_mapped = static_cast<T*>(Core::GlobalDevice()->mapMemory(
+                m_memory,
+                offset * m_alignmentSize,
+                instanceCount,
+                vk::MemoryMapFlags()));
 
-    return *reinterpret_cast<T *>(static_cast<uint8_t *>(m_mapped) + index * m_alignmentSize);
-}
+            m_mappedRange = vk::MappedMemoryRange()
+                .setMemory(m_memory)
+                .setSize(instanceCount)
+                .setOffset(offset * m_alignmentSize);
 
-template<typename T>
-void Memory::Buffer::WriteAt(const uint32_t index, const T &data) {
-    static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
-    static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
+            return std::span<T>(static_cast<T *>(m_mapped), instanceCount);
+        }
 
-    if (!m_mapped) {
-        throw std::runtime_error("Buffer::WriteAt : Buffer not mapped");
-    }
+        void Unmap() {
+            if (m_mapped) {
+                Core::GlobalDevice()->unmapMemory(m_memory);
+                m_mapped = nullptr;
+            }
+        }
 
-    if (sizeof(T) != m_instanceSize) {
-        throw std::runtime_error("Buffer::ReadAt : Size of type does not match instance size");
-    }
+        std::span<T> Read(vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize offset = 0) {
+            if (!m_mapped) {
+                throw std::runtime_error("Buffer::Read : Buffer not mapped");
+            }
 
-    *reinterpret_cast<T *>(static_cast<uint8_t *>(m_mapped) + index * m_alignmentSize) = data;
+            if (instanceCount == vk::WholeSize) {
+                instanceCount = m_instanceCount;
+                offset = 0;
+            }
+
+            if (instanceCount + offset > m_instanceCount) {
+                throw std::runtime_error("Buffer::Read : Instance count out of bounds");
+            }
+
+            return std::span<T>(static_cast<T *>(m_mapped + offset * m_alignmentSize), instanceCount);
+        }
+
+        void Write(const std::span<T>& data, vk::DeviceSize offset = 0) {
+            if (!m_mapped) {
+                throw std::runtime_error("Buffer::Write : Buffer not mapped");
+            }
+
+            if (data.size() + offset > m_instanceCount) {
+                throw std::runtime_error("Buffer::Write : Data size exceeds buffer size");
+            }
+
+            T* mapped = m_mapped + offset;
+            std::copy(data.begin(), data.end(), mapped);
+        }
+
+        void Flush(const vk::DeviceSize instanceCount = vk::WholeSize, const vk::DeviceSize offset = 0) const {
+            if (!m_mapped) {
+                std::cerr << "Buffer::Flush : Buffer not mapped" << std::endl;
+                return;
+            }
+
+            if (instanceCount == vk::WholeSize) {
+                Core::GlobalDevice()->flushMappedMemoryRanges(m_mappedRange);
+                return;
+            }
+
+            const auto range = vk::MappedMemoryRange()
+                .setMemory(m_memory)
+                .setSize(instanceCount * m_alignmentSize)
+                .setOffset(offset * m_alignmentSize);
+            Core::GlobalDevice()->flushMappedMemoryRanges(range);
+        }
+
+        [[nodiscard]] vk::DescriptorBufferInfo DescriptorInfo(vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize offset = 0) const {
+            if (instanceCount == vk::WholeSize) {
+                instanceCount = m_instanceCount;
+                offset = 0;
+            }
+
+            if (instanceCount + offset > m_instanceCount) {
+                throw std::runtime_error("Buffer::DescriptorInfo : Instance count out of bounds");
+            }
+
+            return vk::DescriptorBufferInfo()
+                .setBuffer(m_handle)
+                .setOffset(offset * m_alignmentSize)
+                .setRange(instanceCount * m_alignmentSize);
+        }
+
+        void Invalidate(const vk::DeviceSize instanceCount = vk::WholeSize, const vk::DeviceSize offset = 0) const {
+            if (!m_mapped) {
+                std::cerr << "Buffer::Invalidate : Buffer not mapped" << std::endl;
+                return;
+            }
+
+            if (instanceCount == vk::WholeSize) {
+                Core::GlobalDevice()->invalidateMappedMemoryRanges(m_mappedRange);
+                return;
+            }
+            const auto range = vk::MappedMemoryRange()
+                .setMemory(m_memory)
+                .setSize(instanceCount * m_alignmentSize)
+                .setOffset(offset * m_alignmentSize);
+            Core::GlobalDevice()->invalidateMappedMemoryRanges(range);
+        }
+
+        [[nodiscard]] T ReadAt(const uint32_t index) const {
+            static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
+            static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
+
+            if (!m_mapped) {
+                throw std::runtime_error("Buffer::ReadAt : Buffer not mapped");
+            }
+
+            return *reinterpret_cast<T *>(static_cast<uint8_t *>(m_mapped) + index * m_alignmentSize);
+        }
+
+        void WriteAt(const uint32_t index, const T& data) {
+            static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
+            static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
+
+            if (!m_mapped) {
+                throw std::runtime_error("Buffer::WriteAt : Buffer not mapped");
+            }
+
+            *reinterpret_cast<T *>(static_cast<uint8_t *>(m_mapped) + index * m_alignmentSize) = data;
+        }
+
+        void FlushAt(const uint32_t index) const {
+            if (!m_mapped) {
+                std::cerr << "Buffer::FlushAt : Buffer not mapped" << std::endl;
+                return;
+            }
+
+            if (index >= m_instanceCount) {
+                std::cerr << "Buffer::FlushAt : Index out of bounds" << std::endl;
+                return;
+            }
+
+            Flush(1, index);
+        }
+
+        [[nodiscard]] vk::DescriptorBufferInfo DescriptorInfoAt(const uint32_t index) const {
+            if (index >= m_instanceCount) {
+                throw std::runtime_error("Buffer::DescriptorInfoAt : Index out of bounds");
+            }
+            return DescriptorInfo(1, index);
+        }
+
+        void InvalidateAt(const uint32_t index) const {
+            if (index >= m_instanceCount) {
+                std::cerr << "Buffer::InvalidateAt : Index out of bounds" << std::endl;
+                return;
+            }
+            Invalidate(1, index);
+        }
+
+        template <typename U, typename = std::enable_if_t<std::is_trivially_copyable_v<U> && std::is_standard_layout_v<U>>, typename = std::enable_if_t<sizeof(U) == sizeof(T)>>
+        void CopyBuffer(const std::unique_ptr<Buffer<U>> &srcBuffer, const vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize srcOffset = 0, vk::DeviceSize dstOffset = 0) const {
+            if (m_alignmentSize != srcBuffer->m_alignmentSize) {
+                std::cerr << "Buffer::CopyBuffer : Alignment sizes do not match" << std::endl;
+                return;
+            }
+
+            auto size = instanceCount;
+            if (instanceCount != vk::WholeSize) {
+                size *= m_alignmentSize;
+                srcOffset *= m_alignmentSize;
+                dstOffset *= m_alignmentSize;
+            } else {
+                size = std::min(m_instanceCount, srcBuffer->m_instanceCount) * m_alignmentSize;
+                srcOffset = 0;
+                dstOffset = 0;
+            }
+
+            Core::GlobalDevice().RunSingleTimeCommand([this, srcOffset, dstOffset, &srcBuffer, size](const Core::CommandBuffer &commandBuffer) {
+                const auto copyRegion = vk::BufferCopy()
+                    .setSrcOffset(srcOffset)
+                    .setDstOffset(dstOffset)
+                    .setSize(size);
+                commandBuffer->copyBuffer(**srcBuffer, m_handle, 1, &copyRegion);
+            }, vk::QueueFlagBits::eTransfer);
+        }
+
+        [[nodiscard]] uint32_t InstanceCount() const { return m_instanceCount; }
+        [[nodiscard]] vk::DeviceSize AlignmentSize() const { return m_alignmentSize; }
+        [[nodiscard]] vk::DeviceSize Size() const { return m_instanceCount * m_alignmentSize; }
+        [[nodiscard]] vk::BufferUsageFlags UsageFlags() const { return m_usageFlags; }
+        [[nodiscard]] vk::MemoryPropertyFlags MemoryPropertyFlags() const { return m_memoryPropertyFlags; }
+
+
+    private:
+        vk::DeviceMemory m_memory;
+
+        uint32_t m_instanceCount;
+        T* m_mapped = nullptr;
+        vk::MappedMemoryRange m_mappedRange;
+
+        vk::DeviceSize m_alignmentSize;
+        vk::BufferUsageFlags m_usageFlags;
+        vk::MemoryPropertyFlags m_memoryPropertyFlags;
+    };
 }

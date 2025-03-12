@@ -45,22 +45,21 @@ namespace Memory::Descriptor {
         return *this;
     }
 
-    std::unique_ptr<Set> Set::Builder::Build(const Core::Device& device) {
-        return std::make_unique<Set>(device, *this);
+    std::unique_ptr<Set> Set::Builder::Build() {
+        return std::make_unique<Set>(*this);
     }
 
 
-    Set::Set(const Core::Device& device, Builder &builder)
-    : m_device(device), m_pool{builder.m_pool}, m_layout{builder.m_layout} {
+    Set::Set(Builder &builder) : m_pool{builder.m_pool}, m_layout{builder.m_layout} {
         m_set = m_pool.Allocate(m_layout);
         for (auto &write: builder.m_writes) {
             write.setDstSet(m_set);
         }
-        m_device.Handle().updateDescriptorSets(builder.m_writes, {});
+        Core::GlobalDevice()->updateDescriptorSets(builder.m_writes, {});
     }
 
     Set::~Set() {
-        m_device.Handle().waitIdle();
+        Core::GlobalDevice()->waitIdle();
         m_pool.Free(m_set);
     }
 }

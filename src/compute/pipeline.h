@@ -23,47 +23,7 @@ namespace Compute {
 
     class Pipeline {
     public:
-        class Builder {
-            friend class Pipeline;
-        public:
-            Builder() = default;
-            ~Builder() = default;
-
-            Builder(const Builder &) = delete;
-            Builder &operator=(const Builder &) = delete;
-
-            Builder &Shader(Core::Shader*);
-            Builder &BasePipeline(const vk::Pipeline &, int32_t);
-
-            template<typename T>
-            Builder &PushConstantRange(const vk::ShaderStageFlags &stageFlags, const uint32_t offset = 0) {
-                const auto pushConstantRange = vk::PushConstantRange()
-                    .setStageFlags(stageFlags)
-                    .setOffset(offset)
-                    .setSize(sizeof(T));
-                m_pushConstantRanges.push_back(pushConstantRange);
-                return *this;
-            }
-
-            Builder &DescriptorSetLayout(uint32_t setNumber, const Memory::Descriptor::SetLayout &layout);
-            Builder &DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts);
-
-            std::unique_ptr<Pipeline> Build(const Core::Device&);
-
-        private:
-
-            std::vector<vk::PushConstantRange> m_pushConstantRanges;
-            std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;
-
-            vk::PipelineLayout m_pipelineLayout;
-            Core::Shader* m_shaderModule;
-            vk::PipelineShaderStageCreateInfo m_shaderStage;
-
-            vk::Pipeline m_basePipeline = nullptr;
-            int32_t m_basePipelineIndex = -1;
-        };
-
-        Pipeline(const Core::Device&, Builder&);
+        explicit Pipeline(Core::Shader*, std::string  kernelName = "main");
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
@@ -82,11 +42,12 @@ namespace Compute {
 
         void BindDescriptorSet(uint32_t, vk::CommandBuffer, const Memory::Descriptor::Set &) const;
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
+
     private:
-        const Core::Device& m_device;
+        Core::Shader* m_shader;
+        std::string m_kernelName;
 
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
-        std::unique_ptr<Core::Shader> m_shader;
     };
 }

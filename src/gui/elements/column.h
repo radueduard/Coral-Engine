@@ -4,9 +4,7 @@
 
 #pragma once
 
-#pragma once
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "element.h"
@@ -14,10 +12,9 @@
 #include "imgui.h"
 
 namespace GUI {
-    class Column : public Element {
+    class Column final : public Element {
     public:
-        Column(std::string name, const std::vector<Element*>& children, const float spacing)
-            : Element(std::move(name)), m_spacing(spacing) {
+        Column(const std::vector<Element*>& children, const float spacing) : m_spacing(spacing) {
             for (const auto &child : children) {
                 m_children.emplace_back(child);
                 child->AttachTo(this);
@@ -26,27 +23,31 @@ namespace GUI {
             for (const auto &child : m_children) {
                 if (typeid(*child) == typeid(Expanded)) {
                     m_numberOfExpanded++;
-                } else {
-                    m_allocatedArea.x = std::max(m_allocatedArea.x, child->Width());
                 }
             }
         }
         ~Column() override = default;
 
         void Render() override {
-            m_startPoint = m_parent->StartPoint(this);
-            m_availableArea = m_parent->AllocatedArea(this);
-            m_allocatedArea = { m_availableArea.x, 0 };
+            m_outerBounds = m_parent->AllocatedArea(this);
+            m_innerBounds.min = m_outerBounds.min;
+            m_innerBounds.max = { m_outerBounds.max.x, m_outerBounds.min.y };
 
+            m_requiredArea = { 0, 0 };
             for (const auto& child : m_children) {
                 if (typeid(*child) != typeid(Expanded)) {
-                    m_allocatedArea.y += child->Height();
+                    m_requiredArea.y += child->RequiredArea().y;
+                    m_requiredArea.x = std::max(m_requiredArea.x, child->RequiredArea().x);
                 }
             }
-            m_allocatedArea.y += static_cast<float>(m_children.size() - 1) * m_spacing;
+            m_requiredArea.y += static_cast<float>(m_children.size() - 1) * m_spacing;
 
             if (m_numberOfExpanded != 0) {
-                m_allocatedArea.x = m_availableArea.x;
+                const auto availableArea = m_outerBounds.max.y - m_outerBounds.min.y;
+                m_expandedArea = { m_requiredArea.x, (availableArea - m_requiredArea.y) / static_cast<float>(m_numberOfExpanded) };
+                m_innerBounds.max = m_outerBounds.max;
+            } else {
+                m_innerBounds.max = { m_outerBounds.max.x, m_innerBounds.min.y + m_requiredArea.y };
             }
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, m_spacing));
@@ -55,34 +56,30 @@ namespace GUI {
                 child->Render();
             }
             ImGui::PopStyleVar();
-
         }
 
-        glm::vec2 StartPoint(Element *element) override {
-            glm::vec2 offset = m_startPoint;
-            for (const auto& child : m_children) {
-                if (child.get() == element) {
-                    return offset;
-                }
-                offset += glm::vec2 { 0.f, child->Height() + m_spacing };
-            }
-
-            throw std::runtime_error("There is no area allocated for elements that are not children");
-        }
-
-        glm::vec2 AllocatedArea(Element *element) override {
+        Math::Rect AllocatedArea(Element *element) const override {
+            Math::Vector2<float> allocatedAreaStart = m_innerBounds.min;
             for (const auto& child : m_children) {
                 if (element == child.get()) {
-                    if (typeid(*element) == typeid(Expanded)) {
-                        return { m_availableArea.x, (m_availableArea.y - m_allocatedArea.y) / m_numberOfExpanded };
+                    if (typeid(*element) != typeid(Expanded)) {
+                        return { allocatedAreaStart, allocatedAreaStart + Math::Vector2(m_innerBounds.max.x - m_innerBounds.min.x, child->RequiredArea().y) };
                     }
-                    return { m_allocatedArea.x,  child->Height() };
+                    return { allocatedAreaStart, allocatedAreaStart + m_expandedArea };
+                }
+                if (typeid(*child) != typeid(Expanded)) {
+                    allocatedAreaStart.y += child->RequiredArea().y + m_spacing;
+                } else {
+                    allocatedAreaStart.y += m_expandedArea.y + m_spacing;
                 }
             }
-            throw std::runtime_error("There is no area allocated for elements that are not children");
+            return Math::Rect::Zero();
         }
 
     private:
+        int m_numberOfExpanded = 0;
+        Math::Vector2<float> m_expandedArea;
+
         std::vector<std::unique_ptr<Element>> m_children;
         float m_spacing;
     };

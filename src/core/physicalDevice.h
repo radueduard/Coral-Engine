@@ -6,12 +6,14 @@
 #include <unordered_set>
 #include <vulkan/vulkan.hpp>
 
+#include "utils/globalWrapper.h"
+
 namespace Core {
     class Runtime;
 }
 
 namespace Core {
-    class PhysicalDevice {
+    class PhysicalDevice final : public EngineWrapper<vk::PhysicalDevice> {
         friend class Runtime;
     public:
         struct CreateInfo {
@@ -21,19 +23,12 @@ namespace Core {
         };
 
         explicit PhysicalDevice(const CreateInfo& createInfo);
-        ~PhysicalDevice() = default;
+        ~PhysicalDevice() override = default;
         PhysicalDevice(const PhysicalDevice &) = delete;
         PhysicalDevice &operator=(const PhysicalDevice &) = delete;
 
-        vk::PhysicalDevice Handle() const { return m_physicalDevice; }
-
         [[nodiscard]] bool isSuitable() const;
         [[nodiscard]] const std::vector<vk::QueueFamilyProperties>& QueueFamilyProperties() const { return m_queueFamilyProperties; }
-
-        // [[nodiscard]] const vk::PhysicalDeviceProperties& Properties() const { return m_properties; }
-        // [[nodiscard]] const vk::PhysicalDeviceFeatures& Features() const { return m_features; }
-        // [[nodiscard]] const vk::PhysicalDeviceMemoryProperties& MemoryProperties() const { return m_memoryProperties; }
-        // [[nodiscard]] const std::vector<vk::ExtensionProperties>& ExtensionProperties() const { return m_extensionProperties; }
 
         [[nodiscard]] const vk::SurfaceKHR& Surface() const { return m_surface; }
         [[nodiscard]] const vk::SurfaceCapabilitiesKHR& SurfaceCapabilities() const { return m_capabilities; }
@@ -48,8 +43,6 @@ namespace Core {
         [[nodiscard]] bool isSwapChainSupported() const { return !m_formats.empty() && !m_presentModes.empty(); }
 
         const Runtime& m_runtime;
-
-        vk::PhysicalDevice m_physicalDevice;
 
         vk::PhysicalDeviceProperties m_properties;
         vk::PhysicalDeviceFeatures m_features;

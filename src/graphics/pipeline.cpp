@@ -9,12 +9,11 @@
 
 #include "../shader/shader.h"
 #include "memory/descriptor/set.h"
+#include "utils/functionals.h"
 
 namespace Graphics {
 
     Pipeline::Builder::Builder() {
-        m_yetPossibleTypes = std::unordered_set {VTG, TM};
-
         m_inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
             .setTopology(vk::PrimitiveTopology::eTriangleList)
             .setPrimitiveRestartEnable(vk::False);
@@ -38,36 +37,7 @@ namespace Graphics {
 
     Pipeline::Builder &Pipeline::Builder::AddShader(Core::Shader* shader) {
         const auto stage = shader->Stage();
-        const auto vtgStages = std::unordered_set {
-            vk::ShaderStageFlagBits::eVertex,
-            vk::ShaderStageFlagBits::eTessellationControl,
-            vk::ShaderStageFlagBits::eTessellationEvaluation,
-            vk::ShaderStageFlagBits::eGeometry,
-        };
-
-        const auto tmStages = std::unordered_set {
-            vk::ShaderStageFlagBits::eTaskEXT,
-            vk::ShaderStageFlagBits::eMeshEXT,
-        };
-
-        if (!m_yetPossibleTypes.contains(VTG) && vtgStages.contains(stage) &&
-            (!m_yetPossibleTypes.contains(TM) && tmStages.contains(stage)))
-        {
-            const std::string errorMessage =
-            "You can't have shaders of different types in the same pipeline\n"
-            "You can add shaders within the following types:\n"
-                "\t- VTG: Vertex, Tessellation Control, Tessellation Evaluation, Geometry, Fragment\n"
-                "\t- TM: Task, Mesh, Fragment\n";
-            throw std::runtime_error(errorMessage);
-        }
-
-        if (vtgStages.contains(stage)) {
-            m_yetPossibleTypes.erase(TM);
-        } else if (tmStages.contains(stage)) {
-            m_yetPossibleTypes.erase(VTG);
-        }
-
-        m_shaders[stage] = std::move(shader);
+        m_shaders[stage] = shader;
         return *this;
     }
 
@@ -149,56 +119,53 @@ namespace Graphics {
         return *this;
     }
 
-    Pipeline::Builder &Pipeline::Builder::BasePipeline(const vk::Pipeline &basePipeline, const int32_t basePipelineIndex)
+    std::unique_ptr<Pipeline> Pipeline::Builder::Build()
     {
-        m_basePipeline = basePipeline;
-        m_basePipelineIndex = basePipelineIndex;
-        return *this;
-    }
-
-    Pipeline::Builder &Pipeline::Builder::DescriptorSetLayout(const uint32_t setNumber, const Memory::Descriptor::SetLayout &layout) {
-        if (m_descriptorSetLayouts.size() != setNumber) {
-            std::cerr << "Descriptor set layouts must be added in order, and without gaps" << std::endl;
-            return *this;
-        }
-        m_descriptorSetLayouts.emplace_back(*layout);
-        return *this;
-    }
-
-    Pipeline::Builder &Pipeline::Builder::DescriptorSetLayouts(uint32_t startingSet, const std::vector<Memory::Descriptor::SetLayout> &layouts) {
-        for (const auto &layout : layouts) {
-            DescriptorSetLayout(startingSet++, layout);
-        }
-        return *this;
-    }
-
-    void Pipeline::Builder::CheckShaderStagesValidity() const {
-        if (m_yetPossibleTypes.size() != 1) {
-            throw std::runtime_error("Not enough shaders added to the pipeline");
-        }
-        switch (*m_yetPossibleTypes.begin()) {
-            case VTG:
-                if (!m_shaders.contains(vk::ShaderStageFlagBits::eVertex)) {
-                    throw std::runtime_error("VTG pipeline: At least Vertex shader is required");
+        std::vector<Memory::Descriptor::SetLayout::Builder> layoutBuilders;
+        std::vector<vk::PushConstantRange> pushConstantRanges;
+        for (const auto& shader : m_shaders | std::views::values) {
+            for (const auto& layout : shader->Descriptors()) {
+                if (layout.set >= layoutBuilders.size()) {
+                    layoutBuilders.resize(layout.set + 1);
                 }
-            break;
-            case TM:
-                if (!m_shaders.contains(vk::ShaderStageFlagBits::eMeshEXT)) {
-                    throw std::runtime_error("TM pipeline: At least Mesh shader is required");
+                auto& currentLayout = layoutBuilders[layout.set];
+                if (currentLayout.HasBinding(layout.binding)) {
+                    currentLayout.Binding(layout.binding).stageFlags |= shader->Stage();
+                } else {
+                    currentLayout.AddBinding(layout.binding, layout.type, shader->Stage(), layout.count);
                 }
-            break;
-        }
-    }
+            }
+            for (const auto&[size, offset] : shader->PushConstantRanges()) {
+                auto foundRange = Utils::FindIf(pushConstantRanges,
+                [size, offset] (const auto& range) -> bool {
+                    return range.offset == offset && range.size == size;
+                });
 
-    std::unique_ptr<Pipeline> Pipeline::Builder::Build(const Core::Device &device)
-    {
+                if (foundRange.has_value()) {
+                    foundRange->stageFlags |= shader->Stage();
+                } else {
+                    pushConstantRanges.emplace_back(
+                        vk::PushConstantRange()
+                            .setOffset(offset)
+                            .setSize(size)
+                            .setStageFlags(shader->Stage()));
+                }
+            }
+        }
+
+        for (auto& layoutBuilder : layoutBuilders) {
+            m_setLayouts.emplace_back(layoutBuilder.Build());
+        }
+
+        std::vector<vk::DescriptorSetLayout> descriptorHandles = m_setLayouts
+            | std::views::transform([](const auto& layout) { return **layout; })
+            | std::ranges::to<std::vector<vk::DescriptorSetLayout>>();
+
         const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-            .setSetLayouts(m_descriptorSetLayouts)
-            .setPushConstantRanges(m_pushConstantRanges);
+            .setSetLayouts(descriptorHandles)
+            .setPushConstantRanges(pushConstantRanges);
 
-        m_pipelineLayout = device.Handle().createPipelineLayout(pipelineLayoutInfo);
-
-        CheckShaderStagesValidity();
+        m_pipelineLayout = Core::GlobalDevice()->createPipelineLayout(pipelineLayoutInfo);
 
         m_stages.clear();
         for (const auto &[stage, shader] : m_shaders) {
@@ -226,11 +193,11 @@ namespace Graphics {
             .setLogicOp(vk::LogicOp::eCopy)
             .setAttachments(m_colorBlendAttachments);
 
-        return std::make_unique<Pipeline>(device, *this);
+        return std::make_unique<Pipeline>(*this);
     }
 
-    Pipeline::Pipeline(const Core::Device& device, const Builder &builder)
-        : m_device(device), m_pipelineLayout(builder.m_pipelineLayout)
+    Pipeline::Pipeline(Builder &builder)
+        : m_pipelineLayout(builder.m_pipelineLayout), m_setLayouts(std::move(builder.m_setLayouts)), m_shaders(builder.m_shaders)
     {
         const auto m_createInfo = vk::GraphicsPipelineCreateInfo()
             .setStages(builder.m_stages)
@@ -245,24 +212,21 @@ namespace Graphics {
             .setPDynamicState(&builder.m_dynamicState)
             .setLayout(builder.m_pipelineLayout)
             .setRenderPass(builder.m_renderPass)
-            .setSubpass(builder.m_subpass)
-            .setBasePipelineHandle(builder.m_basePipeline)
-            .setBasePipelineIndex(builder.m_basePipelineIndex);
+            .setSubpass(builder.m_subpass);
 
-        const auto pipeline = m_device.Handle().createGraphicsPipeline(nullptr, m_createInfo);
+        const auto pipeline = Core::GlobalDevice()->createGraphicsPipeline(nullptr, m_createInfo);
 
         if (pipeline.result != vk::Result::eSuccess) {
             std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
         }
         m_pipeline = pipeline.value;
-        m_type = *builder.m_yetPossibleTypes.begin();
     }
 
     Pipeline::~Pipeline()
     {
-        m_device.Handle().waitIdle();
-        m_device.Handle().destroyPipeline(m_pipeline);
-        m_device.Handle().destroyPipelineLayout(m_pipelineLayout);
+        Core::GlobalDevice()->waitIdle();
+        Core::GlobalDevice()->destroyPipeline(m_pipeline);
+        Core::GlobalDevice()->destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer& commandBuffer) const {

@@ -6,7 +6,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <unordered_map>
 
 #include <glslang/Public/ResourceLimits.h>
@@ -17,6 +16,8 @@
 #include "utils/file.h"
 
 #include <spirv_cross/spirv_glsl.hpp>
+
+#include "graphics/pipeline.h"
 
 static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage) {
     switch (stage) {
@@ -42,23 +43,23 @@ static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage
 }
 
 namespace Core {
-    Shader::Shader(const Device& device, const std::string &path, const vk::ShaderStageFlagBits &stage)
-    : m_device(device), m_path(path), m_stage(stage) {
-        auto extension = path.substr(path.find_last_of('.') + 1);
+    Shader::Shader(const std::filesystem::path &path, const vk::ShaderStageFlagBits &stage)
+        : m_path(path), m_stage(stage) {
+        auto extension = path.extension().string();
 
         const auto glslExtensions = std::unordered_map<std::string, vk::ShaderStageFlagBits> {
-            {"vert", vk::ShaderStageFlagBits::eVertex},
-            {"tesc", vk::ShaderStageFlagBits::eTessellationControl},
-            {"tese", vk::ShaderStageFlagBits::eTessellationEvaluation},
-            {"geom", vk::ShaderStageFlagBits::eGeometry},
-            {"frag", vk::ShaderStageFlagBits::eFragment},
-            {"comp", vk::ShaderStageFlagBits::eCompute},
-            {"task", vk::ShaderStageFlagBits::eTaskEXT},
-            {"mesh", vk::ShaderStageFlagBits::eMeshEXT},
+            {".vert", vk::ShaderStageFlagBits::eVertex},
+            {".tesc", vk::ShaderStageFlagBits::eTessellationControl},
+            {".tese", vk::ShaderStageFlagBits::eTessellationEvaluation},
+            {".geom", vk::ShaderStageFlagBits::eGeometry},
+            {".frag", vk::ShaderStageFlagBits::eFragment},
+            {".comp", vk::ShaderStageFlagBits::eCompute},
+            {".task", vk::ShaderStageFlagBits::eTaskEXT},
+            {".mesh", vk::ShaderStageFlagBits::eMeshEXT},
         };
 
         if (extension == "spv") {
-            const auto pathWithoutExtension = path.substr(0, path.find_last_of('.'));
+            const auto pathWithoutExtension = path.string().substr(0, path.string().find_last_of('.'));
             extension = pathWithoutExtension.substr(pathWithoutExtension.find_last_of('.') + 1);
             if (!glslExtensions.contains(extension)) {
                 throw std::runtime_error("Unsupported shader extension: " + extension);
@@ -67,40 +68,91 @@ namespace Core {
             const auto code = Utils::ReadBinaryFile(path);
             m_spirVCode.resize(code.size() / sizeof(uint32_t));
             std::memcpy(m_spirVCode.data(), code.data(), code.size());
-            m_shaderModule = LoadSpirVShader(m_spirVCode);
+            m_handle = LoadSpirVShader(m_spirVCode);
         } else if (glslExtensions.contains(extension)) {
             m_stage = glslExtensions.at(extension);
             const auto code = Utils::ReadTextFile(path);
             m_spirVCode = CompileGLSLToSpirV(code, m_stage);
-            m_shaderModule = LoadSpirVShader(m_spirVCode);
+            m_handle = LoadSpirVShader(m_spirVCode);
         } else {
             throw std::runtime_error("Unsupported shader extension: " + extension);
         }
+
+        LoadResourceInfo();
     }
 
     Shader::~Shader() {
-        m_device.Handle().destroyShaderModule(m_shaderModule);
+        Core::GlobalDevice()->destroyShaderModule(m_handle);
     }
 
 
-    void Shader::GetReflection() const {
+    void Shader::LoadResourceInfo() {
         const auto module = spirv_cross::Compiler(m_spirVCode);
         const auto resources = module.get_shader_resources();
 
-        for (const auto& image : resources.storage_images) {
-            const auto set = module.get_decoration(image.id, spv::DecorationDescriptorSet);
-            const auto binding = module.get_decoration(image.id, spv::DecorationBinding);
+        for (const auto &sampler : resources.separate_samplers) {
+            const uint32_t set = module.get_decoration(sampler.id, spv::DecorationDescriptorSet);
+            const uint32_t binding = module.get_decoration(sampler.id, spv::DecorationBinding);
+            const uint32_t count = module.get_type(sampler.type_id).array.size();
+            m_descriptors.emplace(set, binding, vk::DescriptorType::eSampler, count);
+        } // eSampler
+        for (const auto &sampledImage : resources.separate_images) {
+            const uint32_t set = module.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
+            const uint32_t binding = module.get_decoration(sampledImage.id, spv::DecorationBinding);
+            const uint32_t count = module.get_type(sampledImage.type_id).array.size();
+            if (module.get_type(sampledImage.type_id).image.dim == spv::DimBuffer) {
+                m_descriptors.emplace(set, binding, vk::DescriptorType::eUniformTexelBuffer, count);
+            } else {
+                m_descriptors.emplace(set, binding, vk::DescriptorType::eStorageImage, count);
+            }
+        } // eSampledImage and eUniformTexelBuffer
+        for (const auto &sampledImage : resources.sampled_images) {
+            const uint32_t set = module.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
+            const uint32_t binding = module.get_decoration(sampledImage.id, spv::DecorationBinding);
+            const uint32_t count = module.get_type(sampledImage.type_id).array.size();
+            m_descriptors.emplace(set, binding, vk::DescriptorType::eCombinedImageSampler, count);
+        } // eCombinedImageSampler
+        for (const auto &image : resources.storage_images) {
+            const uint32_t set = module.get_decoration(image.id, spv::DecorationDescriptorSet);
+            const uint32_t binding = module.get_decoration(image.id, spv::DecorationBinding);
+            const uint32_t count = module.get_type(image.type_id).array.size();
+            if (module.get_type(image.type_id).image.dim == spv::DimBuffer) {
+                m_descriptors.emplace(set, binding, vk::DescriptorType::eStorageTexelBuffer, count);
+            } else {
+                m_descriptors.emplace(set, binding, vk::DescriptorType::eStorageImage, count);
+            }
+        } // eStorageImage and eStorageTexelBuffer
+        for (const auto &buffer : resources.uniform_buffers) {
+            const uint32_t set = module.get_decoration(buffer.id, spv::DecorationDescriptorSet);
+            const uint32_t binding = module.get_decoration(buffer.id, spv::DecorationBinding);
+            const uint32_t count = module.get_type(buffer.type_id).array.size();
+            m_descriptors.emplace(set, binding, vk::DescriptorType::eUniformBuffer, count);
+        } // eUniformBuffer
+        for (const auto &buffer : resources.storage_buffers) {
+            const uint32_t set = module.get_decoration(buffer.id, spv::DecorationDescriptorSet);
+            const uint32_t binding = module.get_decoration(buffer.id, spv::DecorationBinding);
+            const uint32_t count = module.get_type(buffer.type_id).array.size();
+            m_descriptors.emplace(set, binding, vk::DescriptorType::eStorageBuffer, count);
+        } // eStorageBuffer
+        for (const auto &subpassInput : resources.subpass_inputs) {
+            const uint32_t set = module.get_decoration(subpassInput.id, spv::DecorationDescriptorSet);
+            const uint32_t binding = module.get_decoration(subpassInput.id, spv::DecorationBinding);
+            const uint32_t count = module.get_type(subpassInput.type_id).array.size();
+            m_descriptors.emplace(set, binding, vk::DescriptorType::eInputAttachment, count);
+        } // eInputAttachment
 
-            std::cout << "(set = " << set << ", binding = " << binding << ") uniform image2D " << module.get_name(image.id) << std::endl;
-            std::cout << std::endl;
-        }
+        for (const auto &pushConstant : resources.push_constant_buffers) {
+            const uint32_t size = module.get_declared_struct_size(module.get_type(pushConstant.type_id));
+            const uint32_t offset = module.get_decoration(pushConstant.id, spv::DecorationOffset);
+
+            m_pushConstantRanges.emplace_back(size, offset);
+        } // ePushConstant
     }
 
-    vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) const {
+    vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) {
         const auto createInfo = vk::ShaderModuleCreateInfo()
             .setCode(buffer);
-
-        return m_device.Handle().createShaderModule(createInfo);
+        return Core::GlobalDevice()->createShaderModule(createInfo);
     }
 
     std::vector<uint32_t> Shader::CompileGLSLToSpirV(const std::string &source, const vk::ShaderStageFlagBits & stage) {

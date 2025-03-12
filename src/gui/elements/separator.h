@@ -4,25 +4,36 @@
 
 #pragma once
 
+#include <imgui_internal.h>
+
 #include "element.h"
 #include "imgui.h"
 
 namespace GUI {
-	class Separator : public Element {
+	class Separator final : public Element {
 	public:
-		Separator() = default;
+		enum Direction {
+            Horizontal,
+            Vertical
+        };
+
+		explicit Separator(const Direction direction = Horizontal, const float size = 1.f) : m_size(size), m_direction(direction) {}
 		~Separator() override = default;
 
 		void Render() override {
-			m_startPoint = m_parent->StartPoint(this);
-			m_availableArea = m_parent->AllocatedArea(this);
-			m_allocatedArea = { 0, m_size + 2 * ImGui::GetStyle().SeparatorTextBorderSize };
+			m_outerBounds = m_parent->AllocatedArea(this);
+			m_innerBounds = m_outerBounds;
+			m_requiredArea = { 0, m_size };
 
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-			ImGui::Separator();
-			ImGui::PopStyleVar();
+			ImGui::SetCursorScreenPos(m_innerBounds.min);
+
+			ImGui::SeparatorEx(
+				ImGuiSeparatorFlags_SpanAllColumns | (m_direction == Horizontal ? ImGuiSeparatorFlags_Horizontal : ImGuiSeparatorFlags_Vertical),
+				m_size
+			);
 		}
 	private:
 		float m_size = 1.f;
+		Direction m_direction = Horizontal;
     };
 }

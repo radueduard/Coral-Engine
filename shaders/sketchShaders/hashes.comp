@@ -7,7 +7,6 @@ layout(set = 0, binding = 0, rgba32f) readonly uniform image2D inputImage;
 layout(set = 0, binding = 1, rgba32f) uniform image2D hash1;
 layout(set = 0, binding = 2, rgba32f) uniform image2D hash2;
 layout(set = 0, binding = 3, rgba32f) uniform image2D hash3;
-
 layout(set = 0, binding = 4, rgba32f) uniform image2D hash;
 
 layout(push_constant) uniform Data {

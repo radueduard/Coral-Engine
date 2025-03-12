@@ -10,11 +10,15 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "core/device.h"
+#include "math/mathMGV.h"
 #include "memory/image.h"
 #include "memory/imageView.h"
 
 namespace Graphics {
-    class RenderPass {
+    class Framebuffer;
+
+    class RenderPass final : public EngineWrapper<vk::RenderPass> {
     public:
         struct Attachment {
             vk::AttachmentDescription description;
@@ -22,7 +26,7 @@ namespace Graphics {
             std::vector<Memory::Image*> images;
             vk::ClearValue clearValue;
 
-            void Resize(vk::Extent2D extent) const;
+            void Resize(Math::Vector2<uint32_t> extent) const;
         };
 
         class Builder {
@@ -40,7 +44,7 @@ namespace Graphics {
                 return *this;
             }
 
-            Builder& Extent(const vk::Extent2D extent) {
+            Builder& Extent(const Math::Vector2<uint32_t> extent) {
                 m_extent = extent;
                 return *this;
             }
@@ -64,37 +68,38 @@ namespace Graphics {
                 return *this;
             }
 
-            std::unique_ptr<RenderPass> Build(const Core::Device& device) {
-                return std::make_unique<RenderPass>(device, this);
+            std::unique_ptr<RenderPass> Build() {
+                return std::make_unique<RenderPass>(this);
             }
 
 
         private:
             uint32_t m_imageCount = 2;
             uint32_t m_outputImageIndex = 0;
-            vk::Extent2D m_extent;
+            Math::Vector2<uint32_t> m_extent;
             std::vector<RenderPass::Attachment> m_attachments;
             std::vector<vk::SubpassDescription> m_subpasses;
             std::vector<vk::SubpassDependency> m_dependencies;
         };
 
 
-        explicit RenderPass(const Core::Device& device, Builder *builder);
-        ~RenderPass();
+        explicit RenderPass(Builder *builder);
+        ~RenderPass() override;
 
         RenderPass(const RenderPass &) = delete;
         RenderPass &operator=(const RenderPass &) = delete;
 
-        void Begin(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
+        void Begin(const Core::CommandBuffer& commandBuffer, uint32_t imageIndex);
         void Update(float deltaTime) const;
-        void Draw(vk::CommandBuffer commandBuffer) const;
-        void End(vk::CommandBuffer commandBuffer);
+        void Draw(const Core::CommandBuffer& commandBuffer) const;
+        void End(const Core::CommandBuffer& commandBuffer);
 
-        [[nodiscard]] const vk::RenderPass& Handle() const { return m_renderPass; }
-        [[nodiscard]] const vk::Framebuffer& FrameBuffer(const uint32_t index) const { return m_frameBuffers[index]; }
-        [[nodiscard]] const vk::Extent2D& Extent() const { return m_extent; }
+        [[nodiscard]] const std::vector<Attachment>& Attachments() const { return m_attachments; }
+        [[nodiscard]] const Framebuffer& Framebuffer(const uint32_t index) const { return *m_frameBuffers[index]; }
+        [[nodiscard]] const Math::Vector2<uint32_t>& Extent() const { return m_extent; }
         [[nodiscard]] const vk::SampleCountFlagBits& SampleCount() const { return m_sampleCount; }
         [[nodiscard]] uint32_t OutputImageIndex() const { return m_outputImageIndex; }
+        [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
         [[nodiscard]] uint32_t InFlightImageIndex() const {
             if (!m_inFlightImageIndex.has_value()) {
                 std::cerr << "No in flight image index" << std::endl;
@@ -111,19 +116,16 @@ namespace Graphics {
         void CreateFrameBuffers();
         void DestroyFrameBuffers();
 
-        bool Resize(uint32_t imageCount, vk::Extent2D extent);
+        bool Resize(uint32_t imageCount, Math::Vector2<uint32_t> extent);
 
     private:
-        const Core::Device& m_device;
-
         uint32_t m_outputAttachmentIndex = 0;
         uint32_t m_outputImageIndex = 0;
         std::optional<uint32_t> m_inFlightImageIndex;
         uint32_t m_imageCount;
-        vk::Extent2D m_extent;
+        Math::Vector2<uint32_t> m_extent;
 
-        vk::RenderPass m_renderPass;
-        std::vector<vk::Framebuffer> m_frameBuffers;
+        std::vector<std::unique_ptr<Graphics::Framebuffer>> m_frameBuffers;
 
         std::vector<Attachment> m_attachments;
         std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;

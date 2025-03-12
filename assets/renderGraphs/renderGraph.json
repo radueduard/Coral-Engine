@@ -1,0 +1,43 @@
+{
+  "renderPasses": [
+    {
+      "name": "depth",
+      "outputAttachmentIndex": 0,
+      "attachments": [
+        {
+          "description": {
+            "format": "vk::Format::eD32Sfloat",
+            "samples": "vk::SampleCountFlagBits::e1",
+            "loadOp": "vk::AttachmentLoadOp::eClear",
+            "storeOp": "vk::AttachmentStoreOp::eStore",
+            "stencilLoadOp": "vk::AttachmentLoadOp::eDontCare",
+            "stencilStoreOp": "vk::AttachmentStoreOp::eDontCare",
+            "initialLayout": "vk::ImageLayout::eUndefined",
+            "finalLayout": "vk::ImageLayout::eDepthStencilAttachmentOptimal"
+          },
+          "clearValue": {
+            "depthStencil": {
+              "depth": 1.0,
+              "stencil": 0
+            }
+          }
+        }
+      ],
+      "subpasses": [
+        {
+          "name": "main",
+          "colorAttachments": [],
+          "depthStencilAttachment": {
+              "attachment": 0,
+              "layout": "vk::ImageLayout::eDepthStencilAttachmentOptimal"
+          },
+          "inputAttachments": [],
+          "resolveAttachments": []
+        }
+      ],
+      "dependencies": [
+
+      ]
+    }
+  ]
+}

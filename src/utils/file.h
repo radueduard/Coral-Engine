@@ -10,10 +10,10 @@
 #include <sstream>
 
 namespace Utils {
-    inline std::vector<uint8_t> ReadBinaryFile(const std::string &path) {
+    inline std::vector<uint8_t> ReadBinaryFile(const std::filesystem::path &path) {
         std::ifstream file(path, std::ios::in | std::ios::binary);
         if (!file.is_open()) {
-            throw std::runtime_error("Failed to open file: " + path);
+            throw std::runtime_error("Failed to open file: " + path.string());
         }
 
         std::vector<uint8_t> buffer;
@@ -26,10 +26,10 @@ namespace Utils {
         return buffer;
     }
 
-    inline std::string ReadTextFile(const std::string &path) {
+    inline std::string ReadTextFile(const std::filesystem::path &path) {
         const std::ifstream file(path, std::ios::in);
         if (!file.is_open()) {
-            throw std::runtime_error("Failed to open file: " + path);
+            throw std::runtime_error("Failed to open file: " + path.string());
         }
 
         std::ostringstream buffer;

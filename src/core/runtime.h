@@ -10,10 +10,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "core/window.h"
-
-namespace Core {
-    class PhysicalDevice;
-}
+#include "core/physicalDevice.h"
 
 namespace Core {
     class Runtime {
@@ -58,6 +55,7 @@ namespace Core {
         vk::Instance m_instance;
         vk::DebugUtilsMessengerEXT m_debugMessenger;
         vk::SurfaceKHR m_surface;
+        std::vector<vk::PhysicalDevice> m_physicalDevices;
         std::unique_ptr<Core::PhysicalDevice> m_physicalDevice = nullptr;
     };
 }

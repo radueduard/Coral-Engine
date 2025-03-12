@@ -11,8 +11,7 @@
 #include "memory/image.h"
 #include "memory/sampler.h"
 
-Graphics::CubeMap::CubeMap(const Core::Device& device, const Builder &builder)
-    : m_device(device) {
+Graphics::CubeMap::CubeMap(const Builder &builder) {
     int width, height;
     const std::array paths {
         builder.m_positiveX,
@@ -43,16 +42,17 @@ Graphics::CubeMap::CubeMap(const Core::Device& device, const Builder &builder)
         .LayersCount(6)
         .SampleCount(vk::SampleCountFlagBits::e1)
         .InitialLayout(vk::ImageLayout::eTransferDstOptimal)
-        .Build(m_device);
+        .Build();
 
-    const auto stagingBuffer = std::make_unique<Memory::Buffer>(
-        m_device,
-        sizeof(glm::u8vec4), m_size * m_size,
-        vk::BufferUsageFlagBits::eTransferSrc,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    const auto stagingBuffer = Memory::Buffer<glm::u8vec4>::Builder()
+        .InstanceCount(m_size * m_size)
+        .UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+        .MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+        .MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+        .Build();
 
     for (uint32_t i = 0; i < 6; i++) {
-        stagingBuffer->Map<glm::u8vec4>();
+        stagingBuffer->Map();
         std::span data(reinterpret_cast<glm::u8vec4*>(colors[i]), m_size * m_size);
         stagingBuffer->Write(data);
         stagingBuffer->Unmap();
@@ -66,7 +66,7 @@ Graphics::CubeMap::CubeMap(const Core::Device& device, const Builder &builder)
         .ViewType(vk::ImageViewType::eCube)
         .BaseArrayLayer(0)
         .LayerCount(6)
-        .Build(m_device));
+        .Build());
 
     const auto samplerCreateInfo = Memory::Sampler::CreateInfo {
         .magFilter = vk::Filter::eLinear,
@@ -74,12 +74,12 @@ Graphics::CubeMap::CubeMap(const Core::Device& device, const Builder &builder)
         .addressMode = vk::SamplerAddressMode::eRepeat,
         .mipmapMode = vk::SamplerMipmapMode::eLinear
     };
-    m_sampler = std::make_unique<Memory::Sampler>(m_device, samplerCreateInfo);
+    m_sampler = std::make_unique<Memory::Sampler>(samplerCreateInfo);
 }
 
 vk::DescriptorImageInfo Graphics::CubeMap::DescriptorInfo() const {
     return vk::DescriptorImageInfo()
             .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-            .setImageView(m_imageViews[0]->Handle())
-            .setSampler(m_sampler->Handle());
+            .setImageView(**m_imageViews[0])
+            .setSampler(**m_sampler);
 }

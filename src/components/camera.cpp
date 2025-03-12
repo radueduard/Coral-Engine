@@ -18,7 +18,7 @@
 
 namespace mgv {
     Camera::Camera(const Object& object, const CreateInfo &createInfo)
-        : Component(object), m_type(createInfo.type),
+        : Component(object),
           m_projectionData(createInfo.projectionData),
           m_viewportSize(createInfo.size),
           m_primary(createInfo.primary) {
@@ -105,26 +105,29 @@ namespace mgv {
     }
 
     void Camera::RecalculateProjection() {
-        switch (m_type) {
-            case Perspective: {
+        switch (m_projectionData.type) {
+            case Type::Perspective: {
                 m_projection = glm::perspectiveFov(
-                    glm::radians(m_projectionData.perspective.fov),
+                    glm::radians(m_projectionData.data.perspective.fov),
                     static_cast<float>(m_viewportSize.x),
                     static_cast<float>(m_viewportSize.y),
-                    m_projectionData.perspective.near,
-                    m_projectionData.perspective.far);
+                    m_projectionData.data.perspective.near,
+                    m_projectionData.data.perspective.far);
             }
             break;
-            case Orthographic: {
+            case Type::Orthographic: {
                 m_projection = glm::ortho(
-                    m_projectionData.orthographic.left,
-                    m_projectionData.orthographic.right,
-                    m_projectionData.orthographic.bottom,
-                    m_projectionData.orthographic.top,
-                    m_projectionData.orthographic.near,
-                    m_projectionData.orthographic.far);
+                    m_projectionData.data.orthographic.left,
+                    m_projectionData.data.orthographic.right,
+                    m_projectionData.data.orthographic.bottom,
+                    m_projectionData.data.orthographic.top,
+                    m_projectionData.data.orthographic.near,
+                    m_projectionData.data.orthographic.far);
             }
             break;
+            default: {
+                throw std::runtime_error("Camera::RecalculateProjection : Invalid projection type");
+            }
         }
         m_inverseProjection = glm::inverse(m_projection);
     }

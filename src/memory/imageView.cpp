@@ -7,8 +7,8 @@
 #include "core/device.h"
 #include "memory/image.h"
 
-Memory::ImageView::ImageView(const Core::Device &device, const Builder &builder)
-    : m_device(device), m_image(builder.m_image), m_viewType(builder.m_viewType),
+Memory::ImageView::ImageView(const Builder &builder)
+    : m_image(builder.m_image), m_viewType(builder.m_viewType),
       m_baseMipLevel(builder.m_baseMipLevel), m_mipLevelCount(builder.m_levelCount),
       m_baseArrayLayer(builder.m_baseArrayLayer), m_arrayLayerCount(builder.m_layerCount) {
     vk::ImageAspectFlags aspectMask = {};
@@ -22,7 +22,7 @@ Memory::ImageView::ImageView(const Core::Device &device, const Builder &builder)
     }
 
     const auto viewInfo = vk::ImageViewCreateInfo()
-        .setImage(m_image.Handle())
+        .setImage(*m_image)
         .setViewType(builder.m_viewType)
         .setFormat(m_image.Format())
         .setSubresourceRange(vk::ImageSubresourceRange()
@@ -32,11 +32,11 @@ Memory::ImageView::ImageView(const Core::Device &device, const Builder &builder)
             .setBaseArrayLayer(builder.m_baseArrayLayer)
             .setLayerCount(builder.m_layerCount));
 
-    m_imageView = m_device.Handle().createImageView(viewInfo);
+    m_handle = Core::GlobalDevice()->createImageView(viewInfo);
 }
 
 Memory::ImageView::~ImageView() {
-    m_device.Handle().destroyImageView(m_imageView);
+    Core::GlobalDevice()->destroyImageView(m_handle);
 }
 
 bool Memory::ImageView::Has(

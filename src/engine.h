@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "core/scheduler.h"
+#include "assets/manager.h"
 
 namespace Core {
     class Window;
@@ -13,10 +14,14 @@ namespace Core {
     class Device;
 }
 
+namespace Asset {
+    class Manager;
+}
+
 class Engine {
 public:
     Engine();
-    ~Engine();
+    ~Engine() = default;
 
     void Run() const;
 
