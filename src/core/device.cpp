@@ -214,7 +214,11 @@ namespace Core {
         if (signalSemaphore != nullptr)
             submitInfo.setSignalSemaphores(signalSemaphore);
 
-        (*queue)->submit(submitInfo, fence);
+        try {
+            (*queue)->submit(submitInfo, fence);
+        } catch (const std::runtime_error& e) {
+            std::cerr << e.what() << std::endl;
+        }
         (*queue)->waitIdle();
     }
 }

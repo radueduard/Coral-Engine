@@ -21,20 +21,23 @@
 namespace Shader {
 	Manager::Manager(std::filesystem::path defaultSearchPath)
 		: m_defaultSearchPath(std::move(defaultSearchPath)) {
-		m_fileButtonTemplate = std::make_unique<GUI::FileButton>(
-			[this](const std::filesystem::path &path) {
-				if (is_directory(path)) {
-					ResetElement("shaderManager");
-					m_currentPath = path;
-				} else {
-					if (const auto shader = Get(path); m_selectedShader != shader) {
-						ResetElement("shaderInspector");
-						m_selectedShader = shader;
+		if (GUI::g_manager)
+		{
+			m_fileButtonTemplate = std::make_unique<GUI::FileButton>(
+				[this](const std::filesystem::path &path) {
+					if (is_directory(path)) {
+						ResetElement("shaderManager");
+						m_currentPath = path;
+					} else {
+						if (const auto shader = Get(path); m_selectedShader != shader) {
+							ResetElement("shaderInspector");
+							m_selectedShader = shader;
+						}
 					}
 				}
-			}
-		);
-		m_shaderInspectorTemplate = std::make_unique<GUI::ShaderInspector>();
+			);
+			m_shaderInspectorTemplate = std::make_unique<GUI::ShaderInspector>();
+		}
 		m_currentPath = m_defaultSearchPath;
 	}
 

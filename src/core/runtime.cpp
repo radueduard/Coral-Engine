@@ -21,18 +21,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     const char* pMsg,
     void* /*pUserData*/
 ){
-    // if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-    //     std::cerr << "ERROR: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    // } else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-    //     std::cerr << "WARNING: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    // } else if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-    //     std::cerr << "PERFORMANCE: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    // } else if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-    //     std::cerr << "INFO: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    // } else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-    //     std::cerr << "DEBUG: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    // }
-    return VK_FALSE;
+    if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+        std::cerr << "ERROR: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    } else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+        std::cerr << "WARNING: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    } else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+        std::cerr << "DEBUG: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
+    }
+    return VK_TRUE;
 }
 
 namespace Core {
@@ -87,8 +83,7 @@ namespace Core {
                 // vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
             .setMessageType(
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-                vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
+                vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation)
             .setPfnUserCallback(reinterpret_cast<vk::PFN_DebugUtilsMessengerCallbackEXT>(debugCallback));
 
         Ext::DebugUtils::createDebugUtilsMessengerEXT(m_instance, debugCreateInfo, nullptr, &m_debugMessenger);

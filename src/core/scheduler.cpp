@@ -44,6 +44,7 @@ namespace Core {
             .window = createInfo.window,
             .runtime = createInfo.runtime,
             .frameCount = m_imageCount,
+            .guiEnabled = true,
         };
 
         m_renderGraph = std::make_unique<Project::RenderGraph>(renderGraphCreateInfo);
@@ -92,6 +93,7 @@ namespace Core {
         if (const auto result = m_swapChain->Acquire(currentFrame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_swapChain->Resize(m_window.Extent());
+            m_renderGraph->Resize(m_window.Extent());
             return;
         }
 
@@ -118,20 +120,66 @@ namespace Core {
                 { outputImageBarrier }
             );
 
-            const auto imageResolve = vk::ImageResolve()
-                .setSrcSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
-                .setSrcOffset(vk::Offset3D(0, 0, 0))
-                .setDstSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
-                .setDstOffset(vk::Offset3D(0, 0, 0))
-                .setExtent(vk::Extent3D(m_window.Extent().width, m_window.Extent().height, 1));
 
-            commandBuffer->resolveImage(
-                *outputImage,
-                vk::ImageLayout::eTransferSrcOptimal,
-                *swapChainImage,
-                vk::ImageLayout::eTransferDstOptimal,
-                imageResolve
-            );
+            if (outputImage.SampleCount() != vk::SampleCountFlagBits::e1) {
+                const auto imageResolve = vk::ImageResolve()
+                    .setSrcSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
+                    .setSrcOffset(vk::Offset3D(0, 0, 0))
+                    .setDstSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
+                    .setDstOffset(vk::Offset3D(0, 0, 0))
+                    .setExtent(outputImage.Extent());
+
+                commandBuffer->resolveImage(
+                    *outputImage,
+                    vk::ImageLayout::eTransferSrcOptimal,
+                    *swapChainImage,
+                    vk::ImageLayout::eTransferDstOptimal,
+                    imageResolve
+                );
+            } else {
+                vk::ImageMemoryBarrier swapChainImageMemoryBarrier = vk::ImageMemoryBarrier()
+                    .setImage(*swapChainImage)
+                    .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+                    .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+                    .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
+                    .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+
+                commandBuffer->pipelineBarrier(
+                    vk::PipelineStageFlagBits::eAllGraphics,
+                    vk::PipelineStageFlagBits::eAllCommands,
+                    vk::DependencyFlags(),
+                    nullptr,
+                    nullptr,
+                    { swapChainImageMemoryBarrier }
+                );
+
+                commandBuffer->copyImage(
+                    *outputImage,
+                    vk::ImageLayout::eTransferSrcOptimal,
+                    *swapChainImage,
+                    vk::ImageLayout::eTransferDstOptimal,
+                    { vk::ImageCopy()
+                        .setSrcSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
+                        .setDstSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
+                        .setExtent(outputImage.Extent()) }
+                );
+
+                swapChainImageMemoryBarrier
+                    .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+                    .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+                    .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setNewLayout(vk::ImageLayout::ePresentSrcKHR);
+
+                commandBuffer->pipelineBarrier(
+                    vk::PipelineStageFlagBits::eAllGraphics,
+                    vk::PipelineStageFlagBits::eAllCommands,
+                    vk::DependencyFlags(),
+                    nullptr,
+                    nullptr,
+                    { swapChainImageMemoryBarrier }
+                );
+            }
 
             outputImageBarrier
                 .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentRead)
@@ -156,6 +204,7 @@ namespace Core {
         if (const auto result = m_swapChain->Present(currentFrame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_swapChain->Resize(m_window.Extent());
+            m_renderGraph->Resize(m_window.Extent());
             return;
         }
         m_currentFrame = (m_currentFrame + 1) % m_imageCount;

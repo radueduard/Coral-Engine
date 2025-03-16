@@ -82,10 +82,11 @@ Engine::Engine() {
 void Engine::Run() const {
     Core::Input::Setup();
 
+    auto shader = Core::Shader("projects/testProject/shaders/test.vert");
+
     GUI::Container<Asset::Manager> assetManager = GUI::MakeContainer<Asset::Manager>();
     GUI::Container<mgv::Scene> scene = GUI::MakeContainer<mgv::Scene>();
     GUI::Container<Shader::Manager> shaderManager = GUI::MakeContainer<Shader::Manager>(std::filesystem::path("shaders"));
-    // GUI::Container<GUI::Viewport> viewport = GUI::MakeContainer<GUI::Viewport>(m_scheduler->RenderPass());
 
     const Asset::Importer importer("assets/main1_sponza/NewSponza_Main_glTF_003.gltf");
 

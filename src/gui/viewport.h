@@ -57,11 +57,11 @@ namespace GUI {
 		}
 
 		void OnGUIUpdate() override {
-			const auto imageCount = m_renderPass.ImageCount();
-			const Math::Vector2<uint32_t> extent = GUIObject("viewport")->OuterBounds().max - GUIObject("viewport")->OuterBounds().min;
-			if (m_renderPass.Resize(imageCount, extent)) {
-				ResetElement("viewport");
-			}
+			// const auto imageCount = m_renderPass.ImageCount();
+			// const Math::Vector2<uint32_t> extent = GUIObject("viewport")->OuterBounds().max - GUIObject("viewport")->OuterBounds().min;
+			// if (m_renderPass.Resize(imageCount, extent)) {
+			// 	ResetElement("viewport");
+			// }
 		}
 
 	private:

@@ -17,20 +17,26 @@ namespace GUI {
     public:
         Container() = default;
         explicit Container(T *layer) : m_layer(layer) {
-            g_manager->AddLayer(m_layer);
-            static_cast<Layer *>(m_layer)->OnGUIAttach();
-            for (const auto& [name, builder] : static_cast<Layer *>(m_layer)->m_guiBuilder) {
-                static_cast<Layer *>(m_layer)->m_guiObjectReset[name] = false;
-                static_cast<Layer *>(m_layer)->m_guiObjects.emplace(name, builder());
+            if (g_manager)
+            {
+                g_manager->AddLayer(m_layer);
+                static_cast<Layer *>(m_layer)->OnGUIAttach();
+                for (const auto& [name, builder] : static_cast<Layer *>(m_layer)->m_guiBuilder) {
+                    static_cast<Layer *>(m_layer)->m_guiObjectReset[name] = false;
+                    static_cast<Layer *>(m_layer)->m_guiObjects.emplace(name, builder());
+                }
             }
         }
         ~Container() {
-            if (m_layer == nullptr) {
-                return;
+            if (g_manager)
+            {
+                if (m_layer == nullptr) {
+                    return;
+                }
+                static_cast<Layer *>(m_layer)->OnGUIDetach();
+                g_manager->RemoveLayer(m_layer);
+                delete m_layer;
             }
-            static_cast<Layer *>(m_layer)->OnGUIDetach();
-            g_manager->RemoveLayer(m_layer);
-            delete m_layer;
         }
 
         Container(const Container&) = delete;
@@ -47,7 +53,7 @@ namespace GUI {
             }
             if (m_layer != nullptr) {
                 static_cast<Layer *>(m_layer)->OnGUIDetach();
-                RemoveLayer(m_layer);
+                g_manager->RemoveLayer(m_layer);
                 delete m_layer;
             }
             m_layer = other.m_layer;
@@ -61,6 +67,11 @@ namespace GUI {
 
         T* operator ->() const {
             return m_layer;
+        }
+
+        void reset() {
+            delete m_layer;
+            m_layer = nullptr;
         }
 
 
