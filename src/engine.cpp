@@ -23,6 +23,7 @@
 #include "project/scene.h"
 #include "shader/manager.h"
 
+
 Engine::Engine() {
     const auto windowCreateInfo = Core::Window::CreateInfo {
         .title = "Motor Grafic Vulkan",
