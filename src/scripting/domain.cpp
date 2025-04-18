@@ -4,6 +4,8 @@
 
 #include "domain.h"
 
+#include <stdexcept>
+
 namespace Coral::Scripting {
     Domain::Domain(std::string name, std::string configFile) {
         m_domain = mono_domain_create_appdomain(name.data(), configFile.empty() ? nullptr : configFile.data());

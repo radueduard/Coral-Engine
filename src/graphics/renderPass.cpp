@@ -10,14 +10,8 @@
 #include "core/device.h"
 #include "memory/image.h"
 
-import std;
-import types;
-import math.vector;
-
-using namespace Coral;
-
 namespace Graphics {
-    void RenderPass::Attachment::Resize(const Math::Vector2<u32>& extent) const {
+    void RenderPass::Attachment::Resize(const Math::Vector2<uint32_t>& extent) const {
         for (auto* image : images) {
             image->Resize({extent.x, extent.y, 1});
         }
@@ -56,7 +50,7 @@ namespace Graphics {
 
     void RenderPass::CreateFrameBuffers() {
         m_frameBuffers.resize(m_imageCount);
-        for (u32 i = 0; i < m_imageCount; i++) {
+        for (uint32_t i = 0; i < m_imageCount; i++) {
             m_frameBuffers[i] = std::make_unique<Graphics::Framebuffer>(*this, i);
         }
     }
@@ -76,7 +70,7 @@ namespace Graphics {
         }
     }
 
-    void RenderPass::Begin(const Core::CommandBuffer& commandBuffer, const u32 imageIndex) {
+    void RenderPass::Begin(const Core::CommandBuffer& commandBuffer, const uint32_t imageIndex) {
         m_inFlightImageIndex = imageIndex;
 
         auto clearValues = m_attachments
@@ -126,7 +120,7 @@ namespace Graphics {
         m_inFlightImageIndex = std::nullopt;
     }
 
-    Memory::Image& RenderPass::OutputImage(const u32 index) const {
+    Memory::Image& RenderPass::OutputImage(const uint32_t index) const {
         return *m_attachments[m_outputAttachmentIndex].images[index];
     }
 
@@ -135,7 +129,7 @@ namespace Graphics {
     }
 
 
-    bool RenderPass::Resize(const u32 imageCount, const Math::Vector2<u32>& extent) {
+    bool RenderPass::Resize(const uint32_t imageCount, const Math::Vector2<uint32_t>& extent) {
         if ((m_imageCount == imageCount && m_extent == extent) || (extent.x == 0 || extent.y == 0)) {
             return false;
         }

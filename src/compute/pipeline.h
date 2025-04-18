@@ -4,11 +4,7 @@
 
 #pragma once
 
-#include <memory>
-
-#include <vulkan/vulkan.hpp>
-
-#include "../shader/shader.h"
+#include "shader/shader.h"
 
 namespace Core {
     class Device;

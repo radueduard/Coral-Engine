@@ -4,18 +4,16 @@
 
 #include "manager.h"
 
-#include <filesystem>
-#include <imgui_internal.h>
 #include <iostream>
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
-#include "imnodes.h"
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+#include <imnodes.h>
+
 #include "layer.h"
-#include "core/runtime.h"
 #include "core/scheduler.h"
-#include "core/physicalDevice.h"
 #include "core/window.h"
 #include "graphics/renderPass.h"
 #include "memory/descriptor/pool.h"

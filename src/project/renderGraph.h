@@ -7,8 +7,8 @@
 #include <boost/unordered_map.hpp>
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
-#include "graphics/renderPass.h"
 
+#include "graphics/renderPass.h"
 #include "gui/container.h"
 #include "gui/manager.h"
 #include "gui/viewport.h"

@@ -1,8 +1,10 @@
 //
 // Created by radue on 10/14/2024.
 //
-
 #pragma once
+
+#include <vector>
+#include <ranges>
 
 #include <vulkan/vulkan.hpp>
 

@@ -6,7 +6,6 @@
 
 #include "element.h"
 #include "imgui.h"
-#include "imgui_impl_vulkan.h"
 
 namespace ImGui {
     static void RoundedImage(const ImTextureID user_texture_id,

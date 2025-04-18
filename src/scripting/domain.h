@@ -3,8 +3,7 @@
 //
 
 #pragma once
-#include <memory>
-#include <stdexcept>
+
 #include <string>
 
 #include <mono/jit/jit.h>

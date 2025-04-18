@@ -8,7 +8,7 @@
 #include <ranges>
 
 #include "renderPass.h"
-#include "../shader/shader.h"
+#include "shader/shader.h"
 #include "memory/descriptor/set.h"
 #include "objects/mesh.h"
 #include "utils/functionals.h"

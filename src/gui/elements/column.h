@@ -11,9 +11,6 @@
 #include "expanded.h"
 #include "imgui.h"
 
-// import types;
-// import math.vector;
-
 namespace GUI {
     class Column final : public Element {
     public:
@@ -47,7 +44,7 @@ namespace GUI {
 
             if (m_numberOfExpanded != 0) {
                 const auto availableArea = m_outerBounds.max.y - m_outerBounds.min.y;
-                m_expandedArea = { m_requiredArea.x, (availableArea - m_requiredArea.y) / static_cast<f32>(m_numberOfExpanded) };
+                m_expandedArea = { m_requiredArea.x, (availableArea - m_requiredArea.y) / static_cast<float>(m_numberOfExpanded) };
                 m_innerBounds.max = m_outerBounds.max;
             } else {
                 m_innerBounds.max = { m_outerBounds.max.x, m_innerBounds.min.y + m_requiredArea.y };
@@ -62,7 +59,7 @@ namespace GUI {
         }
 
         Math::Rect AllocatedArea(Element *element) const override {
-            Math::Vector2<f32> allocatedAreaStart = m_innerBounds.min;
+            Math::Vector2<float> allocatedAreaStart = m_innerBounds.min;
             for (const auto& child : m_children) {
                 if (element == child.get()) {
                     if (typeid(*element) != typeid(Expanded)) {
@@ -81,7 +78,7 @@ namespace GUI {
 
     private:
         int m_numberOfExpanded = 0;
-        Math::Vector2<f32> m_expandedArea;
+        Math::Vector2<float> m_expandedArea;
 
         std::vector<std::unique_ptr<Element>> m_children;
         float m_spacing;

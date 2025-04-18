@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <iostream>
 
+#include <imgui_impl_vulkan.h>
+
 #include "template.h"
 #include "graphics/objects/texture.h"
 #include "gui/manager.h"
