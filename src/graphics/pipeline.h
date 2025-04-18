@@ -18,40 +18,36 @@ namespace Memory::Descriptor {
 }
 
 namespace Graphics {
+    class RenderPass;
+
     class Pipeline {
     public:
         class Builder {
             friend class Pipeline;
         public:
-            Builder();
+            Builder(RenderPass &renderPass);
             ~Builder() = default;
 
             Builder(const Builder &) = delete;
             Builder &operator=(const Builder &) = delete;
 
-            Builder &AddShader(Core::Shader* shader);
-            Builder &VertexInputState(const vk::PipelineVertexInputStateCreateInfo &);
+            Builder &AddShader(const Core::Shader* shader);
             Builder &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
             Builder &Viewport(const vk::Viewport &);
             Builder &Scissor(const vk::Rect2D &);
             Builder &Rasterizer(const vk::PipelineRasterizationStateCreateInfo &);
-            Builder &Multisampling(const vk::PipelineMultisampleStateCreateInfo &);
             Builder &DepthStencil(const vk::PipelineDepthStencilStateCreateInfo &);
-
-            Builder &ColorBlendAttachment(const vk::PipelineColorBlendAttachmentState &);
-            Builder &ColorBlend(const vk::PipelineColorBlendStateCreateInfo &);
 
             Builder &DynamicState(const vk::DynamicState &);
             Builder &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
 
-            Builder &RenderPass(const vk::RenderPass &);
             Builder &Subpass(uint32_t);
 
             std::unique_ptr<Pipeline> Build();
         private:
             std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
 
-            std::unordered_map<vk::ShaderStageFlagBits, Core::Shader*> m_shaders;
+            std::unordered_map<Core::Stage, const Core::Shader*> m_shaders;
             std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
 
             vk::PipelineVertexInputStateCreateInfo m_vertexInputInfo;
@@ -76,7 +72,7 @@ namespace Graphics {
             vk::PipelineDynamicStateCreateInfo m_dynamicState;
 
             vk::PipelineLayout m_pipelineLayout;
-            vk::RenderPass m_renderPass;
+            RenderPass& m_renderPass;
             uint32_t m_subpass = 0;
         };
 
@@ -104,6 +100,6 @@ namespace Graphics {
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
         std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
-        std::unordered_map<vk::ShaderStageFlagBits, Core::Shader*> m_shaders;
+        std::unordered_map<Core::Stage, const Core::Shader*> m_shaders;
     };
 }

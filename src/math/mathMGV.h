@@ -83,8 +83,12 @@ namespace Math {
 			return std::sqrt(x * x + y * y);
 		}
 
-		Vector2 Normalize() const {
+		Vector2 Normalized() const {
 			return *this / Length();
+		}
+
+		void Normalize() {
+			*this = Normalized();
 		}
 
 		Vector2 Cross(Vector2 other) const {
@@ -162,13 +166,19 @@ namespace Math {
 	};
 
 	struct Color {
-		float r, g, b, a;
+		uint8_t r, g, b, a;
 
-		Color() : r(1.f), g(1.f), b(1.f), a(1.f) {}
-		Color(const float r, const float g, const float b, const float a = 1.f) : r(r), g(g), b(b), a(a) {}
+		Color() : r(255), g(255), b(255), a(255) {}
+		Color(const float r, const float g, const float b, const float a = 1.f)
+		{
+			this->r = static_cast<uint8_t>(r * 255.f);
+			this->g = static_cast<uint8_t>(g * 255.f);
+			this->b = static_cast<uint8_t>(b * 255.f);
+			this->a = static_cast<uint8_t>(a * 255.f);
+		}
 
 		operator ImVec4() const {
-			return { r, g, b, a };
+			return { r / 255.f, g / 255.f, b / 255.f, a / 255.f };
 		}
 
 		operator glm::vec4() const {

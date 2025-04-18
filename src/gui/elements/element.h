@@ -8,8 +8,12 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include "math/mathMGV.h"
-#include "gui//manager.h"
+#include "gui/manager.h"
+
+import types;
+import math.rect;
+
+using namespace Coral;
 
 namespace GUI {
     class Element {
@@ -17,7 +21,7 @@ namespace GUI {
         Element() {
             m_id = generator();
         }
-        explicit Element(const Math::Vector2<float>& size) : m_requiredArea(size) {
+        explicit Element(const Math::Vector2<f32>& size) : m_requiredArea(size) {
             m_id = generator();
         }
         virtual ~Element() = default;
@@ -59,7 +63,7 @@ namespace GUI {
         Math::Rect m_outerBounds {};
         Math::Rect m_innerBounds {};
 
-        Math::Vector2<float> m_requiredArea = { 0.f, 0.f }; // 0 means as much as possible
+        Math::Vector2<f32> m_requiredArea = { 0.f, 0.f }; // 0 means as much as possible
 
         Element* m_parent = nullptr;
     };

@@ -15,18 +15,20 @@
 #include <shader/shader.h>
 
 #include "cameraSettings.h"
+#include "renderMeshSettings.h"
 #include "gui/elements/drag.h"
 #include "gui/elements/inputField.h"
 #include "gui/elements/separator.h"
 
 namespace GUI {
-	class ObjectInspector final : public GUI::Template<mgv::Object> {
+	class ObjectInspector final : public GUI::Template<Coral::Object> {
 	public:
 		ObjectInspector() {
 			m_cameraSettings = std::make_unique<CameraSettings>();
+			m_renderMeshSettings = std::make_unique<RenderMeshSettings>();
 		}
 
-		GUI::Element *Build(mgv::Object *data) override {
+		GUI::Element *Build(Coral::Object *data) override {
 			GUI::Element* innerElement = nullptr;
 			if (data != nullptr) {
 				std::array labels {
@@ -70,8 +72,11 @@ namespace GUI {
 				};
 
 				for (auto* component : data->Components()) {
-					if (typeid(*component) == typeid(mgv::Camera)) {
-						children.emplace_back(m_cameraSettings->Build(dynamic_cast<mgv::Camera*>(component)));
+					if (typeid(*component) == typeid(Coral::Camera)) {
+						children.emplace_back(m_cameraSettings->Build(dynamic_cast<Coral::Camera*>(component)));
+					}
+					if (typeid(*component) == typeid(Coral::RenderMesh)) {
+						children.emplace_back(m_renderMeshSettings->Build(dynamic_cast<Coral::RenderMesh*>(component)));
 					}
 				}
 
@@ -95,6 +100,7 @@ namespace GUI {
 		}
 	private:
 		std::unique_ptr<GUI::CameraSettings> m_cameraSettings;
+		std::unique_ptr<GUI::RenderMeshSettings> m_renderMeshSettings;
     };
 
 	class ShaderInspector final : public GUI::Template<Core::Shader> {

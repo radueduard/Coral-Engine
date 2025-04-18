@@ -27,12 +27,17 @@ public:
 		m_children.push_back(std::move(child));
 	}
 
+	void AddChild(T* child) {
+		m_children.push_back(std::unique_ptr<T>(child));
+	}
+
 	template <class... Args>
 	void AddChild(Args&&... args) {
 		auto child = std::make_unique<T>(std::forward<Args>(args)...);
 		child->m_parent = static_cast<T*>(this);
 		m_children.push_back(std::move(child));
 	}
+
 
 	std::unique_ptr<T> Detach() {
 		if (m_parent == nullptr) {

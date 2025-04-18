@@ -24,7 +24,7 @@ struct ThreadPayload {
     std::vector<std::string> paths;
 };
 
-namespace mgv {
+namespace Coral {
     class TextureArray {
     public:
         class Builder {

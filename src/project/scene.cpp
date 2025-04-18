@@ -12,9 +12,9 @@
 #include "gui/elements/dockable.h"
 #include "gui/elements/treeView.h"
 
-namespace mgv {
+namespace Coral {
     Scene::Scene(): m_root(std::make_unique<Object>()) {
-        auto firstCamera = std::make_unique<Object>("Main Camera");
+        auto firstCamera = std::make_unique<Object>(boost::uuids::random_generator()(), "First Camera");
         auto firstCameraCreateInfo = Camera::CreateInfo {
             .primary = true,
             .projectionData = {},
@@ -23,16 +23,14 @@ namespace mgv {
         firstCamera->Add<Camera>(firstCameraCreateInfo);
         m_root->AddChild(std::move(firstCamera));
 
-        auto secondCamera = std::make_unique<Object>("Second Camera");
+        auto secondCamera = std::make_unique<Object>(boost::uuids::random_generator()(), "Second Camera");
         auto secondCameraCreateInfo = Camera::CreateInfo {
             .primary = false,
             .projectionData = {},
             .size = { 800, 600 }
         };
-        secondCamera->Add<mgv::Camera>(secondCameraCreateInfo);
+        secondCamera->Add<Coral::Camera>(secondCameraCreateInfo);
         m_root->AddChild(std::move(secondCamera));
-
-        m_testTexture = Texture::FromFile("assets/textures/brick-wall/brick-wall_albedo.png");
     }
 
     void Scene::Update(const double deltaTime) const {

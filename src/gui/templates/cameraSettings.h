@@ -14,12 +14,12 @@
 #include "gui/elements/labeledRow.h"
 
 namespace GUI {
-	class CameraSettings final: public Template<mgv::Camera> {
+	class CameraSettings final: public Template<Coral::Camera> {
 	public:
 		CameraSettings() = default;
 		~CameraSettings() override = default;
 
-		Element* Build(mgv::Camera *data) override {
+		Element* Build(Coral::Camera *data) override {
 			std::array labels {
 				ImGui::ImLabel {
 					.text = "N",
@@ -43,21 +43,21 @@ namespace GUI {
 					new GUI::LabeledRow("Projection Type", new GUI::DropDown("Projection Type", &data->ProjectionData().type)),
 					new GUI::Conditional(
 						[data] {
-							static mgv::Camera::Type lastType = data->ProjectionData().type;
+							static Coral::Camera::Type lastType = data->ProjectionData().type;
 							if (lastType != data->ProjectionData().type) {
 								lastType = data->ProjectionData().type;
 								switch (lastType) {
-									case mgv::Camera::Type::Orthographic:
+									case Coral::Camera::Type::Orthographic:
 										data->ProjectionData().data.orthographic = {};
 										break;
-									case mgv::Camera::Type::Perspective:
+									case Coral::Camera::Type::Perspective:
 										data->ProjectionData().data.perspective = {};
 										break;
 									default:
 										break;
 								}
 							}
-							return data->ProjectionData().type == mgv::Camera::Type::Orthographic;
+							return data->ProjectionData().type == Coral::Camera::Type::Orthographic;
 						},
 						new GUI::Column({
 						    new GUI::LabeledRow("Left", new Drag<float, 1>("Left", &data->ProjectionData().data.orthographic.left, 0.1f, 0.0f, 100.0f)),

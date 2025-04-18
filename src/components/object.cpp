@@ -8,21 +8,19 @@
 
 #include "imgui.h"
 
-namespace mgv {
-    Component::Component(const Object &owner) : m_ownerId(owner.Id()) {}
+namespace Coral {
+    Component::Component(const Object &owner) : m_ownerId(owner.UUID()) {}
 
     Object &Component::Owner() const {
         return *Object::objects.at(m_ownerId);
     }
 
-    boost::uuids::random_generator Object::generator = boost::uuids::random_generator();
-
-    Object::Object(std::string name) : m_id(generator()), m_name(std::move(name)) {
-        objects[m_id] = this;
+    Object::Object(const boost::uuids::uuid uuid, const std::string& name) : m_uuid(uuid), m_name(name) {
+        objects[m_uuid] = this;
     }
 
     Object::~Object() {
-        objects.erase(m_id);
+        objects.erase(m_uuid);
     }
 
     std::vector<Component*> Object::Components() const {
@@ -35,7 +33,7 @@ namespace mgv {
     }
 
     std::optional<Object *> Object::Find(const boost::uuids::uuid &id) {
-        if (id == m_id) {
+        if (id == m_uuid) {
             return this;
         }
         for (const auto &child: m_children) {

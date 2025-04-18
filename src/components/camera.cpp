@@ -16,7 +16,7 @@
 #include "graphics/objects/mesh.h"
 #include "memory/buffer.h"
 
-namespace mgv {
+namespace Coral {
     Camera::Camera(const Object& object, const CreateInfo &createInfo)
         : Component(object),
           m_projectionData(createInfo.projectionData),
@@ -99,8 +99,6 @@ namespace mgv {
             .projection = m_projection,
             .inverseView = m_inverseView,
             .inverseProjection = m_inverseProjection,
-            .flippedView = m_flippedView,
-            .flippedInverseView = m_flippedInverseView
         };
     }
 

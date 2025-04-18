@@ -7,13 +7,14 @@
 #include <iostream>
 #include <ranges>
 
+#include "renderPass.h"
 #include "../shader/shader.h"
 #include "memory/descriptor/set.h"
+#include "objects/mesh.h"
 #include "utils/functionals.h"
 
 namespace Graphics {
-
-    Pipeline::Builder::Builder() {
+    Pipeline::Builder::Builder(RenderPass &renderPass) : m_renderPass(renderPass) {
         m_inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
             .setTopology(vk::PrimitiveTopology::eTriangleList)
             .setPrimitiveRestartEnable(vk::False);
@@ -35,15 +36,9 @@ namespace Graphics {
             .setStencilTestEnable(vk::False);
     }
 
-    Pipeline::Builder &Pipeline::Builder::AddShader(Core::Shader* shader) {
+    Pipeline::Builder &Pipeline::Builder::AddShader(const Core::Shader* shader) {
         const auto stage = shader->Stage();
         m_shaders[stage] = shader;
-        return *this;
-    }
-
-    Pipeline::Builder &Pipeline::Builder::VertexInputState(const vk::PipelineVertexInputStateCreateInfo &vertexInputInfo)
-    {
-        m_vertexInputInfo = vertexInputInfo;
         return *this;
     }
 
@@ -71,27 +66,9 @@ namespace Graphics {
         return *this;
     }
 
-    Pipeline::Builder &Pipeline::Builder::Multisampling(const vk::PipelineMultisampleStateCreateInfo &multisampling)
-    {
-        m_multisampling = multisampling;
-        return *this;
-    }
-
     Pipeline::Builder &Pipeline::Builder::DepthStencil(const vk::PipelineDepthStencilStateCreateInfo &depthStencil)
     {
         m_depthStencil = depthStencil;
-        return *this;
-    }
-
-    Pipeline::Builder &Pipeline::Builder::ColorBlendAttachment(const vk::PipelineColorBlendAttachmentState &colorBlendAttachment)
-    {
-        m_colorBlendAttachments.push_back(colorBlendAttachment);
-        return *this;
-    }
-
-    Pipeline::Builder &Pipeline::Builder::ColorBlend(const vk::PipelineColorBlendStateCreateInfo &colorBlending)
-    {
-        m_colorBlending = colorBlending;
         return *this;
     }
 
@@ -107,12 +84,6 @@ namespace Graphics {
         return *this;
     }
 
-    Pipeline::Builder &Pipeline::Builder::RenderPass(const vk::RenderPass &renderPass)
-    {
-        m_renderPass = renderPass;
-        return *this;
-    }
-
     Pipeline::Builder &Pipeline::Builder::Subpass(const uint32_t subpass)
     {
         m_subpass = subpass;
@@ -124,15 +95,14 @@ namespace Graphics {
         std::vector<Memory::Descriptor::SetLayout::Builder> layoutBuilders;
         std::vector<vk::PushConstantRange> pushConstantRanges;
         for (const auto& shader : m_shaders | std::views::values) {
-            for (const auto& layout : shader->Descriptors()) {
-                if (layout.set >= layoutBuilders.size()) {
-                    layoutBuilders.resize(layout.set + 1);
+            for (const auto& [set, binding, type, count] : shader->Descriptors()) {
+                if (set >= layoutBuilders.size()) {
+                    layoutBuilders.resize(set + 1);
                 }
-                auto& currentLayout = layoutBuilders[layout.set];
-                if (currentLayout.HasBinding(layout.binding)) {
-                    currentLayout.Binding(layout.binding).stageFlags |= shader->Stage();
+                if (auto& currentLayout = layoutBuilders[set]; currentLayout.HasBinding(binding)) {
+                    currentLayout.Binding(binding).stageFlags |= shader->Stage();
                 } else {
-                    currentLayout.AddBinding(layout.binding, layout.type, shader->Stage(), layout.count);
+                    currentLayout.AddBinding(binding, type, vk::ShaderStageFlags(shader->Stage()), count);
                 }
             }
             for (const auto&[size, offset] : shader->PushConstantRanges()) {
@@ -148,7 +118,7 @@ namespace Graphics {
                         vk::PushConstantRange()
                             .setOffset(offset)
                             .setSize(size)
-                            .setStageFlags(shader->Stage()));
+                            .setStageFlags(vk::ShaderStageFlags(shader->Stage())));
                 }
             }
         }
@@ -166,6 +136,18 @@ namespace Graphics {
             .setPushConstantRanges(pushConstantRanges);
 
         m_pipelineLayout = Core::GlobalDevice()->createPipelineLayout(pipelineLayoutInfo);
+
+        std::vector<vk::VertexInputBindingDescription> bindingDescriptions = {};
+        std::vector<vk::VertexInputAttributeDescription> attributeDescriptions = {};
+        if (const auto& vertexShader = Utils::FindIf(m_shaders | std::views::values, [](const auto* shader) { return shader->Stage() == Core::Stage::Values::Vertex; }); vertexShader.has_value()) {
+            const auto& inputAnalysis = vertexShader.value()->Analysis().at("inputs");
+            bindingDescriptions = Coral::Vertex::BindingDescriptions();
+            attributeDescriptions = Coral::Vertex::AttributeDescriptions(inputAnalysis);
+        }
+
+        m_vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
+            .setVertexBindingDescriptions(bindingDescriptions)
+            .setVertexAttributeDescriptions(attributeDescriptions);
 
         m_stages.clear();
         for (const auto &[stage, shader] : m_shaders) {
@@ -188,10 +170,24 @@ namespace Graphics {
         m_dynamicState = vk::PipelineDynamicStateCreateInfo()
             .setDynamicStates(m_dynamicStates);
 
+        m_colorBlendAttachments.clear();
+        for (const auto& attachment : m_renderPass.Subpass(m_subpass)) {
+            m_colorBlendAttachments.emplace_back(vk::PipelineColorBlendAttachmentState()
+                .setBlendEnable(vk::False)
+                .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA));
+        }
+
         m_colorBlending
             .setLogicOpEnable(vk::False)
             .setLogicOp(vk::LogicOp::eCopy)
             .setAttachments(m_colorBlendAttachments);
+
+        m_multisampling = vk::PipelineMultisampleStateCreateInfo()
+            .setRasterizationSamples(m_renderPass.SampleCount())
+            .setSampleShadingEnable(vk::False)
+            .setMinSampleShading(1.0f)
+            .setAlphaToCoverageEnable(vk::False)
+            .setAlphaToOneEnable(vk::False);
 
         return std::make_unique<Pipeline>(*this);
     }
@@ -211,15 +207,19 @@ namespace Graphics {
             .setPTessellationState(&builder.m_tessellation)
             .setPDynamicState(&builder.m_dynamicState)
             .setLayout(builder.m_pipelineLayout)
-            .setRenderPass(builder.m_renderPass)
+            .setRenderPass(*builder.m_renderPass)
             .setSubpass(builder.m_subpass);
 
-        const auto pipeline = Core::GlobalDevice()->createGraphicsPipeline(nullptr, m_createInfo);
+        try {
+            const auto pipeline = Core::GlobalDevice()->createGraphicsPipeline(nullptr, m_createInfo);
 
-        if (pipeline.result != vk::Result::eSuccess) {
-            std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
+            if (pipeline.result != vk::Result::eSuccess) {
+                std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
+            }
+            m_pipeline = pipeline.value;
+        } catch (const std::exception &e) {
+            std::cerr << "Failed to create graphics pipeline: " << e.what() << std::endl;
         }
-        m_pipeline = pipeline.value;
     }
 
     Pipeline::~Pipeline()

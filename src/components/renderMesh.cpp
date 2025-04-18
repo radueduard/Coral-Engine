@@ -8,7 +8,7 @@
 #include "graphics/objects/material.h"
 #include "graphics/objects/mesh.h"
 
-namespace mgv {
+namespace Coral {
     RenderMesh::RenderMesh(const Object &owner)
         : Component(owner) {}
 

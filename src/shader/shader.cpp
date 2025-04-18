@@ -6,18 +6,23 @@
 
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <unordered_map>
 
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
+#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 #include "core/device.h"
 #include "utils/file.h"
 
 #include <spirv_cross/spirv_glsl.hpp>
 
+#include "components/object.h"
 #include "graphics/pipeline.h"
+#include "graphics/objects/mesh.h"
 
 static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage) {
     switch (stage) {
@@ -72,6 +77,7 @@ namespace Core {
         } else if (glslExtensions.contains(extension)) {
             m_stage = glslExtensions.at(extension);
             const auto code = Utils::ReadTextFile(path);
+            m_analysis = AnalyzeShader();
             m_spirVCode = CompileGLSLToSpirV(code, m_stage);
             m_handle = LoadSpirVShader(m_spirVCode);
         } else {
@@ -147,6 +153,33 @@ namespace Core {
 
             m_pushConstantRanges.emplace_back(size, offset);
         } // ePushConstant
+    }
+
+    nlohmann::json Shader::AnalyzeShader() const {
+        auto code = Utils::ReadTextFile(m_path);
+        auto analysis = nlohmann::json::object();
+        analysis["name"] = m_path.filename().string();
+        analysis["path"] = m_path.generic_string();
+        analysis["stage"] = std::to_string(m_stage);
+        analysis["inputs"] = nlohmann::json::array();
+
+        auto codeCopy = code;
+        std::regex pragmaRegex(R"(#pragma\s+([a-zA-Z_]\w*)\s*layout\s*\(\s*location\s*=\s*(\d+)\s*\)\s*in\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*;)");
+        for (std::smatch match; std::regex_search(codeCopy, match, pragmaRegex); codeCopy = codeCopy.substr(match.position() + match.length())) {
+            bool isInput = std::ranges::any_of(Coral::Vertex::Attribute::AllValues(), [&match](const Coral::Vertex::Attribute::Values &attribute) {
+                return std::to_string(attribute) == match[1].str();
+            });
+            if (isInput) {
+                auto input = nlohmann::json::object();
+                input["attribute"] = match[1].str();
+                input["location"] = std::stoi(match[2].str());
+                input["type"] = match[3].str();
+                input["name"] = match[4].str();
+                analysis["inputs"].push_back(input);
+            }
+        }
+
+        return analysis;
     }
 
     vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) {

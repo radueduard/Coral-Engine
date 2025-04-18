@@ -14,7 +14,7 @@
 
 #include "memory/sampler.h"
 
-namespace mgv {
+namespace Coral {
     uint32_t TextureArray::Id(const std::string &name) const {
         if (!m_imageIndices.contains(name)) {
             return -1;

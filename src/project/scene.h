@@ -11,7 +11,7 @@
 #include "gui/templates/inspector.h"
 
 
-namespace mgv {
+namespace Coral {
     class Scene final : public GUI::Layer {
     public:
         explicit Scene();
@@ -30,7 +30,5 @@ namespace mgv {
 
         GUI::ObjectInspector m_inspectorTemplate;
         Object* m_selectedObject = nullptr;
-
-        std::unique_ptr<Texture> m_testTexture;
     };
 }

@@ -11,24 +11,15 @@
 #include "../extensions/debugUtils.h"
 #include "../extensions/meshShader.h"
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugReportFlagsEXT msgFlags,
-    VkDebugReportObjectTypeEXT objType,
-    uint64_t srcObject,
-    size_t /*location*/,
-    int32_t msgCode,
-    const char* pLayerPrefix,
-    const char* pMsg,
-    void* /*pUserData*/
-){
-    if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-        std::cerr << "ERROR: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    } else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-        std::cerr << "WARNING: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    } else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-        std::cerr << "DEBUG: [" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg << std::endl;
-    }
-    return VK_TRUE;
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData) {
+
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
 }
 
 namespace Core {
@@ -96,15 +87,22 @@ namespace Core {
     void Runtime::SelectPhysicalDevice() {
         m_surface = m_window.CreateSurface(m_instance);
         m_physicalDevices = m_instance.enumeratePhysicalDevices();
-        for (auto physicalDeviceCandidate : m_physicalDevices) {
+        for (const auto physicalDeviceCandidate : m_physicalDevices) {
             const PhysicalDevice::CreateInfo createInfo = {
                 .runtime = *this,
                 .physicalDevice = physicalDeviceCandidate,
                 .surface = m_surface,
             };
 
-            auto physicalDevice = std::make_unique<Core::PhysicalDevice>(createInfo);
-            if (physicalDevice->isSuitable()) {
+            if (auto physicalDevice = std::make_unique<Core::PhysicalDevice>(createInfo); physicalDevice->isSuitable()) {
+                if (physicalDevice->m_properties.deviceType != vk::PhysicalDeviceType::eDiscreteGpu) {
+                    continue;
+                }
+
+                // Print physical device information
+                std::cout << "Selected physical device: " << physicalDevice->m_properties.deviceName << std::endl;
+                std::cout << "Device type: " << vk::to_string(physicalDevice->m_properties.deviceType) << std::endl;
+
                 m_physicalDevice = std::move(physicalDevice);
                 return;
             }

@@ -141,7 +141,7 @@ namespace GUI {
                             }
                         }
                         if (!exists) {
-                            object->AddChild(std::make_unique<T>(popupName.second.data()));
+                            object->AddChild(std::make_unique<T>(boost::uuids::random_generator()(), popupName.second.data()));
                             ImGui::CloseCurrentPopup();
                         } else {
                             displayErrorMessage = true;

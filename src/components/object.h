@@ -21,7 +21,7 @@ namespace GUI {
     class ObjectInspector;
 }
 
-namespace mgv {
+namespace Coral {
     struct Transform {
         glm::vec3 position;
         glm::vec3 rotation;
@@ -57,13 +57,13 @@ namespace mgv {
         static boost::uuids::random_generator generator;
         inline static boost::unordered_map<boost::uuids::uuid, Object*> objects;
     public:
-        explicit Object(std::string name = "root");
+        explicit Object(boost::uuids::uuid uuid = boost::uuids::nil_uuid(), const std::string& name = "Object");
         ~Object() override;
 
         Object(const Object&) = delete;
         Object& operator=(const Object&) = delete;
 
-        [[nodiscard]] const boost::uuids::uuid &Id() const { return m_id; }
+        [[nodiscard]] const boost::uuids::uuid &UUID() const { return m_uuid; }
         [[nodiscard]] const std::string &Name() const { return m_name; }
         [[nodiscard]] std::vector<Component*> Components() const;
         [[nodiscard]] bool Moved() const { return m_moved; }
@@ -89,7 +89,7 @@ namespace mgv {
             return std::nullopt;
         }
 
-        template<typename T, typename... Args>
+        template<typename T, typename... Args, typename = std::enable_if_t<std::is_base_of_v<Component, T>>>
         T* Add(Args&&... args) {
             const std::type_index type = typeid(T);
             if (m_components.contains(type)) {
@@ -112,15 +112,15 @@ namespace mgv {
         std::optional<Object*> Find(const boost::uuids::uuid& id);
 
     private:
-        boost::uuids::uuid m_id;
+        boost::uuids::uuid m_uuid;
         std::string m_name;
         uint32_t m_indexInBuffer = 0;
         bool m_moved = false;
 
-        boost::unordered_map<std::type_index, std::unique_ptr<mgv::Component>> m_components;
+        boost::unordered_map<std::type_index, std::unique_ptr<Coral::Component>> m_components;
     };
 }
 
-inline std::string to_string(const mgv::Object& object) {
+inline std::string to_string(const Coral::Object& object) {
     return object.Name();
 }

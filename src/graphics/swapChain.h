@@ -8,7 +8,6 @@
 
 #include "core/device.h"
 #include "gui/elements/image.h"
-#include "math/mathMGV.h"
 
 namespace Memory {
     class Image;
@@ -28,8 +27,8 @@ namespace Graphics {
     class SwapChain : public EngineWrapper<vk::SwapchainKHR> {
     public:
         struct CreateInfo {
-            uint32_t minImageCount;
-            uint32_t imageCount;
+            u32 minImageCount;
+            u32 imageCount;
             vk::SampleCountFlagBits sampleCount;
         };
 
@@ -48,7 +47,7 @@ namespace Graphics {
         vk::Result Present(const Core::Frame &frame);
 
     private:
-        Math::Vector2<uint32_t> m_extent = {};
+        Math::Vector2<u32> m_extent;
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
         uint32_t m_minImageCount = 0;
         uint32_t m_imageCount = 0;

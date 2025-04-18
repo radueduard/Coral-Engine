@@ -9,7 +9,7 @@
 #include "mesh.h"
 
 
-namespace mgv {
+namespace Coral {
 	class Camera;
 
 	std::unique_ptr<Mesh> Cube();

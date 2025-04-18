@@ -9,7 +9,7 @@
 #include "object.h"
 #include "memory/buffer.h"
 
-namespace mgv {
+namespace Coral {
     class Camera final : public Component
     {
         friend class DebugCamera;
@@ -76,8 +76,6 @@ namespace mgv {
             glm::mat4 projection;
             glm::mat4 inverseView;
             glm::mat4 inverseProjection;
-            glm::mat4 flippedView;
-            glm::mat4 flippedInverseView;
         };
 
         explicit Camera(const Object& object, const CreateInfo &createInfo);
@@ -132,11 +130,11 @@ namespace mgv {
 }
 
 namespace std {
-    inline string to_string(const mgv::Camera::Type& type) {
+    inline string to_string(const Coral::Camera::Type& type) {
         switch (type) {
-            case mgv::Camera::Type::Perspective:
+            case Coral::Camera::Type::Perspective:
                 return "Perspective";
-            case mgv::Camera::Type::Orthographic:
+            case Coral::Camera::Type::Orthographic:
                 return "Orthographic";
             default:
                 return "Unknown";

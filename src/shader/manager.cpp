@@ -111,10 +111,9 @@ namespace Shader {
 	}
 
 	Core::Shader * Manager::Get(const std::filesystem::path &path) {
-		if (m_shaders.contains(path)) {
-			return m_shaders[path].get();
+		if (!m_shaders.contains(path)) {
+			m_shaders[path] = std::make_unique<Core::Shader>(path);
 		}
-		m_shaders[path] = std::make_unique<Core::Shader>(path);
 		return m_shaders[path].get();
 	}
 }

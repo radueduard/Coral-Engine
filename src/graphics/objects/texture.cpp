@@ -12,15 +12,15 @@
 #include "memory/image.h"
 #include "memory/sampler.h"
 
-namespace mgv {
+namespace Coral {
     Texture::Texture(const Builder &builder)
-        : m_name(builder.m_name) {
+        : m_name(builder.m_name), m_usage(builder.m_usage) {
         const auto extent = vk::Extent3D(builder.m_width, builder.m_height, 1);
-        const auto mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(builder.m_width, builder.m_height)))) + 1;
+        const auto mipLevels = builder.m_createMipmaps ? static_cast<uint32_t>(std::floor(std::log2(std::max(builder.m_width, builder.m_height)))) + 1 : 1;
         m_image = Memory::Image::Builder()
             .Format(builder.m_format)
             .Extent(extent)
-            .MipLevels(mipLevels)
+            .MipLevels(builder.m_createMipmaps ? mipLevels : 1)
             .SampleCount(vk::SampleCountFlagBits::e1)
             .InitialLayout(vk::ImageLayout::eUndefined)
             .UsageFlags(vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
@@ -44,7 +44,8 @@ namespace mgv {
             m_image->Copy(**stagingBuffer);
         }
 
-        m_image->GenerateMipmaps();
+        if (builder.m_createMipmaps)
+            m_image->GenerateMipmaps();
         m_image->TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
         m_imageViews.emplace_back(Memory::ImageView::Builder(*m_image)
@@ -66,24 +67,5 @@ namespace mgv {
             .setSampler(**m_sampler)
             .setImageView(**m_imageViews[0])
             .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
-    }
-
-    std::unique_ptr<Texture> Texture::FromFile(const std::string &path) {
-        int width, height, channels;
-        stbi_uc* data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-        if (!data) {
-            throw std::runtime_error("Failed to load texture: " + path);
-        }
-
-        auto texture = Builder()
-            .Name(path)
-            .Data(data)
-            .Width(width)
-            .Height(height)
-            .Format(vk::Format::eR8G8B8A8Unorm)
-            .Build();
-
-        stbi_image_free(data);
-        return texture;
     }
 }

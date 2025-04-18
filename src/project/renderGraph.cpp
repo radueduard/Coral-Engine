@@ -8,6 +8,7 @@
 #include <boost/uuid/nil_generator.hpp>
 
 #include "core/scheduler.h"
+#include "graphics/pipeline.h"
 #include "gui/container.h"
 #include "gui/viewport.h"
 
@@ -200,6 +201,20 @@ namespace Project {
                 commandBuffers.emplace_back(Core::GlobalDevice().RequestCommandBuffer(queue.Family().Index()));
             }
         }
+
+		// TODO: Delete this:
+
+		const auto vertexShader = Core::Shader("shaders/wireframe/wireframe.vert");
+		const auto fragmentShader = Core::Shader("shaders/wireframe/wireframe.frag");
+
+		std::unique_ptr<Graphics::Pipeline> pipeline = Graphics::Pipeline::Builder(*m_renderPasses.at("color").get())
+			.AddShader(&vertexShader)
+			.AddShader(&fragmentShader)
+			.Build();
+
+		m_renderPasses.at("color")->AddPipeline(std::move(pipeline));
+
+		// ------------------
 
 		if (m_guiEnabled) {
 			const auto guiCreateInfo = GUI::Manager::CreateInfo {

@@ -8,12 +8,16 @@
 
 #include "framebuffer.h"
 #include "core/device.h"
-#include "math/mathMGV.h"
 #include "memory/image.h"
 
-namespace Graphics {
+import std;
+import types;
+import math.vector;
 
-    void RenderPass::Attachment::Resize(Math::Vector2<uint32_t> extent) const {
+using namespace Coral;
+
+namespace Graphics {
+    void RenderPass::Attachment::Resize(const Math::Vector2<u32>& extent) const {
         for (auto* image : images) {
             image->Resize({extent.x, extent.y, 1});
         }
@@ -52,7 +56,7 @@ namespace Graphics {
 
     void RenderPass::CreateFrameBuffers() {
         m_frameBuffers.resize(m_imageCount);
-        for (uint32_t i = 0; i < m_imageCount; i++) {
+        for (u32 i = 0; i < m_imageCount; i++) {
             m_frameBuffers[i] = std::make_unique<Graphics::Framebuffer>(*this, i);
         }
     }
@@ -72,7 +76,7 @@ namespace Graphics {
         }
     }
 
-    void RenderPass::Begin(const Core::CommandBuffer& commandBuffer, const uint32_t imageIndex) {
+    void RenderPass::Begin(const Core::CommandBuffer& commandBuffer, const u32 imageIndex) {
         m_inFlightImageIndex = imageIndex;
 
         auto clearValues = m_attachments
@@ -112,11 +116,9 @@ namespace Graphics {
     }
 
     void RenderPass::Draw(const Core::CommandBuffer& commandBuffer) const {
-        // for (const auto& program : m_programs) {
-        //     if (program) {
-        //         program->Draw(commandBuffer, this);
-        //     }
-        // }
+        for (const auto& pipeline : m_pipelines) {
+            pipeline->Bind(*commandBuffer);
+        }
     }
 
     void RenderPass::End(const Core::CommandBuffer& commandBuffer)  {
@@ -124,7 +126,7 @@ namespace Graphics {
         m_inFlightImageIndex = std::nullopt;
     }
 
-    Memory::Image& RenderPass::OutputImage(const uint32_t index) const {
+    Memory::Image& RenderPass::OutputImage(const u32 index) const {
         return *m_attachments[m_outputAttachmentIndex].images[index];
     }
 
@@ -133,7 +135,7 @@ namespace Graphics {
     }
 
 
-    bool RenderPass::Resize(const uint32_t imageCount, const Math::Vector2<uint32_t> extent) {
+    bool RenderPass::Resize(const u32 imageCount, const Math::Vector2<u32>& extent) {
         if ((m_imageCount == imageCount && m_extent == extent) || (extent.x == 0 || extent.y == 0)) {
             return false;
         }

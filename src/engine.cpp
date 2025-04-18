@@ -13,26 +13,36 @@
 #include "engine.h"
 
 #include "assets/importer.h"
-#include "compute/pipeline.h"
-#include "graphics/pipeline.h"
-#include "graphics/renderPass.h"
-#include "graphics/objects/mesh.h"
+#include "assets/manager.h"
 #include "gui/container.h"
-#include "gui/manager.h"
-#include "gui/viewport.h"
 #include "project/scene.h"
 #include "shader/manager.h"
 
+import types;
+import math.matrix;
+import math.vector;
 
+namespace Coral {
+    void func() {
+        const Math::Matrix2<f32> a;
+        glm::mat4 b = glm::mat4(a);
+        std::cout << a << std::endl;
+        std::cout << Math::Matrix2<f32>(b) << std::endl;
+    }
+}
 Engine::Engine() {
+    Coral::func();
+
     const auto windowCreateInfo = Core::Window::CreateInfo {
-        .title = "Motor Grafic Vulkan",
+        .title = "Coral",
         .extent = { 1920, 1080 },
         .resizable = true,
         .fullscreen = false
     };
 
     m_window = std::make_unique<Core::Window>(windowCreateInfo);
+
+    m_scriptingDomain = std::unique_ptr<Coral::Scripting::Domain>(new Coral::Scripting::Domain("RootDomain"));
 
     const auto runtimeCreateInfo = Core::Runtime::CreateInfo {
         .window = *m_window,
@@ -68,6 +78,7 @@ Engine::Engine() {
     };
 
     m_device = std::make_unique<Core::Device>(deviceCreateInfo);
+    Core::g_device = m_device.get();
 
     const auto schedulerCreateInfo = Core::Scheduler::CreateInfo {
         .window = *m_window,
@@ -78,29 +89,25 @@ Engine::Engine() {
     };
 
     m_scheduler = std::make_unique<Core::Scheduler>(schedulerCreateInfo);
+
+    Asset::Manager::Init();
+}
+
+Engine::~Engine() {
+    Asset::Manager::Destroy();
+    Coral::Scripting::Domain::JitCleanup()(m_scriptingDomain.get());
 }
 
 void Engine::Run() const {
     Core::Input::Setup();
 
-    auto shader = Core::Shader("projects/testProject/shaders/test.vert");
-
     GUI::Container<Asset::Manager> assetManager = GUI::MakeContainer<Asset::Manager>();
-    GUI::Container<mgv::Scene> scene = GUI::MakeContainer<mgv::Scene>();
     GUI::Container<Shader::Manager> shaderManager = GUI::MakeContainer<Shader::Manager>(std::filesystem::path("shaders"));
 
-    const Asset::Importer importer("assets/main1_sponza/NewSponza_Main_glTF_003.gltf");
-
-    // auto func = [&importer] {
-    //     Core::GlobalDevice().CreateCommandPools(std::this_thread::get_id()._Get_underlying_id());
-    //     importer.LoadTextures();
-    //     Core::GlobalDevice().FreeCommandPools(std::this_thread::get_id()._Get_underlying_id());
-    // };
-    //
-    // std::thread threads[1];
-    // for (auto& t : threads) {
-    //     t = std::thread(func);
-    // }
+    Asset::Importer importer("assets/DamagedHelmet/DamagedHelmet.gltf");
+    // Asset::Importer importer("assets/main1_sponza/NewSponza_Main_glTF_003.gltf");
+    importer.Import();
+    GUI::Container<Coral::Scene> scene = importer.LoadScene();
 
     while (!m_window->ShouldClose()) {
         m_window->PollEvents();
@@ -115,6 +122,7 @@ void Engine::Run() const {
         }
 
         Core::Input::Update();
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
     }
     Core::GlobalDevice()->waitIdle();
 }

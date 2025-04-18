@@ -9,9 +9,10 @@
 #include "components/camera.h"
 #include "components/renderMesh.h"
 
-namespace mgv {
+namespace Coral {
     std::unique_ptr<Mesh> Cube() {
-        return mgv::Mesh::Builder("Cube")
+        return Coral::Mesh::Builder(boost::uuids::random_generator()())
+            .Name("Cube")
             .AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
             .AddVertex({{ 1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
             .AddVertex({{ 1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
@@ -30,7 +31,8 @@ namespace mgv {
     }
 
     std::unique_ptr<Mesh> Sphere() {
-        auto sphere = Mesh::Builder("Sphere");
+        auto sphere = Mesh::Builder(boost::uuids::random_generator()())
+            .Name("Sphere");
 
         int density = 5;
         for (int i = 0; i <= density; i++) {
@@ -89,7 +91,8 @@ namespace mgv {
         glm::vec3 farBottomLeft = farCenter + glm::vec3(-farWidth, -farHeight, 0.0f);
         glm::vec3 farBottomRight = farCenter + glm::vec3(farWidth, -farHeight, 0.0f);
 
-        return Mesh::Builder("Perspective frustum volume")
+        return Mesh::Builder(boost::uuids::random_generator()())
+            .Name("Frustum Volume")
             .AddVertex({nearTopLeft, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
             .AddVertex({nearTopRight, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
             .AddVertex({nearBottomLeft, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})

@@ -4,9 +4,8 @@
 
 #include "material.h"
 
-namespace mgv {
-    Material::Material(const std::string& name, const Builder &builder) {
-        m_name = name;
+namespace Coral {
+    Material::Material(const Builder &builder) : m_uuid(builder.m_uuid), m_name(builder.m_name), m_textures(builder.m_textures) {
         m_parameters = {
             .alphaCutoff = builder.m_alphaCutoff,
             .doubleSided = builder.m_doubleSided,
@@ -14,8 +13,6 @@ namespace mgv {
             .metallicFactor = builder.m_metallicFactor,
             .emissiveFactor = builder.m_emissiveFactor,
             .baseColorFactor = builder.m_baseColorFactor,
-            .baseColorId = builder.m_baseColorId,
-            .normalId = builder.m_normalId,
         };
     }
 }

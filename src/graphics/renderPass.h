@@ -4,16 +4,18 @@
 
 #pragma once
 
-#include <iostream>
-#include <optional>
-#include <vector>
-
 #include <vulkan/vulkan.hpp>
 
+#include "pipeline.h"
 #include "core/device.h"
-#include "math/mathMGV.h"
 #include "memory/image.h"
 #include "memory/imageView.h"
+
+import types;
+import math.vector;
+import std;
+
+using namespace Coral;
 
 namespace Graphics {
     class Framebuffer;
@@ -26,7 +28,7 @@ namespace Graphics {
             std::vector<Memory::Image*> images;
             vk::ClearValue clearValue;
 
-            void Resize(Math::Vector2<uint32_t> extent) const;
+            void Resize(const Math::Vector2<u32>& extent) const;
         };
 
         class Builder {
@@ -34,22 +36,22 @@ namespace Graphics {
         public:
             Builder() = default;
 
-            Builder& ImageCount(const uint32_t imageCount) {
+            Builder& ImageCount(const u32 imageCount) {
                 m_imageCount = imageCount;
                 return *this;
             }
 
-            Builder& OutputImageIndex(const uint32_t outputImageIndex) {
+            Builder& OutputImageIndex(const u32 outputImageIndex) {
                 m_outputImageIndex = outputImageIndex;
                 return *this;
             }
 
-            Builder& Extent(const Math::Vector2<uint32_t> extent) {
+            Builder& Extent(const Math::Vector2<u32> extent) {
                 m_extent = extent;
                 return *this;
             }
 
-            Builder& Attachment(const uint32_t index, Attachment attachment) {
+            Builder& Attachment(const u32 index, Attachment attachment) {
                 if (index > m_attachments.size()) {
                     std::cerr << "Attachments should be provided in order" << std::endl;
                     return *this;
@@ -74,9 +76,9 @@ namespace Graphics {
 
 
         private:
-            uint32_t m_imageCount = 2;
-            uint32_t m_outputImageIndex = 0;
-            Math::Vector2<uint32_t> m_extent;
+            u32 m_imageCount = 2;
+            u32 m_outputImageIndex = 0;
+            Math::Vector2<u32> m_extent;
             std::vector<RenderPass::Attachment> m_attachments;
             std::vector<vk::SubpassDescription> m_subpasses;
             std::vector<vk::SubpassDependency> m_dependencies;
@@ -89,18 +91,31 @@ namespace Graphics {
         RenderPass(const RenderPass &) = delete;
         RenderPass &operator=(const RenderPass &) = delete;
 
-        void Begin(const Core::CommandBuffer& commandBuffer, uint32_t imageIndex);
+        void Begin(const Core::CommandBuffer& commandBuffer, u32 imageIndex);
         void Update(float deltaTime) const;
         void Draw(const Core::CommandBuffer& commandBuffer) const;
         void End(const Core::CommandBuffer& commandBuffer);
 
         [[nodiscard]] const std::vector<Attachment>& Attachments() const { return m_attachments; }
-        [[nodiscard]] const Framebuffer& Framebuffer(const uint32_t index) const { return *m_frameBuffers[index]; }
-        [[nodiscard]] const Math::Vector2<uint32_t>& Extent() const { return m_extent; }
+        [[nodiscard]] std::vector<Attachment> Subpass(const u32 index) const {
+            if (index >= m_subpasses.size()) {
+                std::cerr << "Subpass index out of range" << std::endl;
+                return {};
+            }
+            std::vector<Attachment> attachments;
+            for (u32 i = 0; i < m_subpasses[index].colorAttachmentCount; i++) {
+                const auto& attachment = m_attachments[m_subpasses[index].pColorAttachments[i].attachment];
+                attachments.emplace_back(attachment);
+            }
+            return attachments;
+        }
+
+        [[nodiscard]] const Framebuffer& Framebuffer(const u32 index) const { return *m_frameBuffers[index]; }
+        [[nodiscard]] const Math::Vector2<u32>& Extent() const { return m_extent; }
         [[nodiscard]] const vk::SampleCountFlagBits& SampleCount() const { return m_sampleCount; }
-        [[nodiscard]] uint32_t OutputImageIndex() const { return m_outputImageIndex; }
-        [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
-        [[nodiscard]] uint32_t InFlightImageIndex() const {
+        [[nodiscard]] u32 OutputImageIndex() const { return m_outputImageIndex; }
+        [[nodiscard]] u32 ImageCount() const { return m_imageCount; }
+        [[nodiscard]] u32 InFlightImageIndex() const {
             if (!m_inFlightImageIndex.has_value()) {
                 std::cerr << "No in flight image index" << std::endl;
                 return -1;
@@ -108,7 +123,7 @@ namespace Graphics {
             return m_inFlightImageIndex.value();
         }
 
-        [[nodiscard]] Memory::Image& OutputImage(uint32_t index) const;
+        [[nodiscard]] Memory::Image& OutputImage(u32 index) const;
         [[nodiscard]] Memory::Image& CurrentOutputImage() const;
 
         void CreateRenderPass();
@@ -116,14 +131,18 @@ namespace Graphics {
         void CreateFrameBuffers();
         void DestroyFrameBuffers();
 
-        bool Resize(uint32_t imageCount, Math::Vector2<uint32_t> extent);
+        void AddPipeline(std::unique_ptr<Pipeline> pipeline) {
+            m_pipelines.emplace_back(std::move(pipeline));
+        }
+
+        bool Resize(u32 imageCount, const Math::Vector2<u32>& extent);
 
     private:
-        uint32_t m_outputAttachmentIndex = 0;
-        uint32_t m_outputImageIndex = 0;
-        std::optional<uint32_t> m_inFlightImageIndex;
-        uint32_t m_imageCount;
-        Math::Vector2<uint32_t> m_extent;
+        u32 m_outputAttachmentIndex = 0;
+        u32 m_outputImageIndex = 0;
+        std::optional<u32> m_inFlightImageIndex;
+        u32 m_imageCount;
+        Math::Vector2<u32> m_extent;
 
         std::vector<std::unique_ptr<Graphics::Framebuffer>> m_frameBuffers;
 
@@ -134,5 +153,7 @@ namespace Graphics {
         std::vector<vk::SubpassDependency> m_dependencies;
 
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
+
+        std::vector<std::unique_ptr<Pipeline>> m_pipelines;
     };
 }

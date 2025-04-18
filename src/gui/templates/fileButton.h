@@ -14,9 +14,9 @@
 #include "gui/elements/column.h"
 #include "gui/elements/image.h"
 #include "gui/elements/text.h"
-#include "shader/shader.h"
+#include "utils/file.h"
 
-namespace mgv {
+namespace Coral {
 	class Texture;
 }
 
@@ -24,32 +24,32 @@ namespace GUI {
 	class FileButton final : public Template<std::filesystem::path> {
 	public:
 		explicit FileButton(std::function<void(const std::filesystem::path&)> onClick) : m_onClick(std::move(onClick)) {
-			m_iconTextures.resize(Core::Shader::Type::Count + 4);
-			m_iconTextures[Core::Shader::Type::Vertex] = mgv::Texture::FromFile("assets/icons/icon_vert.png");
-			m_iconTextures[Core::Shader::Type::TessellationControl] = mgv::Texture::FromFile("assets/icons/icon_tesc.png");
-			m_iconTextures[Core::Shader::Type::TessellationEvaluation] = mgv::Texture::FromFile("assets/icons/icon_tese.png");
-			m_iconTextures[Core::Shader::Type::Geometry] = mgv::Texture::FromFile("assets/icons/icon_geom.png");
-			m_iconTextures[Core::Shader::Type::Fragment] = mgv::Texture::FromFile("assets/icons/icon_frag.png");
-			m_iconTextures[Core::Shader::Type::Task] = mgv::Texture::FromFile("assets/icons/icon_task.png");
-			m_iconTextures[Core::Shader::Type::Mesh] = mgv::Texture::FromFile("assets/icons/icon_mesh.png");
-			m_iconTextures[Core::Shader::Type::Compute] = mgv::Texture::FromFile("assets/icons/icon_comp.png");
-			m_iconTextures[Core::Shader::Type::Count] = mgv::Texture::FromFile("assets/icons/icon_spv.png");
-			m_iconTextures[Core::Shader::Type::Count + 1] = mgv::Texture::FromFile("assets/icons/icon_dir.png");
-			m_iconTextures[Core::Shader::Type::Count + 2] = mgv::Texture::FromFile("assets/icons/icon_text.png");
-			m_iconTextures[Core::Shader::Type::Count + 3] = mgv::Texture::FromFile("assets/icons/icon_bin.png");
+			for (const auto& [type, path] : Utils::IconPaths)
+			{
+				int width, height, channels;
+				std::vector<glm::u8vec4> pixels;
+				Utils::ReadImageData(path, pixels, width, height, channels);
+				m_iconTextures[type] = Coral::Texture::Builder()
+                    .Name(type)
+                    .Data(reinterpret_cast<uint8_t*>(pixels.data()))
+                    .Width(width)
+					.Height(height)
+                    .Format(vk::Format::eR8G8B8A8Unorm)
+                    .Build();
+			}
 
-			m_textureIds.reserve(Core::Shader::Type::Count + 4);
-			for (const auto& texture : m_iconTextures) {
-				m_textureIds.emplace_back(ImGui_ImplVulkan_AddTexture(
+			for (const auto& [type, texture] : m_iconTextures) {
+				const auto id = ImGui_ImplVulkan_AddTexture(
 					*texture->Sampler(),
-					*texture->ImageView(1, 1),
+					*texture->ImageView(),
 					static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal)
-				));
+				);
+				m_textureIds[type] = id;
 			}
 		}
 
 		~FileButton() override {
-			for (const auto textureId : m_textureIds) {
+			for (const auto textureId : m_textureIds | std::views::values) {
 				ImGui_ImplVulkan_RemoveTexture(static_cast<VkDescriptorSet>(textureId));
 			}
 		}
@@ -61,34 +61,11 @@ namespace GUI {
 			ImTextureID texture = nullptr;
 			if (isDirectory) {
 				name += "/";
-				texture = m_textureIds[Core::Shader::Type::Count + 1];
+				texture = m_textureIds["Directory"];
 			} else {
-				const auto extension = data->extension().string();
-				if (extension == ".vert") {
-					texture = m_textureIds[Core::Shader::Type::Vertex];
-				} else if (extension == ".tesc") {
-					texture = m_textureIds[Core::Shader::Type::TessellationControl];
-				} else if (extension == ".tese") {
-					texture = m_textureIds[Core::Shader::Type::TessellationEvaluation];
-				} else if (extension == ".geom") {
-					texture = m_textureIds[Core::Shader::Type::Geometry];
-				} else if (extension == ".frag") {
-					texture = m_textureIds[Core::Shader::Type::Fragment];
-				} else if (extension == ".task") {
-					texture = m_textureIds[Core::Shader::Type::Task];
-				} else if (extension == ".mesh") {
-					texture = m_textureIds[Core::Shader::Type::Mesh];
-				} else if (extension == ".comp") {
-					texture = m_textureIds[Core::Shader::Type::Compute];
-				} else if (extension == ".spv") {
-					texture = m_textureIds[Core::Shader::Type::Count];
-				} else {
-					if (is_character_file(*data)) {
-						texture = m_textureIds[Core::Shader::Type::Count + 2];
-					} else {
-						texture = m_textureIds[Core::Shader::Type::Count + 3];
-					}
-				}
+				const auto extension = data->extension().generic_string().substr(1);
+				const auto type = Utils::FileTypes[extension];
+				texture = m_textureIds[type];
 			}
 
 			return new GUI::ButtonArea(
@@ -116,8 +93,8 @@ namespace GUI {
 			);
 		}
 	private:
-		std::vector<std::unique_ptr<mgv::Texture>> m_iconTextures;
-		std::vector<ImTextureID> m_textureIds;
+		std::unordered_map<std::string, std::unique_ptr<Coral::Texture>> m_iconTextures;
+		std::unordered_map<std::string, ImTextureID> m_textureIds;
 
 		std::function<void(const std::filesystem::path&)> m_onClick;
 	};

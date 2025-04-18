@@ -6,11 +6,11 @@
 #include "object.h"
 #include "graphics/objects/mesh.h"
 
-namespace mgv {
+namespace Coral {
     class Material;
 }
 
-namespace mgv {
+namespace Coral {
     class RenderMesh final : public Component {
     public:
         explicit RenderMesh(const Object &owner);

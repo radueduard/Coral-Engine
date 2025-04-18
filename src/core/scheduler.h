@@ -4,10 +4,7 @@
 
 #pragma once
 
-#include <unordered_map>
 #include <vulkan/vulkan.hpp>
-
-#include <ranges>
 
 #include "device.h"
 #include "graphics/swapChain.h"

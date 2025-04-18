@@ -5,10 +5,13 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <boost/uuid/uuid.hpp>
 #include <glm/glm.hpp>
 
-namespace mgv {
+#include "texture.h"
+
+namespace Coral {
     struct Parameters {
         float alphaCutoff;
         uint32_t doubleSided;
@@ -16,9 +19,6 @@ namespace mgv {
         float metallicFactor;
         alignas(16) glm::vec3 emissiveFactor;
         glm::vec4 baseColorFactor;
-
-        uint32_t baseColorId;
-        uint32_t normalId;
     };
 
     class Material {
@@ -26,7 +26,12 @@ namespace mgv {
         class Builder {
             friend class Material;
         public:
-            Builder() = default;
+            Builder(const boost::uuids::uuid& uuid) : m_uuid(uuid) {}
+
+            Builder& Name(const std::string& name) {
+                m_name = name;
+                return *this;
+            }
 
             Builder& AlphaCutoff(const float alphaCutoff) {
                 m_alphaCutoff = alphaCutoff;
@@ -58,38 +63,44 @@ namespace mgv {
                 return *this;
             }
 
-            Builder& BaseColorId(const uint32_t baseColorId) {
-                m_baseColorId = baseColorId;
+            Builder& AddTexture(const PBR::Usage usage, const Coral::Texture* texture) {
+                m_textures[usage] = texture;
                 return *this;
             }
 
-            Builder& NormalId(const uint32_t normalId) {
-                m_normalId = normalId;
-                return *this;
-            }
-
-            std::unique_ptr<Material> Build(std::string name) {
-                return std::make_unique<Material>(name, *this);
+            std::unique_ptr<Material> Build() {
+                return std::make_unique<Material>(*this);
             }
         private:
-            float m_alphaCutoff;
-            uint32_t m_doubleSided;
-            float m_roughnessFactor;
-            float m_metallicFactor;
-            glm::vec3 m_emissiveFactor;
-            glm::vec4 m_baseColorFactor;
+            boost::uuids::uuid m_uuid;
+            std::string m_name;
+            float m_alphaCutoff = 0.5f;
+            uint32_t m_doubleSided = 0;
+            float m_roughnessFactor = 0.5f;
+            float m_metallicFactor = 0.5f;
+            glm::vec3 m_emissiveFactor = {0.0f, 0.0f, 0.0f};
+            glm::vec4 m_baseColorFactor = {1.0f, 1.0f, 1.0f, 1.0f};
 
-            uint32_t m_baseColorId;
-            uint32_t m_normalId;
+            std::unordered_map<PBR::Usage, const Coral::Texture*> m_textures {};
         };
 
-    explicit Material(const std::string& name, const Builder& builder);
+        explicit Material(const Builder& builder);
 
-    [[nodiscard]] const std::string& Name() const { return m_name; }
-    [[nodiscard]] const Parameters& Parameters() const { return m_parameters; }
+        [[nodiscard]] const boost::uuids::uuid& UUID() const { return m_uuid; }
+        [[nodiscard]] const Coral::Texture* Texture(PBR::Usage usage) const {
+            if (m_textures.contains(usage)) {
+                return m_textures.at(usage);
+            }
+            return nullptr;
+        }
+
+        [[nodiscard]] const std::string& Name() const { return m_name; }
+        [[nodiscard]] const Parameters& Parameters() const { return m_parameters; }
 
     private:
+        boost::uuids::uuid m_uuid;
         std::string m_name;
-        mgv::Parameters m_parameters {};
+        Coral::Parameters m_parameters {};
+        std::unordered_map<PBR::Usage, const Coral::Texture*> m_textures {};
     };
 }
