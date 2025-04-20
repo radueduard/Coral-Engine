@@ -38,27 +38,27 @@ namespace Coral {
     }
 
     void Camera::Update(const double deltaTime) {
-        if (m_primary && Core::Input::IsMouseButtonHeld(MouseButtonRight)) {
+        if (m_primary && Core::Input::IsMouseButtonHeld(MouseButton::MouseButtonRight)) {
             static constexpr float sensitivity = 5.f;
             const auto delta = Core::Input::GetMousePositionDelta();
             Rotate(static_cast<float>(delta.x) * sensitivity, static_cast<float>(delta.y) * sensitivity);
 
-            if (Core::Input::IsKeyHeld(W)) {
+            if (Core::Input::IsKeyHeld(Key::W)) {
                 MoveForward(3.0f * static_cast<float>(deltaTime));
             }
-            if (Core::Input::IsKeyHeld(S)) {
+            if (Core::Input::IsKeyHeld(Key::S)) {
                 MoveForward(-3.0f * static_cast<float>(deltaTime));
             }
-            if (Core::Input::IsKeyHeld(A)) {
+            if (Core::Input::IsKeyHeld(Key::A)) {
                 MoveRight(-3.0f * static_cast<float>(deltaTime));
             }
-            if (Core::Input::IsKeyHeld(D)) {
+            if (Core::Input::IsKeyHeld(Key::D)) {
                 MoveRight(3.0f * static_cast<float>(deltaTime));
             }
-            if (Core::Input::IsKeyHeld(E)) {
+            if (Core::Input::IsKeyHeld(Key::E)) {
                 MoveUp(3.0f * static_cast<float>(deltaTime));
             }
-            if (Core::Input::IsKeyHeld(Q)) {
+            if (Core::Input::IsKeyHeld(Key::Q)) {
                 MoveUp(-3.0f * static_cast<float>(deltaTime));
             }
         }

@@ -1,7 +1,15 @@
-#include "engine.h"
+// #include "engine.h"
+//
+// int main()
+// {
+//     Engine().Run();
+//     return 0;
+// }
+
+import engine;
 
 int main()
 {
-    Engine().Run();
-    return 0;
+	Coral::Engine().Run();
+	return 0;
 }

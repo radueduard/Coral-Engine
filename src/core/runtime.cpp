@@ -60,7 +60,7 @@ namespace Core {
         const auto createInfo = vk::InstanceCreateInfo()
             .setPApplicationInfo(&appInfo)
             .setPEnabledExtensionNames(m_instanceExtensions)
-            .setPEnabledLayerNames(m_instanceLayers);;
+            .setPEnabledLayerNames(m_instanceLayers);
 
         m_instance = vk::createInstance(createInfo);
     }

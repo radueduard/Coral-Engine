@@ -60,18 +60,9 @@ namespace Core {
             m_info.title = title;
             glfwSetWindowTitle(m_window, title.c_str());
         }
+
     private:
-        /**
-         * @brief Callbacks for the window
-         * @details This struct contains the static methods that are used as callbacks for the window. They are set up in the constructor of the Window class
-         */
-        struct Callbacks {
-            static void keyCallback(GLFWwindow*, int, int, int, int);
-            static void mouseMoveCallback(GLFWwindow*, double, double);
-            static void mouseButtonCallback(GLFWwindow*, int, int, int);
-            static void scrollCallback(GLFWwindow*, double, double);
-            static void framebufferResize(GLFWwindow*, int, int);
-        };
+    	static void FramebufferResize(GLFWwindow* window, int width, int height);
 
         GLFWwindow* m_window;
         GLFWmonitor* m_monitor;

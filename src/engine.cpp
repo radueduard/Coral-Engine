@@ -117,7 +117,7 @@ void Engine::Run() const {
             m_scheduler->Draw();
         }
 
-        if (Core::Input::IsKeyPressed(Esc)) {
+        if (Core::Input::IsKeyPressed(Key::Esc)) {
             m_window->Close();
         }
 

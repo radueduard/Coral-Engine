@@ -6,17 +6,11 @@
 
 #include <unordered_map>
 #include <glm/glm.hpp>
-
-#include "window.h"
+#include <GLFW/glfw3.h>
 
 class Engine;
 
-namespace Core {
-    class Window;
-    class Window::Callbacks;
-}
-
-enum Key {
+enum class Key : unsigned short {
     Space = 32,
     Apostrophe = 39,
     Comma = 44,
@@ -139,7 +133,7 @@ enum Key {
     Menu = 348
 };
 
-enum MouseButton {
+enum class MouseButton {
     MouseButton1 = 0,
     MouseButton2 = 1,
     MouseButton3 = 2,
@@ -153,16 +147,16 @@ enum MouseButton {
     MouseButtonMiddle = MouseButton3
 };
 
-enum SpecialKey {
-    sShift = 1 << 0,
-    sCtrl = 1 << 1,
-    sAlt = 1 << 2,
-    sSuper = 1 << 3,
-    sCapsLock = 1 << 4,
-    sNumLock = 1 << 5,
+enum class SpecialKey {
+    Shift = 1 << 0,
+    Ctrl = 1 << 1,
+    Alt = 1 << 2,
+    Super = 1 << 3,
+    CapsLock = 1 << 4,
+    NumLock = 1 << 5,
 };
 
-enum KeyState {
+enum class KeyState {
     NotPressed,
     Pressed,
     Held,
@@ -172,7 +166,7 @@ enum KeyState {
 namespace Core {
     class Input {
         friend class Engine;
-        friend struct Window::Callbacks;
+    	friend class Window;
     public:
         static KeyState GetKeyState(Key key);
         static KeyState GetMouseButtonState(MouseButton button);
@@ -199,5 +193,13 @@ namespace Core {
         static glm::ivec2 m_mousePosition;
         static glm::ivec2 m_mouseDelta;
         static glm::vec2 m_scrollDelta;
+
+    	struct Callbacks {
+    		static void keyCallback(GLFWwindow*, int, int, int, int);
+    		static void mouseMoveCallback(GLFWwindow*, double, double);
+    		static void mouseButtonCallback(GLFWwindow*, int, int, int);
+    		static void scrollCallback(GLFWwindow*, double, double);
+    		static void framebufferResize(GLFWwindow*, int, int);
+    	};
     };
 }

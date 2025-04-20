@@ -30,8 +30,8 @@ set(MONO_INCLUDE_DIRS "C:/Program Files/Mono/include/mono-2.0")
 set(MONO_LIB_DIR "C:/Program Files/Mono/lib")
 
 # Add the source files
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-file(GLOB_RECURSE HEADERS "src/*.h")
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.cc")
+file(GLOB_RECURSE HEADERS "src/*.h" "src/*.hpp")
 file(GLOB_RECURSE MODULE "src/*.ixx")
 
 # Add the include directories

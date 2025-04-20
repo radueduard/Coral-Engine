@@ -49,11 +49,11 @@ namespace Core {
 
         glfwSetWindowUserPointer(m_window, this);
 
-        glfwSetKeyCallback(m_window, Callbacks::keyCallback);
-        glfwSetCursorPosCallback(m_window, Callbacks::mouseMoveCallback);
-        glfwSetMouseButtonCallback(m_window, Callbacks::mouseButtonCallback);
-        glfwSetScrollCallback(m_window, Callbacks::scrollCallback);
-        glfwSetFramebufferSizeCallback(m_window, Callbacks::framebufferResize);
+        glfwSetKeyCallback(m_window, Input::Callbacks::keyCallback);
+        glfwSetCursorPosCallback(m_window, Input::Callbacks::mouseMoveCallback);
+        glfwSetMouseButtonCallback(m_window, Input::Callbacks::mouseButtonCallback);
+        glfwSetScrollCallback(m_window, Input::Callbacks::scrollCallback);
+        glfwSetFramebufferSizeCallback(m_window, FramebufferResize);
     }
 
     Window::~Window() {
@@ -83,53 +83,15 @@ namespace Core {
         m_lastTime = currentTime;
     }
 
-    void Window::Callbacks::keyCallback(GLFWwindow *, int key, int, const int action, int) {
-        const auto k = static_cast<Key>(key);
-        switch (action) {
-            case GLFW_PRESS:
-                Input::m_keyboardKeyStates[k] = Pressed;
-            break;
-            case GLFW_RELEASE:
-                Input::m_keyboardKeyStates[k] = Released;
-            break;
-            default:
-                break;
-        }
+	void Window::FramebufferResize(GLFWwindow* window, const int width, const int height) {
+    	const auto app = static_cast<Window*>(glfwGetWindowUserPointer(window));
+
+    	app->m_info.extent = vk::Extent2D { static_cast<unsigned int>(width), static_cast<unsigned int>(height) };
+    	if (width == 0 || height == 0) {
+    		app->Pause();
+    	} else {
+    		app->UnPause();
+    	}
     }
 
-    void Window::Callbacks::mouseMoveCallback(GLFWwindow *, const double x, const double y) {
-        const glm::ivec2 pos { static_cast<int>(x), static_cast<int>(y) };
-        Input::m_mouseDelta = pos - Input::m_mousePosition;
-        Input::m_mousePosition = pos;
-
-    }
-
-    void Window::Callbacks::mouseButtonCallback(GLFWwindow *, int button, const int action, int) {
-        const auto b = static_cast<MouseButton>(button);
-        switch (action) {
-            case GLFW_PRESS:
-                Input::m_mouseButtonStates[b] = Pressed;
-            break;
-            case GLFW_RELEASE:
-                Input::m_mouseButtonStates[b] = Released;
-            break;
-            default:
-                break;
-        }
-    }
-
-    void Window::Callbacks::scrollCallback(GLFWwindow *, const double x, const double y) {
-        Input::m_scrollDelta = { x, y };
-    }
-
-    void Window::Callbacks::framebufferResize(GLFWwindow* window, const int width, const int height) {
-        const auto app = static_cast<Window*>(glfwGetWindowUserPointer(window));
-
-        app->m_info.extent = vk::Extent2D { static_cast<unsigned int>(width), static_cast<unsigned int>(height) };
-        if (width == 0 || height == 0) {
-            app->Pause();
-        } else {
-            app->UnPause();
-        }
-    }
 }
