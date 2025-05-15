@@ -8,23 +8,31 @@
 #include <thread>
 
 #include "core/device.h"
+#include "math/vector.h"
 
-namespace Memory {
+namespace Coral::Memory {
     Image::Image(const Builder &builder)
-        : m_format(builder.m_format), m_extent(builder.m_extent),
-            m_usageFlags(builder.m_usageFlags), m_sampleCount(builder.m_sampleCount),
+        : m_format(builder.m_format), m_extent(builder.m_extent),m_sampleCount(builder.m_sampleCount),
             m_mipLevels(builder.m_mipLevels), m_layerCount(builder.m_layersCount) {
+
+    	for (const auto& usageFlag : builder.m_usageFlagsSet) {
+			m_usageFlags |= usageFlag;
+		}
+
         if (!builder.m_image.has_value()) {
             const vk::ImageCreateFlags imageCreateFlags = builder.m_layersCount == 6 ? vk::ImageCreateFlagBits::eCubeCompatible : vk::ImageCreateFlags();
             const auto imageCreateInfo = vk::ImageCreateInfo()
                 .setImageType(vk::ImageType::e2D)
                 .setFormat(builder.m_format)
-                .setExtent(builder.m_extent)
+                .setExtent(vk::Extent3D()
+					.setWidth(builder.m_extent.x)
+					.setHeight(builder.m_extent.y)
+					.setDepth(builder.m_extent.z))
                 .setMipLevels(builder.m_mipLevels)
                 .setArrayLayers(builder.m_layersCount)
                 .setSamples(builder.m_sampleCount)
                 .setTiling(vk::ImageTiling::eOptimal)
-                .setUsage(builder.m_usageFlags)
+                .setUsage(m_usageFlags)
                 .setSharingMode(vk::SharingMode::eExclusive)
                 .setInitialLayout(vk::ImageLayout::eUndefined)
                 .setFlags(imageCreateFlags);
@@ -71,7 +79,7 @@ namespace Memory {
         }
 
         Core::GlobalDevice().RunSingleTimeCommand([this, buffer, layer, mipLevel] (const Core::CommandBuffer& commandBuffer) {
-            vk::Extent3D extent = m_extent;
+            auto extent = m_extent;
             for (uint32_t i = 0; i < mipLevel; i++) {
                 extent.width = std::max<uint32_t>(1u, extent.width / 2);
                 extent.height = std::max<uint32_t>(1u, extent.height / 2);
@@ -88,7 +96,10 @@ namespace Memory {
                     .setBaseArrayLayer(layer)
                     .setLayerCount(1))
                 .setImageOffset({ 0, 0, 0 })
-                .setImageExtent(extent);
+                .setImageExtent(vk::Extent3D()
+					.setWidth(extent.x)
+					.setHeight(extent.y)
+					.setDepth(extent.z));
             commandBuffer->copyBufferToImage(buffer, m_handle, vk::ImageLayout::eTransferDstOptimal, region);
         }, vk::QueueFlagBits::eTransfer);
     }
@@ -254,19 +265,21 @@ namespace Memory {
             imageBarrier);
     }
 
-    void Image::Resize(const vk::Extent3D &extent) {
+    void Image::Resize(const Math::Vector3<u32> &extent) {
         if (m_extent == extent || (extent.width == 0 || extent.height == 0 || extent.depth == 0))
             return;
 
         Core::GlobalDevice()->freeMemory(m_imageMemory);
         Core::GlobalDevice()->destroyImage(m_handle);
 
-
         m_extent = extent;
         const auto imageCreateInfo = vk::ImageCreateInfo()
             .setImageType(vk::ImageType::e2D)
             .setFormat(m_format)
-            .setExtent(m_extent)
+            .setExtent(vk::Extent3D()
+				.setWidth(m_extent.x)
+				.setHeight(m_extent.y)
+				.setDepth(m_extent.z))
             .setMipLevels(m_mipLevels)
             .setArrayLayers(m_layerCount)
             .setSamples(m_sampleCount)

@@ -11,7 +11,7 @@
 
 #include "texture.h"
 
-namespace Coral {
+namespace Coral::Graphics {
     struct Parameters {
         float alphaCutoff;
         uint32_t doubleSided;
@@ -63,7 +63,7 @@ namespace Coral {
                 return *this;
             }
 
-            Builder& AddTexture(const PBR::Usage usage, const Coral::Texture* texture) {
+            Builder& AddTexture(const PBR::Usage usage, const Texture* texture) {
                 m_textures[usage] = texture;
                 return *this;
             }
@@ -81,13 +81,13 @@ namespace Coral {
             glm::vec3 m_emissiveFactor = {0.0f, 0.0f, 0.0f};
             glm::vec4 m_baseColorFactor = {1.0f, 1.0f, 1.0f, 1.0f};
 
-            std::unordered_map<PBR::Usage, const Coral::Texture*> m_textures {};
+            std::unordered_map<PBR::Usage, const Texture*> m_textures {};
         };
 
         explicit Material(const Builder& builder);
 
         [[nodiscard]] const boost::uuids::uuid& UUID() const { return m_uuid; }
-        [[nodiscard]] const Coral::Texture* Texture(PBR::Usage usage) const {
+        [[nodiscard]] const Texture* Texture(PBR::Usage usage) const {
             if (m_textures.contains(usage)) {
                 return m_textures.at(usage);
             }
@@ -100,7 +100,7 @@ namespace Coral {
     private:
         boost::uuids::uuid m_uuid;
         std::string m_name;
-        Coral::Parameters m_parameters {};
-        std::unordered_map<PBR::Usage, const Coral::Texture*> m_textures {};
+        Graphics::Parameters m_parameters {};
+        std::unordered_map<PBR::Usage, const Graphics::Texture*> m_textures {};
     };
 }

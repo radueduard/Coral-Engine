@@ -4,138 +4,97 @@
 
 #pragma once
 
-#include "components/object.h"
-#include "IconsFontAwesome6.h"
+#include "ecs/entity.h"
+
 #include "template.h"
-#include "gui/elements/center.h"
-#include "gui/elements/column.h"
-#include "gui/elements/dockable.h"
-#include "gui/elements/text.h"
+#include "CameraTemplate.h"
+#include "RenderTargetTemplate.h"
+#include "TransformTemplate.h"
 
-#include <shader/shader.h>
+#include "gui/reef.h"
 
-#include "cameraSettings.h"
-#include "renderMeshSettings.h"
-#include "gui/elements/drag.h"
-#include "gui/elements/inputField.h"
-#include "gui/elements/separator.h"
-
-namespace GUI {
-	class ObjectInspector final : public GUI::Template<Coral::Object> {
+namespace Coral::Reef {
+	class EntityInspector final : public ReadWriteTemplate<ECS::Entity> {
 	public:
-		ObjectInspector() {
-			m_cameraSettings = std::make_unique<CameraSettings>();
-			m_renderMeshSettings = std::make_unique<RenderMeshSettings>();
+		EntityInspector() {
+			m_transformTemplate = std::make_unique<TransformTemplate>();
+			m_cameraTemplate = std::make_unique<CameraTemplate>();
+			m_renderTargetTemplate = std::make_unique<RenderTargetTemplate>();
 		}
 
-		GUI::Element *Build(Coral::Object *data) override {
-			GUI::Element* innerElement = nullptr;
-			if (data != nullptr) {
-				std::array labels {
-					ImGui::ImLabel {
-						.text = "X",
-						.font = GUI::Manager::GetFont(FontType::Black, 16.f),
-						.color = ImVec4(1.f, 1.f, 1.f, 1.f),
-						.embedded = true,
-						.backgroundColor = ImVec4 { 1.f, 0.f, 0.f, 1.f }
-					},
-					ImGui::ImLabel {
-						.text = "Y",
-						.font = GUI::Manager::GetFont(FontType::Black, 16.f),
-						.color = ImVec4(1.f, 1.f, 1.f, 1.f),
-						.embedded = true,
-						.backgroundColor = ImVec4 { 0, .65f, .13f, 1.f }
-					},
-					ImGui::ImLabel {
-						.text = "Z",
-						.font = GUI::Manager::GetFont(FontType::Black, 16.f),
-						.color = ImVec4(1.f, 1.f, 1.f, 1.f),
-						.embedded = true,
-						.backgroundColor = ImVec4 { 0.f, .13f, .65f, 1.f }
-					}
-				};
-
-				std::vector<Element*> children {
-					new LabeledRow("Name", new GUI::InputField("Name", &(data->m_name))),
-					new GUI::Text(
-						ICON_FA_LOCATION_CROSSHAIRS "   Transform",
-						GUI::Text::Style{
-							{ 0.8f, 0.8f, 0.8f, 1.f },
-							20.f,
-							FontType::Black
+		Element *Build(ECS::Entity &data) override {
+			std::vector<Element*> children {
+				new LabeledRow(
+					new Text(
+						Text::Piece {"Name:", Text::Style { .fontSize = 15 }},
+						{
+							.size { Shrink, Grow },
+							.padding { 5.f, 5.f, 0.f, 0.f },
 						}
 					),
-					new LabeledRow("Position", new Drag<float, 3>("Position", reinterpret_cast<float*>(&data->position), 10.f, -1000.f, 1000.f, labels)),
-					new LabeledRow("Rotation", new Drag<float, 3>("Rotation", reinterpret_cast<float*>(&data->rotation), 1.f, -180.f, 180.f, labels)),
-					new LabeledRow("Scale", new Drag<float, 3>("Scale", reinterpret_cast<float*>(&data->scale), 0.1f, -10.f, 10.f, labels)),
-					new GUI::Separator(),
-				};
-
-				for (auto* component : data->Components()) {
-					if (typeid(*component) == typeid(Coral::Camera)) {
-						children.emplace_back(m_cameraSettings->Build(dynamic_cast<Coral::Camera*>(component)));
+					new InputField("Name", &data.Name(),
+						{
+							.size = { Grow, 23.f },
+						}
+					),
+					{
+						.size = { Grow, Shrink },
+						.padding = { 10.f, 10.f, 10.f, 10.f },
+						.cornerRadius = 10.f,
+						.backgroundColor = { .1f, .1f, .1f, 1.f },
 					}
-					if (typeid(*component) == typeid(Coral::RenderMesh)) {
-						children.emplace_back(m_renderMeshSettings->Build(dynamic_cast<Coral::RenderMesh*>(component)));
-					}
-				}
+				),
+			};
 
-				innerElement = new GUI::Column(
-					children,
-					10.f
-				);
-			} else {
-				innerElement = new GUI::Center(
-					new GUI::Text("Select an object to inspect"),
-					true,
-					true
-				);
+			if (data.Has<ECS::Transform>()) {
+				children.emplace_back(m_transformTemplate->Build(data.Get<ECS::Transform>()));
 			}
 
-			return new GUI::Dockable(
-				ICON_FA_INFO "   Object Inspector",
-				innerElement,
-				10.f
+			if (data.Has<ECS::Camera>()) {
+				children.emplace_back(m_cameraTemplate->Build(data.Get<ECS::Camera>()));
+			}
+
+			if (data.Has<ECS::RenderTarget>()) {
+				children.emplace_back(m_renderTargetTemplate->Build(data.Get<ECS::RenderTarget>()));
+			}
+
+			return new Element(
+				{
+					.spacing = 10.f,
+					.direction = Vertical,
+				},
+				children
 			);
 		}
 	private:
-		std::unique_ptr<GUI::CameraSettings> m_cameraSettings;
-		std::unique_ptr<GUI::RenderMeshSettings> m_renderMeshSettings;
+		std::unique_ptr<TransformTemplate> m_transformTemplate;
+		std::unique_ptr<CameraTemplate> m_cameraTemplate;
+		std::unique_ptr<RenderTargetTemplate> m_renderTargetTemplate;
     };
 
-	class ShaderInspector final : public GUI::Template<Core::Shader> {
-	public:
-		GUI::Element *Build(Core::Shader *data) override {
-			GUI::Element* innerElement = nullptr;
-			if (data != nullptr) {
-				innerElement = new GUI::Column(
-					{
-						new GUI::Text(
-							ICON_FA_LOCATION_CROSSHAIRS "   Shader",
-							GUI::Text::Style{
-								{ 0.8f, 0.8f, 0.8f, 1.f },
-								20.f,
-								FontType::Black
-							}
-						),
-						new GUI::Text("Name: " + data->Name()),
-						new GUI::Text("Path: " + data->Path().string()),
-					},
-					10.f
-				);
-			} else {
-				innerElement = new GUI::Center(
-					new GUI::Text("Select a shader to inspect"),
-					true,
-					true
-				);
-			}
-
-			return new GUI::Dockable(
-				ICON_FA_INFO "   Shader Inspector",
-				innerElement,
-				10.f
-			);
-		}
-	};
+	// class ShaderInspector final : public ReadWriteTemplate<Core::Shader> {
+	// public:
+	// 	Element *Build(Core::Shader &data) override {
+	// 		Element* innerElement = new Column(
+	// 			{
+	// 				new Text(
+	// 					ICON_FA_LOCATION_CROSSHAIRS "   Shader",
+	// 					Text::Style{
+	// 						{ 0.8f, 0.8f, 0.8f, 1.f },
+	// 						20.f,
+	// 						FontType::Black
+	// 					}
+	// 				),
+	// 				new Text("Name: " + data.Name()),
+	// 				new Text("Path: " + data.Path().string()),
+	// 			},
+	// 			10.f);
+	//
+	// 		return new Dockable(
+	// 			ICON_FA_INFO "   Shader Inspector",
+	// 			innerElement,
+	// 			{ 10.f, 10.f }
+	// 		);
+	// 	}
+	// };
 }

@@ -6,62 +6,46 @@
 #include <type_traits>
 
 #include "manager.h"
+#include "layer.h"
 
-namespace GUI {
-    class Layer;
-
+namespace Coral::Reef {
     template <typename T>
     class Container {
-        static_assert(std::is_base_of_v<Layer, T>, "T must derive from Layer");
-        friend class Layer;
+        static_assert(std::is_base_of_v<Layer, T>, "Container can only be used with classes derived from Layer");
     public:
         Container() = default;
+		Container(nullptr_t) : m_layer(nullptr) {}
+
         explicit Container(T *layer) : m_layer(layer) {
-            if (g_manager)
-            {
-                g_manager->AddLayer(m_layer);
-                static_cast<Layer *>(m_layer)->OnGUIAttach();
-                for (const auto& [name, builder] : static_cast<Layer *>(m_layer)->m_guiBuilder) {
-                    static_cast<Layer *>(m_layer)->m_guiObjectReset[name] = false;
-                    static_cast<Layer *>(m_layer)->m_guiObjects.emplace(name, builder());
-                }
-            }
+            GlobalManager().AddLayer(m_layer);
+            static_cast<Layer *>(m_layer)->OnGUIAttach();
         }
         ~Container() {
-            if (g_manager)
-            {
-                if (m_layer == nullptr) {
-                    return;
-                }
-                static_cast<Layer *>(m_layer)->OnGUIDetach();
-                g_manager->RemoveLayer(m_layer);
-                delete m_layer;
+            if (m_layer == nullptr) {
+                return;
             }
+            static_cast<Layer *>(m_layer)->OnGUIDetach();
+            GlobalManager().RemoveLayer(m_layer);
+            delete m_layer;
         }
 
         Container(const Container&) = delete;
         Container& operator=(const Container&) = delete;
 
         Container(Container&& other) noexcept {
-            m_layer = other.m_layer;
-            other.m_layer = nullptr;
+	        m_layer = other.m_layer;
+			other.m_layer = nullptr;
         }
-
         Container& operator=(Container&& other) noexcept {
-            if (this == &other) {
-                return *this;
-            }
-            if (m_layer != nullptr) {
-                static_cast<Layer *>(m_layer)->OnGUIDetach();
-                g_manager->RemoveLayer(m_layer);
-                delete m_layer;
-            }
-            m_layer = other.m_layer;
-            other.m_layer = nullptr;
-            return *this;
-        }
+			if (this != &other) {
+				delete m_layer;
+				m_layer = other.m_layer;
+				other.m_layer = nullptr;
+			}
+			return *this;
+		}
 
-        T operator *() {
+        T& operator *() const {
             return *m_layer;
         }
 
@@ -79,7 +63,7 @@ namespace GUI {
         T* m_layer = nullptr;
     };
 
-    template <typename T, typename... Args>
+    template <typename T, typename... Args, typename = std::enable_if_t<std::is_base_of_v<Layer, T>>>
     Container<T> MakeContainer(Args&&... args) {
         return Container<T>(new T(std::forward<Args>(args)...));
     }

@@ -6,7 +6,7 @@
 
 #include "core/device.h"
 
-namespace Memory {
+namespace Coral::Memory {
     Sampler::Sampler(const CreateInfo& createInfo)
         : m_magFilter(createInfo.magFilter), m_minFilter(createInfo.minFilter), m_addressMode(createInfo.addressMode), m_mipmapMode(createInfo.mipmapMode) {
         const auto samplerInfo = vk::SamplerCreateInfo()

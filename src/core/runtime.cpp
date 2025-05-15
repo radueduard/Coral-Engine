@@ -22,7 +22,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
-namespace Core {
+namespace Coral::Core {
     Runtime::Runtime(const CreateInfo &createInfo) : m_window(createInfo.window) {
         m_deviceFeatures = createInfo.deviceFeatures;
         m_deviceExtensions = createInfo.deviceExtensions;

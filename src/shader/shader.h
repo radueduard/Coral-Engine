@@ -14,7 +14,7 @@
 
 #include "memory/descriptor/setLayout.h"
 
-namespace Core {
+namespace Coral::Core {
     class Stage {
     public:
         enum class Values : uint32_t
@@ -147,28 +147,28 @@ namespace Core {
 
 namespace std {
     template<>
-    struct hash<Core::Stage> {
-        size_t operator()(const Core::Stage &stage) const noexcept {
+    struct hash<Coral::Core::Stage> {
+        size_t operator()(const Coral::Core::Stage &stage) const noexcept {
             return hash<uint32_t>()(stage.Value());
         }
     };
 
-    inline string to_string(const Core::Stage::Values &stage)
+    inline string to_string(const Coral::Core::Stage::Values &stage)
     {
         switch (stage) {
-            case Core::Stage::Values::Vertex: return "Vertex";
-            case Core::Stage::Values::TessellationControl: return "TessellationControl";
-            case Core::Stage::Values::TessellationEvaluation: return "TessellationEvaluation";
-            case Core::Stage::Values::Geometry: return "Geometry";
-            case Core::Stage::Values::Fragment: return "Fragment";
-            case Core::Stage::Values::Compute: return "Compute";
-            case Core::Stage::Values::Task: return "Task";
-            case Core::Stage::Values::Mesh: return "Mesh";
-            case Core::Stage::Values::Raygen: return "Raygen";
-            case Core::Stage::Values::AnyHit: return "AnyHit";
-            case Core::Stage::Values::ClosestHit: return "ClosestHit";
-            case Core::Stage::Values::Miss: return "Miss";
-            case Core::Stage::Values::Intersection: return "Intersection";
+            case Coral::Core::Stage::Values::Vertex: return "Vertex";
+            case Coral::Core::Stage::Values::TessellationControl: return "TessellationControl";
+            case Coral::Core::Stage::Values::TessellationEvaluation: return "TessellationEvaluation";
+            case Coral::Core::Stage::Values::Geometry: return "Geometry";
+            case Coral::Core::Stage::Values::Fragment: return "Fragment";
+            case Coral::Core::Stage::Values::Compute: return "Compute";
+            case Coral::Core::Stage::Values::Task: return "Task";
+            case Coral::Core::Stage::Values::Mesh: return "Mesh";
+            case Coral::Core::Stage::Values::Raygen: return "Raygen";
+            case Coral::Core::Stage::Values::AnyHit: return "AnyHit";
+            case Coral::Core::Stage::Values::ClosestHit: return "ClosestHit";
+            case Coral::Core::Stage::Values::Miss: return "Miss";
+            case Coral::Core::Stage::Values::Intersection: return "Intersection";
             default: throw std::runtime_error("Unknown shader stage");
         }
     }

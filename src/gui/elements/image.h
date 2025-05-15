@@ -25,61 +25,34 @@ namespace ImGui {
     }
 }
 
-namespace GUI {
+namespace Coral::Reef {
     class Image final : public Element {
     public:
-        enum Mode {
-            Contain,
-            Cover,
-            Stretch
-        };
-
-        explicit Image(const ImTextureID id, const Math::Vector2<float> size = Math::Vector2<float>::Zero(), const float cornerRadius = 0.f, const Mode mode = Contain)
-            : m_texture(id), m_cornerRadius(cornerRadius), m_mode(mode) { m_requiredArea = size; }
+        explicit Image(const ImTextureID id, const Style& style = Style())
+            : Element(style), m_texture(id) {}
         ~Image() override = default;
 
-        void Render() override {
-            // if (m_requiredArea == Math::Vector2<float>::Zero()) {
-            //     m_requiredArea = m_parent->InnerBounds().max - m_parent->InnerBounds().min;
-            // }
-            m_outerBounds = m_parent->AllocatedArea(this);
+		bool Render() override {
+			const bool shouldReset = Element::Render();
 
-            Math::Vector2<float> uv1 = { 0, 0 };
-            Math::Vector2<float> uv2 = { 1, 1 };
+            const Math::Vector2 uv1 = { 0.f, 0.f };
+            const Math::Vector2 uv2 = { 1.f, 1.f };
 
-            if (m_mode == Stretch) {
-                m_innerBounds = m_outerBounds;
-            } else if (m_mode == Cover) {
-                m_innerBounds = m_outerBounds;
-                if (m_requiredArea.x > m_requiredArea.y) {
-                    const float ratio = m_requiredArea.y / m_requiredArea.x;
-                    uv1 = { 0.f, (1.f - ratio) / 2.f };
-                    uv2 = { 1.f, (1.f + ratio) / 2.f };
-                } else {
-                    const float ratio = m_requiredArea.x / m_requiredArea.y;
-                    uv1 = { (1.f - ratio) / 2.f, 0.f };
-                    uv2 = { (1.f + ratio) / 2.f, 1.f };
-                }
-            } else if (m_mode == Contain) {
-                if (const auto size = m_outerBounds.max - m_outerBounds.min; size.x > size.y) {
-                    m_innerBounds.min = { m_outerBounds.min.x + (size.x - size.y) / 2.f, m_outerBounds.min.y };
-                    m_innerBounds.max = { m_innerBounds.min.x + size.y, m_outerBounds.max.y };
-                } else {
-                    m_innerBounds.min = { m_outerBounds.min.x, m_outerBounds.min.y + (size.y - size.x) / 2.f };
-                    m_innerBounds.max = { m_outerBounds.max.x, m_innerBounds.min.y + size.x };
-                }
-            }
-
-            ImGui::SetCursorScreenPos({ m_innerBounds.min.x, m_innerBounds.min.y });
+            ImGui::SetCursorScreenPos({ m_position.x + m_padding.left, m_position.y + m_padding.top });
             ImGui::RoundedImage(
                 m_texture,
-                m_innerBounds.max - m_innerBounds.min, m_cornerRadius,
-                uv1, uv2);
+                { m_currentSize.width - m_padding.left - m_padding.right, m_currentSize.height - m_padding.top - m_padding.bottom },
+                m_cornerRadius,
+                ImVec2(uv1), ImVec2(uv2));
+
+			return shouldReset;
+        }
+
+        void SetTexture(const ImTextureID id) {
+            m_texture = id;
         }
 
     private:
         ImTextureID m_texture;
-        float m_cornerRadius;
-        Mode m_mode;
     };
 }

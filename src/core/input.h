@@ -8,7 +8,12 @@
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
 
-class Engine;
+namespace Coral {
+    class Engine;
+    namespace Core {
+        class Window;
+    }
+}
 
 enum class Key : unsigned short {
     Space = 32,
@@ -163,10 +168,10 @@ enum class KeyState {
     Released,
 };
 
-namespace Core {
+namespace Coral {
     class Input {
         friend class Engine;
-    	friend class Window;
+    	friend class Core::Window;
     public:
         static KeyState GetKeyState(Key key);
         static KeyState GetMouseButtonState(MouseButton button);

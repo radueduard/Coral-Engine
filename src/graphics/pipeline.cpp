@@ -13,7 +13,7 @@
 #include "objects/mesh.h"
 #include "utils/functionals.h"
 
-namespace Graphics {
+namespace Coral::Graphics {
     Pipeline::Builder::Builder(RenderPass &renderPass) : m_renderPass(renderPass) {
         m_inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
             .setTopology(vk::PrimitiveTopology::eTriangleList)
@@ -90,19 +90,25 @@ namespace Graphics {
         return *this;
     }
 
+	Pipeline::Builder& Pipeline::Builder::BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)>& function) {
+		// m_function = function;
+    	return *this;
+	}
+
+
     std::unique_ptr<Pipeline> Pipeline::Builder::Build()
     {
         std::vector<Memory::Descriptor::SetLayout::Builder> layoutBuilders;
         std::vector<vk::PushConstantRange> pushConstantRanges;
         for (const auto& shader : m_shaders | std::views::values) {
-            for (const auto& [set, binding, type, count] : shader->Descriptors()) {
-                if (set >= layoutBuilders.size()) {
-                    layoutBuilders.resize(set + 1);
+            for (const auto& descriptor : shader->Descriptors()) {
+                if (descriptor.set >= layoutBuilders.size()) {
+                    layoutBuilders.resize(descriptor.set + 1);
                 }
-                if (auto& currentLayout = layoutBuilders[set]; currentLayout.HasBinding(binding)) {
-                    currentLayout.Binding(binding).stageFlags |= shader->Stage();
+                if (auto& currentLayout = layoutBuilders[descriptor.set]; currentLayout.HasBinding(descriptor.binding)) {
+                    currentLayout.Binding(descriptor.binding).stageFlags |= shader->Stage();
                 } else {
-                    currentLayout.AddBinding(binding, type, vk::ShaderStageFlags(shader->Stage()), count);
+                    currentLayout.AddBinding(descriptor.binding, descriptor.type, vk::ShaderStageFlags(shader->Stage()), std::max(descriptor.count, 1u));
                 }
             }
             for (const auto&[size, offset] : shader->PushConstantRanges()) {
@@ -141,8 +147,8 @@ namespace Graphics {
         std::vector<vk::VertexInputAttributeDescription> attributeDescriptions = {};
         if (const auto& vertexShader = Utils::FindIf(m_shaders | std::views::values, [](const auto* shader) { return shader->Stage() == Core::Stage::Values::Vertex; }); vertexShader.has_value()) {
             const auto& inputAnalysis = vertexShader.value()->Analysis().at("inputs");
-            bindingDescriptions = Coral::Vertex::BindingDescriptions();
-            attributeDescriptions = Coral::Vertex::AttributeDescriptions(inputAnalysis);
+            bindingDescriptions = Vertex::BindingDescriptions();
+            attributeDescriptions = Vertex::AttributeDescriptions(inputAnalysis);
         }
 
         m_vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
@@ -238,14 +244,14 @@ namespace Graphics {
             vk::PipelineBindPoint::eGraphics,
             m_pipelineLayout,
             setNumber,
-            descriptorSet.Handle(),
+            *descriptorSet,
             nullptr);
     }
 
     void Pipeline::BindDescriptorSets(const uint32_t startingSet, const vk::CommandBuffer commandBuffer, const std::vector<Memory::Descriptor::Set>& descriptorSets) const {
         std::vector<vk::DescriptorSet> sets;
         for (const auto &descriptorSet : descriptorSets) {
-            sets.push_back(descriptorSet.Handle());
+            sets.push_back(*descriptorSet);
         }
 
         commandBuffer.bindDescriptorSets(

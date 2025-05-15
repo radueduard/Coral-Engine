@@ -14,7 +14,7 @@
 #include "memory/image.h"
 #include "memory/imageView.h"
 
-namespace Memory {
+namespace Coral::Memory {
     class Sampler;
 }
 
@@ -24,7 +24,7 @@ struct ThreadPayload {
     std::vector<std::string> paths;
 };
 
-namespace Coral {
+namespace Coral::Graphics {
     class TextureArray {
     public:
         class Builder {

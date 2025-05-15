@@ -4,39 +4,38 @@
 
 #pragma once
 #include <string>
-#include <memory>
 #include <boost/uuid/uuid_generators.hpp>
 
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <nlohmann/json.hpp>
 
+#include "ecs/scene.h"
 #include "gui/container.h"
 
-namespace Coral {
-    class Object;
-    class Scene;
+
+namespace Coral::ECS {
+    class Entity;
 }
 
-namespace Asset {
+namespace Coral::Asset {
     class Importer;
 }
 
-namespace Asset {
+namespace Coral::Asset {
     class Importer {
     public:
         explicit Importer(const std::string& path);
         void Import();
-        [[nodiscard]] GUI::Container<Coral::Scene> LoadScene() const;
+        [[nodiscard]] Reef::Container<ECS::Scene> LoadScene() const;
     private:
         void LoadMeshes() const;
         void LoadMaterials() const;
         void LoadTextures() const;
 
-        std::string m_path;
-        std::string m_name;
+        String m_path;
+        String m_name;
         const aiScene *m_scene;
-        uint32_t m_textureSize;
+        u32 m_textureSize;
         nlohmann::json m_metadata;
 
         inline static boost::uuids::string_generator _stringToUuid;

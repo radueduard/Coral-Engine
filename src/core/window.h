@@ -10,13 +10,14 @@
 
 #include <vulkan/vulkan.hpp>
 
-namespace Core {
+#include "math/vector.h"
+
+namespace Coral::Core {
     /**
      * @brief Window class
      * @details This class is used to create and manage a window using GLFW
      */
     class Window {
-        friend class Input;
     public:
         /**
          * @brief Window information
@@ -26,8 +27,8 @@ namespace Core {
          * @param fullscreen If the window is fullscreen (overrides the extent value)
          */
         struct CreateInfo {
-            std::string title;
-            vk::Extent2D extent;
+            String title;
+            Math::Vector2<u32> extent;
             bool resizable;
             bool fullscreen;
         };
@@ -43,7 +44,7 @@ namespace Core {
         void PollEvents() const { glfwPollEvents(); }
 
         [[nodiscard]] GLFWwindow* GetHandle() const { return m_window; }
-        [[nodiscard]] vk::Extent2D Extent() const { return m_info.extent; }
+        [[nodiscard]] Math::Vector2<f32> Extent() const { return m_info.extent; }
         [[nodiscard]] std::vector<const char*> GetRequiredExtensions() const;
         [[nodiscard]] vk::SurfaceKHR CreateSurface(const vk::Instance&) const;
 

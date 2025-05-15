@@ -12,12 +12,13 @@
 #include "gui/container.h"
 #include "gui/viewport.h"
 
-namespace Project {
+namespace Coral::Project {
 	RenderGraph::RenderGraph(const CreateInfo& createInfo)
 		: m_guiEnabled(createInfo.guiEnabled), m_frameCount(createInfo.frameCount) {
 		m_generator = boost::uuids::random_generator_mt19937();
 
-		vk::Extent3D extent = { createInfo.window.Extent().width, createInfo.window.Extent().height, 1 };
+		auto windowSize = createInfo.window.Extent();
+		Math::Vector3 extent = { static_cast<uint32_t>(windowSize.width), static_cast<uint32_t>(windowSize.height), 1u };
 
 		auto idGui = boost::uuids::nil_uuid();
 		if (m_guiEnabled) {
@@ -27,8 +28,10 @@ namespace Project {
 
 		auto idDepth = m_generator();
 		auto idColor = m_generator();
+		auto idColorResolve = m_generator();
 		m_images.emplace(idDepth, std::vector<Memory::Image*>());
 		m_images.emplace(idColor, std::vector<Memory::Image*>());
+		m_images.emplace(idColorResolve, std::vector<Memory::Image*>());
 
 		for (uint32_t i = 0; i < m_frameCount; i++) {
 			Memory::Image* depthImage = m_imageStorage.emplace_back(
@@ -36,27 +39,41 @@ namespace Project {
 					.Format(vk::Format::eD32Sfloat)
 					.Extent(extent)
 					.UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
-					.SampleCount(vk::SampleCountFlagBits::e1)
+					.SampleCount(vk::SampleCountFlagBits::e2)
 					.InitialLayout(vk::ImageLayout::eUndefined)
 					.Build()).get();
 			m_images.at(idDepth).emplace_back(depthImage);
 
 			Memory::Image* colorImage = m_imageStorage.emplace_back(
 				Memory::Image::Builder()
-					.Format(vk::Format::eR8G8B8A8Srgb)
+					.Format(vk::Format::eB8G8R8A8Unorm)
 					.Extent(extent)
-					.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc)
-					.SampleCount(vk::SampleCountFlagBits::e1)
+					.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
+					.UsageFlags(vk::ImageUsageFlagBits::eSampled)
+					.UsageFlags(vk::ImageUsageFlagBits::eTransferSrc)
+					.SampleCount(vk::SampleCountFlagBits::e2)
 					.InitialLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 					.Build()).get();
 			m_images.at(idColor).emplace_back(colorImage);
+
+			Memory::Image* colorResolveImage = m_imageStorage.emplace_back(
+				Memory::Image::Builder()
+					.Format(vk::Format::eB8G8R8A8Unorm)
+					.Extent(extent)
+					.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
+					.UsageFlags(vk::ImageUsageFlagBits::eSampled)
+					.UsageFlags(vk::ImageUsageFlagBits::eTransferSrc).SampleCount(vk::SampleCountFlagBits::e1)
+					.InitialLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+					.Build()).get();
+			m_images.at(idColorResolve).emplace_back(colorResolveImage);
 
 			if (m_guiEnabled) {
 				Memory::Image* guiImage = m_imageStorage.emplace_back(
 					Memory::Image::Builder()
 						.Format(vk::Format::eB8G8R8A8Unorm)
 						.Extent(extent)
-						.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc)
+						.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
+						.UsageFlags(vk::ImageUsageFlagBits::eTransferSrc)
 						.SampleCount(vk::SampleCountFlagBits::e2)
 						.InitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
 						.Build()).get();
@@ -66,7 +83,7 @@ namespace Project {
 
 		auto depthPassDepthDescription = vk::AttachmentDescription()
 			.setFormat(vk::Format::eD32Sfloat)
-			.setSamples(vk::SampleCountFlagBits::e1)
+			.setSamples(vk::SampleCountFlagBits::e2)
 			.setLoadOp(vk::AttachmentLoadOp::eClear)
 			.setStoreOp(vk::AttachmentStoreOp::eStore)
 			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
@@ -91,7 +108,7 @@ namespace Project {
 
 		m_renderPasses.emplace("depth", Graphics::RenderPass::Builder()
 			.OutputImageIndex(0)
-			.Extent({ 1920, 1080 })
+			.Extent({ 1920u, 1080u })
 			.Attachment(0, depthAttachment)
 			.Subpass(depthSubpass)
 			.ImageCount(m_frameCount)
@@ -99,7 +116,7 @@ namespace Project {
 
 		auto colorPassDepthDescription = vk::AttachmentDescription()
 			.setFormat(vk::Format::eD32Sfloat)
-			.setSamples(vk::SampleCountFlagBits::e1)
+			.setSamples(vk::SampleCountFlagBits::e2)
 			.setLoadOp(vk::AttachmentLoadOp::eLoad)
 			.setStoreOp(vk::AttachmentStoreOp::eDontCare)
 			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
@@ -119,8 +136,8 @@ namespace Project {
 		};
 
 		auto colorPassColorDescription = vk::AttachmentDescription()
-			.setFormat(vk::Format::eR8G8B8A8Srgb)
-			.setSamples(vk::SampleCountFlagBits::e1)
+			.setFormat(vk::Format::eB8G8R8A8Unorm)
+			.setSamples(vk::SampleCountFlagBits::e2)
 			.setLoadOp(vk::AttachmentLoadOp::eClear)
 			.setStoreOp(vk::AttachmentStoreOp::eStore)
 			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
@@ -139,16 +156,39 @@ namespace Project {
 			.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
 		};
 
+		auto colorPassColorResolveDescription = vk::AttachmentDescription()
+			.setFormat(vk::Format::eB8G8R8A8Unorm)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setLoadOp(vk::AttachmentLoadOp::eDontCare)
+			.setStoreOp(vk::AttachmentStoreOp::eStore)
+			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+
+		auto colorPassColorResolveReference = vk::AttachmentReference()
+			.setAttachment(2)
+			.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+
+		auto colorAttachmentColorResolve = Graphics::RenderPass::Attachment {
+			.description = colorPassColorResolveDescription,
+			.reference = colorPassColorResolveReference,
+			.images = m_images.at(idColorResolve),
+			.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
+		};
+
 		auto colorSubpass = vk::SubpassDescription()
 			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 			.setColorAttachments(colorPassColorReference)
+			.setResolveAttachments(colorPassColorResolveReference)
 			.setPDepthStencilAttachment(&colorPassDepthReference);
 
 		m_renderPasses.emplace("color", Graphics::RenderPass::Builder()
-			.OutputImageIndex(0)
+			.OutputImageIndex(2)
 			.Attachment(0, colorAttachmentColor)
 			.Attachment(1, colorAttachmentDepth)
-			.Extent({ 1920, 1080 })
+			.Attachment(2, colorAttachmentColorResolve)
+			.Extent({ 1920u, 1080u })
 			.Subpass(colorSubpass)
 			.ImageCount(m_frameCount)
 			.Build());
@@ -183,7 +223,7 @@ namespace Project {
 			m_guiRenderPass = Graphics::RenderPass::Builder()
 				.OutputImageIndex(0)
 				.Attachment(0, guiPassColor)
-				.Extent({ 1920, 1080 })
+				.Extent({ 1920u, 1080u })
 				.Subpass(guiSubpass)
 				.ImageCount(m_frameCount)
 				.Build();
@@ -205,19 +245,26 @@ namespace Project {
 		// TODO: Delete this:
 
 		const auto vertexShader = Core::Shader("shaders/wireframe/wireframe.vert");
+		// const auto meshShader = Core::Shader("shaders/wireframe/aabb.frag");
 		const auto fragmentShader = Core::Shader("shaders/wireframe/wireframe.frag");
+
+		// std::unique_ptr<Graphics::Pipeline> aabbPipeline = Graphics::Pipeline::Builder(*m_renderPasses.at("color").get())
+		// 	.AddShader(&meshShader)
+		// 	.AddShader(&fragmentShader)
+		// 	.Build();
 
 		std::unique_ptr<Graphics::Pipeline> pipeline = Graphics::Pipeline::Builder(*m_renderPasses.at("color").get())
 			.AddShader(&vertexShader)
 			.AddShader(&fragmentShader)
 			.Build();
 
+		// m_renderPasses.at("color")->AddPipeline(std::move(aabbPipeline));
 		m_renderPasses.at("color")->AddPipeline(std::move(pipeline));
 
 		// ------------------
 
 		if (m_guiEnabled) {
-			const auto guiCreateInfo = GUI::Manager::CreateInfo {
+			const auto guiCreateInfo = Reef::Manager::CreateInfo {
 				.window =  createInfo.window,
 				.runtime = createInfo.runtime,
 				.queue = *m_queues.at(vk::QueueFlagBits::eGraphics),
@@ -227,16 +274,21 @@ namespace Project {
 				.sampleCount = vk::SampleCountFlagBits::e2
 			};
 
-			m_guiManager = std::make_unique<GUI::Manager>(guiCreateInfo);
-			GUI::g_manager = m_guiManager.get();
+			m_guiManager = std::make_unique<Reef::Manager>(guiCreateInfo);
+			Reef::g_manager = m_guiManager.get();
 
 			for (uint32_t i = 0; i < m_frameCount; i++) {
 				m_guiCommandBuffers.emplace_back(Core::GlobalDevice().RequestCommandBuffer(queue.Family().Index()));
 			}
 
 			auto& finalRenderPass = *m_renderPasses.at("color").get();
-			m_viewport = GUI::MakeContainer<GUI::Viewport>(finalRenderPass);
+			m_viewport = Reef::MakeContainer<Reef::Viewport>(finalRenderPass);
 		}
+	}
+
+	RenderGraph::~RenderGraph() {
+		m_viewport.reset();
+		Reef::g_manager = nullptr;
 	}
 
 	void RenderGraph::Update(const float deltaTime) const
@@ -257,6 +309,7 @@ namespace Project {
 
 			for (const auto& renderPass : commands) {
 				m_renderPasses.at(renderPass)->Begin(commandBuffer, frame.ImageIndex());
+				m_renderPasses.at(renderPass)->Draw(commandBuffer);
 				m_renderPasses.at(renderPass)->End(commandBuffer);
 			}
 			commandBuffer->end();
@@ -316,14 +369,12 @@ namespace Project {
         }
 	}
 
-	void RenderGraph::Resize(const vk::Extent2D& extent)
-	{
-		if (m_guiEnabled) {
-			m_guiRenderPass->Resize(m_frameCount, extent);
-		} else
-		{
+	void RenderGraph::Resize(const Math::Vector2<f32>& size, const bool inner) {
+		if (m_guiEnabled && !inner) {
+			m_guiRenderPass->Resize(m_frameCount, size);
+		} else {
 			for (const auto& renderPass : m_renderPasses | std::views::values) {
-				renderPass->Resize(m_frameCount, extent);
+				renderPass->Resize(m_frameCount, size);
 			}
 		}
 	}
@@ -336,11 +387,26 @@ namespace Project {
 		return m_renderPasses.at(lastPassName)->OutputImage(frameIndex);
 	}
 
-	vk::Semaphore RenderGraph::RenderFinished(const uint32_t frameIndex) const
-	{
+	vk::Semaphore RenderGraph::RenderFinished(const uint32_t frameIndex) const {
 		if (m_guiEnabled) {
 			return m_guiCommandBuffers[frameIndex]->SignalSemaphore();
-        }
+		}
 		return m_runNodes.back()->commandBuffers[frameIndex]->SignalSemaphore();
 	}
-}
+	void RenderGraph::OnGUIAttach() {
+		Layer::OnGUIAttach();
+		AddDockable("RenderGraph",
+			new Reef::Dockable(
+				"RenderGraph", {},
+				{
+					new Reef::Element(
+						{ .direction = Reef::Vertical },
+						{
+
+						}
+					),
+				}
+			)
+		);
+	}
+} // namespace Coral::Project

@@ -4,7 +4,7 @@
 
 #include "material.h"
 
-namespace Coral {
+namespace Coral::Graphics {
     Material::Material(const Builder &builder) : m_uuid(builder.m_uuid), m_name(builder.m_name), m_textures(builder.m_textures) {
         m_parameters = {
             .alphaCutoff = builder.m_alphaCutoff,

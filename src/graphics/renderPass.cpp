@@ -8,12 +8,16 @@
 
 #include "framebuffer.h"
 #include "core/device.h"
+#include "ecs/scene.h"
+#include "ecs/components/camera.h"
+#include "ecs/components/renderTarget.h"
+#include "ecs/components/transform.h"
 #include "memory/image.h"
 
-namespace Graphics {
-    void RenderPass::Attachment::Resize(const Math::Vector2<uint32_t>& extent) const {
+namespace Coral::Graphics {
+    void RenderPass::Attachment::Resize(const Math::Vector2<f32>& extent) const {
         for (auto* image : images) {
-            image->Resize({extent.x, extent.y, 1});
+            image->Resize(Math::Vector3 { static_cast<u32>(extent.x), static_cast<u32>(extent.y), 1u });
         }
     }
 
@@ -50,7 +54,7 @@ namespace Graphics {
 
     void RenderPass::CreateFrameBuffers() {
         m_frameBuffers.resize(m_imageCount);
-        for (uint32_t i = 0; i < m_imageCount; i++) {
+        for (u32 i = 0; i < m_imageCount; i++) {
             m_frameBuffers[i] = std::make_unique<Graphics::Framebuffer>(*this, i);
         }
     }
@@ -70,7 +74,7 @@ namespace Graphics {
         }
     }
 
-    void RenderPass::Begin(const Core::CommandBuffer& commandBuffer, const uint32_t imageIndex) {
+    void RenderPass::Begin(const Core::CommandBuffer& commandBuffer, const u32 imageIndex) {
         m_inFlightImageIndex = imageIndex;
 
         auto clearValues = m_attachments
@@ -80,7 +84,7 @@ namespace Graphics {
         const auto renderPassInfo = vk::RenderPassBeginInfo()
             .setRenderPass(m_handle)
             .setFramebuffer(**m_frameBuffers[imageIndex])
-            .setRenderArea(vk::Rect2D().setExtent(m_extent))
+            .setRenderArea(vk::Rect2D().setExtent({ static_cast<u32>(m_extent.x), static_cast<u32>(m_extent.y) }))
             .setClearValues(clearValues);
 
         commandBuffer->beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
@@ -88,14 +92,14 @@ namespace Graphics {
         const auto viewport = vk::Viewport()
             .setX(0.0f)
             .setY(0.0f)
-            .setWidth(static_cast<float>(m_extent.x))
-            .setHeight(static_cast<float>(m_extent.y))
+            .setWidth(m_extent.x)
+            .setHeight(m_extent.y)
             .setMinDepth(0.0f)
             .setMaxDepth(1.0f);
 
         const auto scissor = vk::Rect2D()
             .setOffset({0, 0})
-            .setExtent(m_extent);
+            .setExtent({ static_cast<u32>(m_extent.x), static_cast<u32>(m_extent.y) });
 
         commandBuffer->setViewport(0, viewport);
         commandBuffer->setScissor(0, scissor);
@@ -112,6 +116,15 @@ namespace Graphics {
     void RenderPass::Draw(const Core::CommandBuffer& commandBuffer) const {
         for (const auto& pipeline : m_pipelines) {
             pipeline->Bind(*commandBuffer);
+            pipeline->BindDescriptorSet(0, *commandBuffer, ECS::Scene::Get().MainCamera().DescriptorSet());
+            ECS::Scene::Get().Registry().group<ECS::Transform, ECS::RenderTarget>().each(
+            [&](const ECS::Transform& transform, const ECS::RenderTarget& renderTarget) {
+                for (const auto mesh : renderTarget.Targets() | std::views::keys) {
+                    pipeline->PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, transform.Matrix());
+                    mesh->Bind(*commandBuffer);
+                    mesh->Draw(*commandBuffer);
+                }
+            });
         }
     }
 
@@ -129,7 +142,7 @@ namespace Graphics {
     }
 
 
-    bool RenderPass::Resize(const uint32_t imageCount, const Math::Vector2<uint32_t>& extent) {
+    bool RenderPass::Resize(const u32 imageCount, const Math::Vector2<f32>& extent) {
         if ((m_imageCount == imageCount && m_extent == extent) || (extent.x == 0 || extent.y == 0)) {
             return false;
         }

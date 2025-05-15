@@ -13,7 +13,7 @@
 #include "memory/descriptor/setLayout.h"
 #include "memory/descriptor/set.h"
 
-namespace Compute {
+namespace Coral::Compute {
     Pipeline::Pipeline(Core::Shader* shader, std::string kernelName) : m_shader(shader), m_kernelName(std::move(kernelName)) {
         std::vector<Memory::Descriptor::SetLayout::Builder> setLayoutBuilders;
         for (const auto &[set, binding, type, count] : m_shader->Descriptors()) {
@@ -77,14 +77,14 @@ namespace Compute {
             vk::PipelineBindPoint::eCompute,
             m_pipelineLayout,
             setNumber,
-            descriptorSet.Handle(),
+            *descriptorSet,
             nullptr);
     }
 
     void Pipeline::BindDescriptorSets(const uint32_t startingSet, const vk::CommandBuffer commandBuffer, const std::vector<Memory::Descriptor::Set> & descriptorSets) const {
         std::vector<vk::DescriptorSet> sets;
         for (const auto &descriptorSet : descriptorSets) {
-            sets.push_back(descriptorSet.Handle());
+            sets.push_back(*descriptorSet);
         }
 
         commandBuffer.bindDescriptorSets(

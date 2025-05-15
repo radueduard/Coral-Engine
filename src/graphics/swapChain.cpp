@@ -14,7 +14,7 @@
 
 #include "core/scheduler.h"
 
-namespace Graphics {
+namespace Coral::Graphics {
     vk::SurfaceFormatKHR SwapChain::ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) {
         for (const auto &availableFormat : availableFormats) {
             // if (availableFormat.format == vk::Format::eA2B10G10R10UnormPack32 && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -37,9 +37,9 @@ namespace Graphics {
         return vk::PresentModeKHR::eFifo;
     }
 
-    Math::Vector2<uint32_t> SwapChain::ChooseExtent(const vk::SurfaceCapabilitiesKHR &capabilities, const Math::Vector2<uint32_t>& extent) {
+    Math::Vector2<u32> SwapChain::ChooseExtent(const vk::SurfaceCapabilitiesKHR &capabilities, const Math::Vector2<u32>& extent) {
         if (capabilities.currentExtent.width != UINT32_MAX) {
-            return capabilities.currentExtent;
+            return Math::Vector2<u32>(capabilities.currentExtent);
         }
         Math::Vector2<uint32_t> actualExtent = extent;
         actualExtent.x = std::max<uint32_t>(capabilities.minImageExtent.width, std::min<uint32_t>(capabilities.maxImageExtent.width, actualExtent.x));
@@ -71,7 +71,7 @@ namespace Graphics {
             .setMinImageCount(m_imageCount)
             .setImageFormat(m_surfaceFormat.format)
             .setImageColorSpace(m_surfaceFormat.colorSpace)
-            .setImageExtent(m_extent)
+            .setImageExtent({ static_cast<u32>(m_extent.x), static_cast<u32>(m_extent.y) })
             .setImageArrayLayers(1)
             .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
             .setImageSharingMode(vk::SharingMode::eExclusive)
@@ -94,7 +94,7 @@ namespace Graphics {
             m_swapChainImages.emplace_back(Memory::Image::Builder()
                 .Image(image)
                 .Format(m_surfaceFormat.format)
-                .Extent({ m_extent.x, m_extent.y, 1 })
+                .Extent({ static_cast<u32>(m_extent.x), static_cast<u32>(m_extent.y), 1u })
                 .UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
                 .MipLevels(1)
                 .LayersCount(1)
@@ -116,7 +116,7 @@ namespace Graphics {
             | std::ranges::to<std::vector<Memory::Image*>>();
     }
 
-    void SwapChain::Resize(const Math::Vector2<uint32_t>& newSize) {
+    void SwapChain::Resize(const Math::Vector2<f32>& newSize) {
         m_extent = newSize;
         Core::GlobalDevice()->waitIdle();
         CreateSwapChain();

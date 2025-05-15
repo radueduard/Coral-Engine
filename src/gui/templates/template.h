@@ -4,10 +4,9 @@
 
 
 #pragma once
-#include "../elements/element.h"
+#include "gui/elements/element.h"
 
-namespace GUI {
-	template <class T>
+namespace Coral::Reef {
 	class Template {
     public:
       	Template() = default;
@@ -15,7 +14,15 @@ namespace GUI {
 
 		Template(const Template&) = delete;
 		Template& operator=(const Template&) = delete;
-
-		virtual Element* Build(T* data) = 0;
     };
+
+	template <class T>
+	class ReadOnlyTemplate : public Template {
+		virtual Element* Build(const T& data) = 0;
+	};
+
+	template <class T>
+	class ReadWriteTemplate : public Template {
+		virtual Element* Build(T& data) = 0;
+	};
 }

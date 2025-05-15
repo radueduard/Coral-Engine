@@ -7,35 +7,53 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
 
-#include "graphics/objects/mesh.h"
 #include "graphics/objects/material.h"
+#include "graphics/objects/mesh.h"
 #include "graphics/objects/texture.h"
 #include "gui/layer.h"
 
-namespace Asset {
-    class Manager final : public GUI::Layer {
+#include "gui/templates/imageSettings.h"
+#include "gui/templates/bufferSettings.h"
+
+namespace Coral::Asset {
+    class Manager final : public Reef::Layer {
     public:
-        static void AddMesh(std::unique_ptr<Coral::Mesh> mesh);
-        static const Coral::Mesh* GetMesh(const boost::uuids::uuid& id);
-        static void RemoveMesh(const boost::uuids::uuid& id);
+		Manager();
+    	~Manager() override;
 
-        static void AddMaterial(std::unique_ptr<Coral::Material> material);
-        static const Coral::Material* GetMaterial(const boost::uuids::uuid& id);
-        static void RemoveMaterial(const boost::uuids::uuid& id);
+        void AddMesh(std::unique_ptr<Graphics::Mesh> mesh);
+        const Graphics::Mesh* GetMesh(const boost::uuids::uuid& id);
+        void RemoveMesh(const boost::uuids::uuid& id);
 
-        static void AddTexture(std::unique_ptr<Coral::Texture> texture);
-        static const Coral::Texture* GetTexture(const boost::uuids::uuid& id);
-        static void RemoveTexture(const boost::uuids::uuid& id);
+        void AddMaterial(std::unique_ptr<Graphics::Material> material);
+    	const Graphics::Material* GetMaterial(const boost::uuids::uuid& id);
+        void RemoveMaterial(const boost::uuids::uuid& id);
 
-        static Coral::Mesh* GetRandomMesh();
+        void AddTexture(std::unique_ptr<Graphics::Texture> texture);
+        const Graphics::Texture* GetTexture(const boost::uuids::uuid& id);
+        void RemoveTexture(const boost::uuids::uuid& id);
 
-        static void Init();
-        static void Destroy();
+        Graphics::Mesh* GetRandomMesh();
 
-    private:
+		static Manager& Get() {
+			return *instance;
+		}
+
+	protected:
+		void OnGUIAttach() override;
+
+	private:
+		inline static Manager* instance = nullptr;
+
         inline static auto idProvider = boost::uuids::random_generator();
-        inline static boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Coral::Mesh>> meshes {};
-        inline static boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Coral::Material>> materials {};
-        inline static boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Coral::Texture>> textures {};
+        boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Graphics::Mesh>> meshes {};
+        boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Graphics::Material>> materials {};
+        boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Graphics::Texture>> textures {};
+
+    	std::unique_ptr<Reef::ImageSettings> imageSettings = nullptr;
+    	Memory::Image::Builder imageBuilder {};
+
+    	std::unique_ptr<Reef::BufferSettings> bufferSettings = nullptr;
+    	Memory::Buffer::Builder bufferBuilder {};
     };
 }

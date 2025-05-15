@@ -15,20 +15,26 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/GltfMaterial.h>
+#include <glm/gtc/quaternion.hpp>
 
 #include "manager.h"
-#include "components/renderMesh.h"
+#include "../ecs/components/RenderTarget.h"
 #include "graphics/objects/mesh.h"
 #include "graphics/objects/textureArray.h"
 #include "graphics/objects/material.h"
-#include "project/scene.h"
+#include "../ecs/scene.h"
+#include "ecs/Entity.h"
 
-namespace Asset {
+namespace Coral::ECS {
+    struct Transform;
+}
+
+namespace Coral::Asset {
     Importer::Importer(const std::string &path) {
         m_path = path.substr(0, path.find_last_of('/'));
         m_name = path.substr(path.find_last_of('/') + 1);
 
-        constexpr auto flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace;
+        constexpr auto flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_GenBoundingBoxes;
         m_scene = _importer.ReadFile(path, flags);
 
         if (!m_scene || m_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_scene->mRootNode) {
@@ -74,9 +80,9 @@ namespace Asset {
             objectData["parent"] = parent;
             objectData["name"] = node->mName.C_Str();
             objectData["transform"] = nlohmann::json::object();
-            objectData["transform"]["position"] = {positionVector.x, positionVector.y, positionVector.z};
-            objectData["transform"]["rotation"] = {rotationVector.x, rotationVector.y, rotationVector.z};
-            objectData["transform"]["scale"] = {scaleVector.x, scaleVector.y, scaleVector.z};
+            objectData["transform"]["position"] = { positionVector.x, positionVector.y, positionVector.z };
+            objectData["transform"]["rotation"] = { rotationVector.x, rotationVector.y, rotationVector.z };
+            objectData["transform"]["scale"] = { scaleVector.x, scaleVector.y, scaleVector.z };
             objectData["meshes"] = nlohmann::json::array();
             for (uint32_t i = 0; i < node->mNumMeshes; i++) {
                 const auto meshId = node->mMeshes[i];
@@ -198,9 +204,11 @@ namespace Asset {
         for (const auto& [uuid, meshData] : m_metadata["meshes"].items()) {
             const auto assimpId = meshData["id"].get<uint32_t>();
             const auto mesh = m_scene->mMeshes[assimpId];
-            auto builder = Coral::Mesh::Builder(_stringToUuid(uuid))
-                .Name(mesh->mName.C_Str());
+			const auto aabb = mesh->mAABB;
 
+            auto builder = Graphics::Mesh::Builder(_stringToUuid(uuid))
+                .Name(mesh->mName.C_Str())
+        		.AABB(Math::AABB(Math::Vector3<f32>(aabb.mMin), Math::Vector3<f32>(aabb.mMax)));
 
             for (uint32_t j = 0; j < mesh->mNumVertices; j++) {
                 auto position = mesh->mVertices[j];
@@ -208,30 +216,30 @@ namespace Asset {
                 auto tangent = mesh->mTangents[j];
                 auto bitangent = mesh->mBitangents[j];
 
-                glm::vec2 texCoord0 = {0.0f, 0.0f};
+                Math::Vector2 texCoord0 = { 0.0f, 0.0f };
                 if (mesh->mTextureCoords[0] != nullptr) {
                     texCoord0 = {mesh->mTextureCoords[0][j].x, mesh->mTextureCoords[0][j].y};
                 }
-                glm::vec2 texCoord1 = {0.0f, 0.0f};
+                Math::Vector2 texCoord1 = { 0.0f, 0.0f };
                 if (mesh->mTextureCoords[1] != nullptr) {
                     texCoord1 = {mesh->mTextureCoords[1][j].x, mesh->mTextureCoords[1][j].y};
                 }
-                glm::vec4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+                Math::Color color = { 1.0f, 1.0f, 1.0f, 1.0f };
                 if (mesh->mColors[0] != nullptr) {
                     color = {mesh->mColors[0][j].r, mesh->mColors[0][j].g, mesh->mColors[0][j].b, mesh->mColors[0][j].a};
                 }
 
-                const auto N = glm::normalize(glm::vec3(normal.x, normal.y, normal.z));
-                const auto T = glm::normalize(glm::vec3(tangent.x, tangent.y, tangent.z));
-                const auto B = glm::normalize(glm::vec3(bitangent.x, bitangent.y, bitangent.z));
-                const auto sign = glm::dot(glm::cross(N, T), B) < 0.0f ? -1.0f : 1.0f;
+                const auto N = Math::Vector3<f32>(normal).Normalize();
+                const auto T = Math::Vector3<f32>(tangent).Normalize();
+                const auto B = Math::Vector3<f32>(bitangent).Normalize();
+                const auto sign = N.Cross(T).Dot(B) < 0.0f ? -1.0f : 1.0f;
 
                 builder.AddVertex({
-                    .position = {position.x, position.y, position.z},
+                    .position = { position.x, position.y, position.z },
                     .normal = N,
-                    .tangent = {T, sign},
-                    .texCoord0 = texCoord0,
-                    .texCoord1 = texCoord1,
+                    .tangent = Math::Vector4<f32>(T, sign),
+                    .texCoord0 = { texCoord0.x, texCoord0.y },
+                    .texCoord1 = { texCoord1.x, texCoord1.y },
                     .color0 = color
                 });
             }
@@ -243,7 +251,7 @@ namespace Asset {
                 }
             }
 
-            Manager::AddMesh(builder.Build());
+            Manager::Get().AddMesh(builder.Build());
         }
         meshesLoaded = true;
     }
@@ -259,7 +267,7 @@ namespace Asset {
             auto emissiveFactor = materialData["emissiveFactor"].get<std::array<float, 3>>();
             auto baseColorFactor = materialData["baseColorFactor"].get<std::array<float, 4>>();
 
-            auto builder = Coral::Material::Builder(_stringToUuid(uuid))
+            auto builder = Graphics::Material::Builder(_stringToUuid(uuid))
                 .Name(materialData["name"].get<std::string>())
                 .AlphaCutoff(materialData["alphaCutoff"].get<float>())
                 .DoubleSided(materialData["doubleSided"].get<uint32_t>())
@@ -270,9 +278,9 @@ namespace Asset {
 
             for (const auto& [textureType, textureUUID] : materialData["textures"].items()) {
                 const auto textureId = _stringToUuid(textureUUID.get<std::string>());
-                builder.AddTexture(textureType, Manager::GetTexture(textureId));
+                builder.AddTexture(textureType, Manager::Get().GetTexture(textureId));
             }
-            Manager::AddMaterial(builder.Build());
+            Manager::Get().AddMaterial(builder.Build());
         }
 
         materialsLoaded = true;
@@ -294,7 +302,7 @@ namespace Asset {
             if (!data) {
                 throw std::runtime_error("Failed to load texture: " + path);
             }
-            auto texture = Coral::Texture::Builder(_stringToUuid(uuid))
+            auto texture = Graphics::Texture::Builder(_stringToUuid(uuid))
                 .Name(path)
                 .Data(data)
                 .Width(width)
@@ -302,45 +310,47 @@ namespace Asset {
                 .Format(vk::Format::eR8G8B8A8Unorm)
                 .Build();
             stbi_image_free(data);
-            Manager::AddTexture(std::move(texture));
+            Manager::Get().AddTexture(std::move(texture));
         }
 
         texturesLoaded = true;
     }
 
-    GUI::Container<Coral::Scene> Importer::LoadScene() const {
-        auto scene = GUI::MakeContainer<Coral::Scene>();
+    Reef::Container<ECS::Scene> Importer::LoadScene() const {
+        auto scene = Reef::MakeContainer<ECS::Scene>();
 
         LoadMeshes();
         LoadMaterials();
 
-        boost::unordered_map<boost::uuids::uuid, Coral::Object*> objectMap;
+        boost::unordered_map<boost::uuids::uuid, ECS::Entity*> objectMap;
         for (const auto& [uuid, objectData] : m_metadata["objects"].items()) {
-            auto object = new Coral::Object(_stringToUuid(uuid), objectData["name"].get<std::string>());
-            object->position = { objectData["transform"]["position"][0].get<float>(),
+            auto object = new ECS::Entity(objectData["name"].get<std::string>());
+            object->Add<boost::uuids::uuid>(_stringToUuid(uuid));
+            auto& transform = object->Get<ECS::Transform>();
+            transform.position = { objectData["transform"]["position"][0].get<float>(),
                                 objectData["transform"]["position"][1].get<float>(),
                                 objectData["transform"]["position"][2].get<float>() };
-            object->rotation = { objectData["transform"]["rotation"][0].get<float>(),
+            transform.rotation = { objectData["transform"]["rotation"][0].get<float>(),
                                 objectData["transform"]["rotation"][1].get<float>(),
                                 objectData["transform"]["rotation"][2].get<float>() };
-            object->scale = { objectData["transform"]["scale"][0].get<float>(),
+            transform.scale = { objectData["transform"]["scale"][0].get<float>(),
                             objectData["transform"]["scale"][1].get<float>(),
                             objectData["transform"]["scale"][2].get<float>() };
-            objectMap[object->UUID()] = object;
+            objectMap[_stringToUuid(uuid)] = object;
         }
 
-        Coral::Object* root = nullptr;
+        ECS::Entity* root = nullptr;
         for (const auto& [uuid, objectData] : m_metadata["objects"].items()) {
             const auto childUUID = _stringToUuid(uuid);
             const auto parentUUID = _stringToUuid(objectData["parent"].get<std::string>());
 
             auto* child = objectMap[childUUID];
-            if (objectData.contains("meshes")) {
-                auto* renderTarget = child->Add<Coral::RenderMesh>();
+            if (objectData.contains("meshes") && !objectData["meshes"].empty()) {
+                auto& renderTarget = child->Add<ECS::RenderTarget>();
                 for (const auto& meshData : objectData["meshes"]) {
                     const auto meshUUID = _stringToUuid(meshData["mesh"].get<std::string>());
                     const auto materialUUID = _stringToUuid(meshData["material"].get<std::string>());
-                    renderTarget->Add(Manager::GetMesh(meshUUID), Manager::GetMaterial(materialUUID));
+                    renderTarget.Add(Manager::Get().GetMesh(meshUUID), Manager::Get().GetMaterial(materialUUID));
                 }
             }
 
@@ -350,7 +360,7 @@ namespace Asset {
                 root = objectMap[childUUID];
             }
         }
-        scene->Root()->AddChild(root);
+        scene->Root().AddChild(root);
         return scene;
     }
 

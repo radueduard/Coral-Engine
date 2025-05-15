@@ -13,12 +13,12 @@
 #include "gui/manager.h"
 #include "gui/viewport.h"
 
-namespace Core {
+namespace Coral::Core {
     class Frame;
 }
 
-namespace Project {
-    class RenderGraph {
+namespace Coral::Project {
+    class RenderGraph : public Reef::Layer {
     public:
         struct CreateInfo {
             const Core::Window& window;
@@ -36,24 +36,24 @@ namespace Project {
         };
 
         explicit RenderGraph(const CreateInfo& createInfo);
-        ~RenderGraph() {
-            m_viewport.reset();
-            GUI::g_manager = nullptr;
-        }
+        ~RenderGraph() override;
 
         void Update(float deltaTime) const;
         void Execute(const Core::Frame& frame);
-        void Resize(const vk::Extent2D& extent);
+        void Resize(const Math::Vector2<f32>& size, bool inner = false);
 
         [[nodiscard]] const Memory::Image& OutputImage(uint32_t frameIndex) const;
         [[nodiscard]] vk::Semaphore RenderFinished(uint32_t frameIndex) const;
 
-    private:
+	protected:
+		void OnGUIAttach() override;
+
+	private:
         bool m_guiEnabled = true;
-        std::unique_ptr<GUI::Manager> m_guiManager;
+        std::unique_ptr<Reef::Manager> m_guiManager;
         std::unique_ptr<Graphics::RenderPass> m_guiRenderPass;
         std::vector<std::unique_ptr<Core::CommandBuffer>> m_guiCommandBuffers;
-        GUI::Container<GUI::Viewport> m_viewport;
+        Reef::Container<Reef::Viewport> m_viewport;
 
         boost::uuids::random_generator_mt19937 m_generator;
         std::unordered_map<vk::QueueFlagBits, std::unique_ptr<Core::Queue>> m_queues;

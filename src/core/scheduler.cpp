@@ -12,23 +12,24 @@
 #include "memory/descriptor/pool.h"
 #include "project/renderGraph.h"
 
-namespace Core {
+namespace Coral::Core {
     Frame::Frame(const uint32_t imageIndex)
         : m_imageIndex(imageIndex) {
-        m_imageAvailable = Core::GlobalDevice()->createSemaphore({});
-        m_inFlightFence = Core::GlobalDevice()->createFence(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
-        m_readyToPresent = Core::GlobalDevice()->createSemaphore({});
+        m_imageAvailable = GlobalDevice()->createSemaphore({});
+        m_inFlightFence = GlobalDevice()->createFence(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
+        m_readyToPresent = GlobalDevice()->createSemaphore({});
     }
 
     Frame::~Frame() {
-        Core::GlobalDevice()->destroySemaphore(m_imageAvailable);
-        Core::GlobalDevice()->destroySemaphore(m_readyToPresent);
-        Core::GlobalDevice()->destroyFence(m_inFlightFence);
+        GlobalDevice()->destroySemaphore(m_imageAvailable);
+        GlobalDevice()->destroySemaphore(m_readyToPresent);
+        GlobalDevice()->destroyFence(m_inFlightFence);
     }
 
     Scheduler::Scheduler(const CreateInfo& createInfo)
         : m_window(createInfo.window), m_runtime(createInfo.runtime), m_imageCount(createInfo.imageCount)
     {
+        g_scheduler = this;
         CreateFrames();
 
         const auto swapChainCreateInfo = Graphics::SwapChain::CreateInfo {
@@ -47,11 +48,11 @@ namespace Core {
             .guiEnabled = true,
         };
 
-        m_renderGraph = std::make_unique<Project::RenderGraph>(renderGraphCreateInfo);
+        m_renderGraph = Reef::MakeContainer<Project::RenderGraph>(renderGraphCreateInfo);
     }
 
     Scheduler::~Scheduler() {
-        Core::GlobalDevice()->waitIdle();
+        GlobalDevice()->waitIdle();
     }
 
     void Scheduler::CreateDescriptorPool() {
@@ -99,7 +100,7 @@ namespace Core {
 
         m_renderGraph->Execute(currentFrame);
 
-        Core::GlobalDevice().RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
+        GlobalDevice().RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
             const Memory::Image& outputImage = m_renderGraph->OutputImage(currentFrame.ImageIndex());
             const Memory::Image& swapChainImage = *m_swapChain->SwapChainImages()[currentFrame.ImageIndex()];
 
@@ -127,7 +128,7 @@ namespace Core {
                     .setSrcOffset(vk::Offset3D(0, 0, 0))
                     .setDstSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
                     .setDstOffset(vk::Offset3D(0, 0, 0))
-                    .setExtent(outputImage.Extent());
+                    .setExtent(vk::Extent3D(outputImage.Extent()));
 
                 commandBuffer->resolveImage(
                     *outputImage,
@@ -162,7 +163,7 @@ namespace Core {
                     { vk::ImageCopy()
                         .setSrcSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
                         .setDstSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1))
-                        .setExtent(outputImage.Extent()) }
+                        .setExtent(vk::Extent3D(outputImage.Extent())) }
                 );
 
                 swapChainImageMemoryBarrier

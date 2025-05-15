@@ -4,7 +4,7 @@
 
 #include "pool.h"
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     Pool::Builder & Pool::Builder::AddPoolSize(const vk::DescriptorType type, const uint32_t count) {
         const auto poolSize = vk::DescriptorPoolSize()
             .setType(type)

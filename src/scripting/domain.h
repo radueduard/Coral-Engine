@@ -8,7 +8,9 @@
 
 #include <mono/jit/jit.h>
 
-class Engine;
+namespace Coral {
+    class Engine;
+}
 
 namespace Coral::Scripting {
     class Domain;
@@ -20,7 +22,7 @@ namespace Coral::Scripting {
             void operator()(const Domain* domain) const;
         };
 
-        friend class ::Engine;
+        friend class Engine;
         friend struct JitCleanup;
     public:
         static const Domain& Root();

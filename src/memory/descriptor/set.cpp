@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     Set::Builder & Set::Builder::WriteBuffer(const uint32_t binding, const vk::DescriptorBufferInfo &bufferInfo) {
         if (!m_layout.HasBinding(binding)) {
             std::cerr << "Binding " << binding << " not found in layout" << std::endl;
@@ -51,15 +51,15 @@ namespace Memory::Descriptor {
 
 
     Set::Set(Builder &builder) : m_pool{builder.m_pool}, m_layout{builder.m_layout} {
-        m_set = m_pool.Allocate(m_layout);
+        m_handle = m_pool.Allocate(m_layout);
         for (auto &write: builder.m_writes) {
-            write.setDstSet(m_set);
+            write.setDstSet(m_handle);
         }
         Core::GlobalDevice()->updateDescriptorSets(builder.m_writes, {});
     }
 
     Set::~Set() {
         Core::GlobalDevice()->waitIdle();
-        m_pool.Free(m_set);
+        m_pool.Free(m_handle);
     }
 }

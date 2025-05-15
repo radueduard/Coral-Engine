@@ -20,7 +20,7 @@
 
 #include <spirv_cross/spirv_glsl.hpp>
 
-#include "components/object.h"
+#include "ecs/Entity.h"
 #include "graphics/pipeline.h"
 #include "graphics/objects/mesh.h"
 
@@ -47,7 +47,7 @@ static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage
     }
 }
 
-namespace Core {
+namespace Coral::Core {
     Shader::Shader(const std::filesystem::path &path, const vk::ShaderStageFlagBits &stage)
         : m_path(path), m_stage(stage) {
         auto extension = path.extension().string();
@@ -166,8 +166,9 @@ namespace Core {
         auto codeCopy = code;
         std::regex pragmaRegex(R"(#pragma\s+([a-zA-Z_]\w*)\s*layout\s*\(\s*location\s*=\s*(\d+)\s*\)\s*in\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*;)");
         for (std::smatch match; std::regex_search(codeCopy, match, pragmaRegex); codeCopy = codeCopy.substr(match.position() + match.length())) {
-            bool isInput = std::ranges::any_of(Coral::Vertex::Attribute::AllValues(), [&match](const Coral::Vertex::Attribute::Values &attribute) {
-                return std::to_string(attribute) == match[1].str();
+			auto attributeValues = magic_enum::enum_values<Graphics::Vertex::Attribute>();
+        	bool isInput = std::ranges::any_of(attributeValues, [&match](const Graphics::Vertex::Attribute &attribute) {
+                return String(magic_enum::enum_name(attribute)) == match[1].str();
             });
             if (isInput) {
                 auto input = nlohmann::json::object();
@@ -185,7 +186,7 @@ namespace Core {
     vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) {
         const auto createInfo = vk::ShaderModuleCreateInfo()
             .setCode(buffer);
-        return Core::GlobalDevice()->createShaderModule(createInfo);
+        return GlobalDevice()->createShaderModule(createInfo);
     }
 
     std::vector<uint32_t> Shader::CompileGLSLToSpirV(const std::string &source, const vk::ShaderStageFlagBits & stage) {

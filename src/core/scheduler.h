@@ -10,29 +10,30 @@
 
 #include "device.h"
 #include "graphics/swapChain.h"
+#include "gui/container.h"
 #include "project/renderGraph.h"
 
 class Engine;
 
-namespace Core {
+namespace Coral::Core {
     class Window;
 }
 
-namespace GUI {
+namespace Coral::Reef {
     class Manager;
 }
 
-namespace Graphics {
+namespace Coral::Graphics {
     class RenderPass;
 }
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     class Pool;
     class SetLayout;
     class Set;
 }
 
-namespace Core {
+namespace Coral::Core {
     class Frame {
     public:
         explicit Frame(uint32_t imageIndex);
@@ -62,8 +63,7 @@ namespace Core {
     };
 
     class Scheduler {
-        friend class GUI::Manager;
-        friend class ::Engine;
+        friend class Reef::Manager;
     public:
         struct CreateInfo {
             const Window &window;
@@ -91,18 +91,15 @@ namespace Core {
         [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
         [[nodiscard]] auto Frames() { return m_frames | std::views::transform([](const auto& frame) { return frame.get(); }) | std::ranges::to<std::vector<Frame*>>(); }
 
-        [[nodiscard]] const Project::RenderGraph &RenderGraph() const { return *m_renderGraph; }
+        [[nodiscard]] Project::RenderGraph& RenderGraph() const { return *m_renderGraph; }
+        Project::RenderGraph& RenderGraph() { return *m_renderGraph; }
 
     private:
         const Window& m_window;
         const Runtime& m_runtime;
 
-        std::vector<std::unique_ptr<Memory::Image>> m_depthImages;
-        std::vector<std::unique_ptr<Memory::Image>> m_colorImages;
-
-
-        std::unique_ptr<GUI::Manager> m_guiManager;
-        std::unique_ptr<Project::RenderGraph> m_renderGraph;
+        std::unique_ptr<Reef::Manager> m_guiManager;
+        Reef::Container<Project::RenderGraph> m_renderGraph = nullptr;
         std::unique_ptr<Graphics::SwapChain> m_swapChain;
 
 
@@ -118,4 +115,9 @@ namespace Core {
         bool m_resized = false;
         vk::Extent2D m_extent;
     };
+
+    inline Scheduler* g_scheduler = nullptr;
+    static Scheduler &GlobalScheduler() {
+        return *g_scheduler;
+    }
 }

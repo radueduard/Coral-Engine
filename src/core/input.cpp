@@ -140,7 +140,7 @@ std::unordered_set allMouseButtons = {
 	MouseButton::MouseButton8
 };
 
-namespace Core {
+namespace Coral {
     std::unordered_map<Key, KeyState> Input::m_keyboardKeyStates;
     std::unordered_map<MouseButton, KeyState> Input::m_mouseButtonStates;
 

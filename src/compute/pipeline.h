@@ -6,17 +6,16 @@
 
 #include "shader/shader.h"
 
-namespace Core {
+namespace Coral::Core {
     class Device;
 }
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     class SetLayout;
     class Set;
 }
 
-namespace Compute {
-
+namespace Coral::Compute {
     class Pipeline {
     public:
         explicit Pipeline(Core::Shader*, std::string  kernelName = "main");

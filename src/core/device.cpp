@@ -14,7 +14,7 @@
 
 inline static std::thread::id mainThreadId = std::this_thread::get_id();
 
-namespace Core {
+namespace Coral::Core {
     Queue::Family::Family(const uint32_t index, const vk::QueueFamilyProperties &properties, const bool canPresent): m_index(index), m_properties(properties), m_canPresent(canPresent) {
         m_remainingQueues = properties.queueCount;
     }

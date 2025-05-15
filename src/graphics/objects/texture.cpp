@@ -12,30 +12,33 @@
 #include "memory/image.h"
 #include "memory/sampler.h"
 
-namespace Coral {
+namespace Coral::Graphics {
     Texture::Texture(const Builder &builder)
         : m_name(builder.m_name), m_usage(builder.m_usage) {
         const auto extent = vk::Extent3D(builder.m_width, builder.m_height, 1);
         const auto mipLevels = builder.m_createMipmaps ? static_cast<uint32_t>(std::floor(std::log2(std::max(builder.m_width, builder.m_height)))) + 1 : 1;
         m_image = Memory::Image::Builder()
             .Format(builder.m_format)
-            .Extent(extent)
+            .Extent({ builder.m_width, builder.m_height, 1 })
             .MipLevels(builder.m_createMipmaps ? mipLevels : 1)
             .SampleCount(vk::SampleCountFlagBits::e1)
             .InitialLayout(vk::ImageLayout::eUndefined)
-            .UsageFlags(vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+            .UsageFlags(vk::ImageUsageFlagBits::eTransferSrc)
+    		.UsageFlags(vk::ImageUsageFlagBits::eTransferDst)
+    		.UsageFlags(vk::ImageUsageFlagBits::eSampled)
             .Build();
 
         if (builder.m_data) {
-            const auto stagingBuffer = Memory::Buffer<glm::u8vec4>::Builder()
+            const auto stagingBuffer = Memory::Buffer::Builder()
+        		.InstanceSize(sizeof(Math::Vector4<u8>))
                 .InstanceCount(builder.m_width * builder.m_height)
                 .UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
                 .MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
                 .MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
                 .Build();
 
-            stagingBuffer->Map();
-            const auto copy = std::span(reinterpret_cast<glm::u8vec4*>(builder.m_data), builder.m_width * builder.m_height);
+            stagingBuffer->Map<Math::Vector4<u8>>();
+            const auto copy = std::span(reinterpret_cast<Math::Vector4<u8>*>(builder.m_data), builder.m_width * builder.m_height);
             stagingBuffer->Write(copy);
             stagingBuffer->Flush();
             stagingBuffer->Unmap();

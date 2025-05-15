@@ -7,8 +7,10 @@
 #include "pool.h"
 #include "setLayout.h"
 
-namespace Memory::Descriptor {
-    class Set {
+namespace Coral::Memory::Descriptor {
+    class Set final : public EngineWrapper<vk::DescriptorSet> {
+        friend class Pool;
+        friend class SetLayout;
     public:
         class Builder {
             friend class Set;
@@ -26,17 +28,13 @@ namespace Memory::Descriptor {
             std::vector<vk::WriteDescriptorSet> m_writes = {};
         };
 
-        [[nodiscard]] vk::DescriptorSet Handle() const { return m_set; }
-
         explicit Set(Builder &builder);
-        ~Set();
+        ~Set() override;
         Set(const Set &) = delete;
         Set &operator=(const Set &) = delete;
 
     private:
         const Pool &m_pool;
         const SetLayout &m_layout;
-
-        vk::DescriptorSet m_set;
     };
 }

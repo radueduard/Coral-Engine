@@ -8,11 +8,11 @@
 
 #include "utils/globalWrapper.h"
 
-namespace Core {
+namespace Coral::Core {
     class Runtime;
 }
 
-namespace Core {
+namespace Coral::Core {
     class PhysicalDevice final : public EngineWrapper<vk::PhysicalDevice> {
         friend class Runtime;
     public:

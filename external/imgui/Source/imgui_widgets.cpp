@@ -2599,7 +2599,8 @@ bool ImGui::DragScalar(ImGuiDataType data_type, void* p_data, float v_speed, con
 
     ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
-    const ImGuiID id = window->GetID(label.text);
+	const auto label_text = std::string("##") + label.text;
+	const ImGuiID id = window->GetID(label_text.c_str());
 
     const ImVec2 label_size = CalcTextSize(label.text, NULL, true);
     const float w = CalcItemWidth();
@@ -2678,8 +2679,9 @@ bool ImGui::DragScalar(ImGuiDataType data_type, void* p_data, float v_speed, con
             SetRoundedCorners(ImDrawFlags_RoundCornersRight);
         }
         const bool is_clamp_input = (flags & ImGuiSliderFlags_AlwaysClamp) != 0 && (p_min == NULL || p_max == NULL || DataTypeCompare(data_type, p_min, p_max) < 0);
-        bool result = TempInputScalar(frame_bb, id, label.text, data_type, p_data, format, is_clamp_input ? p_min : NULL, is_clamp_input ? p_max : NULL);
-        if (label.embedded) {
+		bool result = TempInputScalar(frame_bb, id, label_text.c_str(), data_type, p_data, format, is_clamp_input ? p_min : NULL, is_clamp_input ? p_max : NULL);
+
+    	if (label.embedded) {
             SetRoundedCorners();
         }
         return result;

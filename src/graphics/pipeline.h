@@ -12,12 +12,13 @@
 
 #include "../shader/shader.h"
 #include "memory/descriptor/set.h"
+#include "objects/mesh.h"
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     class SetLayout;
 }
 
-namespace Graphics {
+namespace Coral::Graphics {
     class RenderPass;
 
     class Pipeline {
@@ -42,6 +43,8 @@ namespace Graphics {
             Builder &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
 
             Builder &Subpass(uint32_t);
+
+        	Builder &BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)> &function);
 
             std::unique_ptr<Pipeline> Build();
         private:
@@ -74,6 +77,8 @@ namespace Graphics {
             vk::PipelineLayout m_pipelineLayout;
             RenderPass& m_renderPass;
             uint32_t m_subpass = 0;
+
+        	std::function<void(const vk::CommandBuffer&, const Mesh&)> m_bindFunction = nullptr;
         };
 
         explicit Pipeline(Builder &);
@@ -95,6 +100,8 @@ namespace Graphics {
 
         void BindDescriptorSet(uint32_t, vk::CommandBuffer, const Memory::Descriptor::Set &) const;
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
+
+        [[nodiscard]] const vk::PipelineLayout &Layout() const { return m_pipelineLayout; }
 
     private:
         vk::Pipeline m_pipeline;

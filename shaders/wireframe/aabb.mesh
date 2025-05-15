@@ -1,0 +1,59 @@
+#version 460 core
+
+#extension GL_EXT_mesh_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(lines, max_vertices = 8, max_primitives = 12) out;
+
+struct AABB {
+    vec3 min;
+    vec3 max;
+};
+
+layout(push_constant) uniform PushConstants {
+    AABB aabb;
+} pushConstants;
+
+layout(set = 0, binding = 0) uniform Camera {
+    mat4 view;
+    mat4 projection;
+    mat4 inverseView;
+    mat4 inverseProjection;
+} camera;
+
+layout (location = 0) out PerVertex {
+    vec4 color;
+} v_out[];
+
+void main() {
+    vec3 min = pushConstants.aabb.min;
+    vec3 max = pushConstants.aabb.max;
+
+    gl_MeshVerticesEXT[0] = vec4(min.x, min.y, min.z, 1.0);
+    gl_MeshVerticesEXT[1] = vec4(max.x, min.y, min.z, 1.0);
+    gl_MeshVerticesEXT[2] = vec4(max.x, max.y, min.z, 1.0);
+    gl_MeshVerticesEXT[3] = vec4(min.x, max.y, min.z, 1.0);
+    gl_MeshVerticesEXT[4] = vec4(min.x, min.y, max.z, 1.0);
+    gl_MeshVerticesEXT[5] = vec4(max.x, min.y, max.z, 1.0);
+    gl_MeshVerticesEXT[6] = vec4(max.x, max.y, max.z, 1.0);
+    gl_MeshVerticesEXT[7] = vec4(min.x, max.y, max.z, 1.0);
+
+    gl_PrimitiveLineIndicesEXT[0] = uvec2(0, 1);
+    gl_PrimitiveLineIndicesEXT[1] = uvec2(1, 2);
+    gl_PrimitiveLineIndicesEXT[2] = uvec2(2, 3);
+    gl_PrimitiveLineIndicesEXT[3] = uvec2(3, 0);
+    gl_PrimitiveLineIndicesEXT[4] = uvec2(4, 5);
+    gl_PrimitiveLineIndicesEXT[5] = uvec2(5, 6);
+    gl_PrimitiveLineIndicesEXT[6] = uvec2(6, 7);
+    gl_PrimitiveLineIndicesEXT[7] = uvec2(7, 4);
+    gl_PrimitiveLineIndicesEXT[8] = uvec2(0, 4);
+    gl_PrimitiveLineIndicesEXT[9] = uvec2(1, 5);
+    gl_PrimitiveLineIndicesEXT[10] = uvec2(2, 6);
+    gl_PrimitiveLineIndicesEXT[11] = uvec2(3, 7);
+
+    for (int i = 0; i < 12; ++i) {
+        v_out[i].color = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+
+    SetMeshOutputsEXT(8, 12);
+}

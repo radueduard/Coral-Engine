@@ -6,8 +6,9 @@
 #include "input.h"
 
 #include <iostream>
+#include <stb_image.h>
 
-namespace Core {
+namespace Coral::Core {
     Window::Window(const CreateInfo& createInfo) : m_info(createInfo) {
         if (const auto result = glfwInit(); result == GLFW_FALSE) {
             std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -18,7 +19,9 @@ namespace Core {
         // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
         // glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
-        auto [width, height] = createInfo.extent;
+
+        const u32 width = createInfo.extent.width;
+        const u32 height = createInfo.extent.height;
 
         if (createInfo.fullscreen) {
             m_monitor = glfwGetPrimaryMonitor();
@@ -27,9 +30,9 @@ namespace Core {
             }
 
             m_videoMode = glfwGetVideoMode(m_monitor);
-            m_info.extent = vk::Extent2D {
-                static_cast<unsigned int>(m_videoMode->width),
-                static_cast<unsigned int>(m_videoMode->height)
+            m_info.extent = Math::Vector2 {
+                static_cast<u32>(m_videoMode->width),
+                static_cast<u32>(m_videoMode->height)
             };
         } else {
             m_monitor = nullptr;
@@ -37,8 +40,8 @@ namespace Core {
         }
 
         m_window = glfwCreateWindow(
-            static_cast<int>(width),
-            static_cast<int>(height),
+            static_cast<i32>(width),
+            static_cast<i32>(height),
             createInfo.title.c_str(),
             m_monitor,
             nullptr);
@@ -46,6 +49,14 @@ namespace Core {
         if (m_window == nullptr) {
             std::cerr << "Failed to create window" << std::endl;
         }
+
+        GLFWimage images[1];
+        images[0].pixels = stbi_load("assets/icons/logo.png", &images[0].width, &images[0].height, nullptr, 4);
+        if (images[0].pixels == nullptr) {
+            std::cerr << "Failed to load window icon" << std::endl;
+        }
+        glfwSetWindowIcon(m_window, 1, images);
+        stbi_image_free(images[0].pixels);
 
         glfwSetWindowUserPointer(m_window, this);
 
@@ -86,7 +97,7 @@ namespace Core {
 	void Window::FramebufferResize(GLFWwindow* window, const int width, const int height) {
     	const auto app = static_cast<Window*>(glfwGetWindowUserPointer(window));
 
-    	app->m_info.extent = vk::Extent2D { static_cast<unsigned int>(width), static_cast<unsigned int>(height) };
+    	app->m_info.extent = { static_cast<u32>(width), static_cast<u32>(height) };
     	if (width == 0 || height == 0) {
     		app->Pause();
     	} else {

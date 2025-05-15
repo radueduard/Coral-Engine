@@ -32,5 +32,11 @@
   }, {
     "name" : "stb",
     "version>=" : "2024-07-29#1"
+  }, {
+    "name" : "entt",
+    "version>=" : "3.14.0"
+  }, {
+    "name" : "magic-enum",
+    "version>=" : "0.9.7#1"
   } ]
 }

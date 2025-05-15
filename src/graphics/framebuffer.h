@@ -6,7 +6,7 @@
 #include "renderPass.h"
 #include "utils/globalWrapper.h"
 
-namespace Graphics {
+namespace Coral::Graphics {
 	class Framebuffer final : public EngineWrapper<vk::Framebuffer> {
 	public:
 		explicit Framebuffer(const RenderPass& renderPass, uint32_t index);

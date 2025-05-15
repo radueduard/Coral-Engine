@@ -6,7 +6,7 @@
 
 #include <core/device.h>
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     class SetLayout final : public EngineWrapper<vk::DescriptorSetLayout> {
     public:
         class Builder {

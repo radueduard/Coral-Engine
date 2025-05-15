@@ -12,11 +12,11 @@
 #include "memory/image.h"
 #include "memory/imageView.h"
 
-namespace Core {
+namespace Coral::Core {
     class Device;
 }
 
-namespace Graphics {
+namespace Coral::Graphics {
     class CubeMap {
     public:
         class Builder {

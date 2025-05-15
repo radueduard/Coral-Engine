@@ -7,7 +7,7 @@
 #include <iostream>
 #include <ranges>
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     SetLayout::Builder & SetLayout::Builder::AddBinding(
         const uint32_t binding,
         const vk::DescriptorType type,

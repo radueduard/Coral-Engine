@@ -9,31 +9,24 @@
 #include "element.h"
 #include "imgui.h"
 
-namespace GUI {
+namespace Coral::Reef {
 	class Separator final : public Element {
 	public:
-		enum Direction {
-            Horizontal,
-            Vertical
-        };
-
-		explicit Separator(const Direction direction = Horizontal, const float size = 1.f) : m_size(size), m_direction(direction) {}
-		~Separator() override = default;
-
-		void Render() override {
-			m_outerBounds = m_parent->AllocatedArea(this);
-			m_innerBounds = m_outerBounds;
-			m_requiredArea = { 0, m_size };
-
-			ImGui::SetCursorScreenPos(m_innerBounds.min);
-
-			ImGui::SeparatorEx(
-				ImGuiSeparatorFlags_SpanAllColumns | (m_direction == Horizontal ? ImGuiSeparatorFlags_Horizontal : ImGuiSeparatorFlags_Vertical),
-				m_size
-			);
+		explicit Separator(
+			const f32 size = 1.f,
+			const Style& style = Style {
+				.padding = { 0.f, 0.f, 1.f, 1.f },
+				.backgroundColor = { .8f, .8f, .8f, 1.f },
+			}) : Element(style), m_size(size)
+		{
+			if (m_axis == Horizontal) {
+				m_baseSize = { Grow, m_size + m_padding.top + m_padding.bottom };
+			} else {
+				m_baseSize = { m_size + m_padding.left + m_padding.right, Grow };
+			}
 		}
+		~Separator() override = default;
 	private:
-		float m_size = 1.f;
-		Direction m_direction = Horizontal;
+		f32 m_size = 1.f;
     };
 }

@@ -14,7 +14,7 @@
 #include "memory/imageView.h"
 #include "memory/sampler.h"
 
-namespace PBR
+namespace Coral::PBR
 {
     class Usage
     {
@@ -106,7 +106,7 @@ namespace PBR
     };
 }
 
-namespace Coral {
+namespace Coral::Graphics {
     class Texture {
     public:
         class Builder {
@@ -164,12 +164,12 @@ namespace Coral {
             }
 
         private:
-            boost::uuids::uuid m_uuid;
-            std::string m_name;
+            UUID m_uuid;
+            String m_name;
             vk::Format m_format = vk::Format::eR8G8B8A8Unorm;
-            uint8_t* m_data = nullptr;
-            uint32_t m_width = 1;
-            uint32_t m_height = 1;
+            u8* m_data = nullptr;
+            u32 m_width = 1;
+            u32 m_height = 1;
             std::optional<PBR::Usage> m_usage = std::nullopt;
             bool m_createMipmaps = false;
         };
@@ -183,7 +183,7 @@ namespace Coral {
         [[nodiscard]] const boost::uuids::uuid& UUID() const { return m_uuid; }
         [[nodiscard]] const std::string& Name() const { return m_name; }
         [[nodiscard]] vk::DescriptorImageInfo DescriptorInfo() const { return m_descriptorInfo; }
-        [[nodiscard]] vk::Extent3D Extent() const { return m_image->Extent(); }
+        [[nodiscard]] Math::Vector3<u32> Extent() const { return m_image->Extent(); }
 
         [[nodiscard]] const Memory::Image& Image() const { return *m_image; }
         [[nodiscard]] const Memory::ImageView& ImageView(
@@ -226,26 +226,26 @@ namespace Coral {
 
 namespace std {
     template<>
-    struct hash<PBR::Usage> {
-        size_t operator()(const PBR::Usage& usage) const noexcept {
+    struct hash<Coral::PBR::Usage> {
+        size_t operator()(const Coral::PBR::Usage& usage) const noexcept {
             return hash<uint32_t>()(static_cast<uint32_t>(usage.Value()));
         }
     };
 
-    inline string to_string(const PBR::Usage::Values& usage) {
+    inline string to_string(const Coral::PBR::Usage::Values& usage) {
         switch (usage) {
-            case PBR::Usage::Values::Albedo: return "Albedo";
-            case PBR::Usage::Values::Normal: return "Normal";
-            case PBR::Usage::Values::Roughness: return "Roughness";
-            case PBR::Usage::Values::Metalic: return "Metalic";
-            case PBR::Usage::Values::AmbientOcclusion: return "AmbientOcclusion";
-            case PBR::Usage::Values::Emissive: return "Emissive";
-            case PBR::Usage::Values::Height: return "Height";
+            case Coral::PBR::Usage::Values::Albedo: return "Albedo";
+            case Coral::PBR::Usage::Values::Normal: return "Normal";
+            case Coral::PBR::Usage::Values::Roughness: return "Roughness";
+            case Coral::PBR::Usage::Values::Metalic: return "Metalic";
+            case Coral::PBR::Usage::Values::AmbientOcclusion: return "AmbientOcclusion";
+            case Coral::PBR::Usage::Values::Emissive: return "Emissive";
+            case Coral::PBR::Usage::Values::Height: return "Height";
             default: throw std::runtime_error("Unknown texture usage");
         }
     }
 
-    inline string to_string(const PBR::Usage& usage) {
+    inline string to_string(const Coral::PBR::Usage& usage) {
         return to_string(usage.Value());
     }
 }

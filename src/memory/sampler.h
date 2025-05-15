@@ -8,13 +8,13 @@
 
 #include "utils/globalWrapper.h"
 
-namespace Core {
+namespace Coral::Core {
     class Device;
 }
 
-namespace Memory {
+namespace Coral::Memory {
 
-class Sampler final : public EngineWrapper<vk::Sampler> {
+    class Sampler final : public EngineWrapper<vk::Sampler> {
     public:
         struct CreateInfo {
             vk::Filter magFilter = vk::Filter::eLinear;
