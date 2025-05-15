@@ -6,18 +6,23 @@
 
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <unordered_map>
 
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
+#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 #include "core/device.h"
 #include "utils/file.h"
 
 #include <spirv_cross/spirv_glsl.hpp>
 
+#include "ecs/Entity.h"
 #include "graphics/pipeline.h"
+#include "graphics/objects/mesh.h"
 
 static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage) {
     switch (stage) {
@@ -42,7 +47,7 @@ static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage
     }
 }
 
-namespace Core {
+namespace Coral::Core {
     Shader::Shader(const std::filesystem::path &path, const vk::ShaderStageFlagBits &stage)
         : m_path(path), m_stage(stage) {
         auto extension = path.extension().string();
@@ -72,6 +77,7 @@ namespace Core {
         } else if (glslExtensions.contains(extension)) {
             m_stage = glslExtensions.at(extension);
             const auto code = Utils::ReadTextFile(path);
+            m_analysis = AnalyzeShader();
             m_spirVCode = CompileGLSLToSpirV(code, m_stage);
             m_handle = LoadSpirVShader(m_spirVCode);
         } else {
@@ -149,10 +155,38 @@ namespace Core {
         } // ePushConstant
     }
 
+    nlohmann::json Shader::AnalyzeShader() const {
+        auto code = Utils::ReadTextFile(m_path);
+        auto analysis = nlohmann::json::object();
+        analysis["name"] = m_path.filename().string();
+        analysis["path"] = m_path.generic_string();
+        analysis["stage"] = std::to_string(m_stage);
+        analysis["inputs"] = nlohmann::json::array();
+
+        auto codeCopy = code;
+        std::regex pragmaRegex(R"(#pragma\s+([a-zA-Z_]\w*)\s*layout\s*\(\s*location\s*=\s*(\d+)\s*\)\s*in\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*;)");
+        for (std::smatch match; std::regex_search(codeCopy, match, pragmaRegex); codeCopy = codeCopy.substr(match.position() + match.length())) {
+			auto attributeValues = magic_enum::enum_values<Graphics::Vertex::Attribute>();
+        	bool isInput = std::ranges::any_of(attributeValues, [&match](const Graphics::Vertex::Attribute &attribute) {
+                return String(magic_enum::enum_name(attribute)) == match[1].str();
+            });
+            if (isInput) {
+                auto input = nlohmann::json::object();
+                input["attribute"] = match[1].str();
+                input["location"] = std::stoi(match[2].str());
+                input["type"] = match[3].str();
+                input["name"] = match[4].str();
+                analysis["inputs"].push_back(input);
+            }
+        }
+
+        return analysis;
+    }
+
     vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) {
         const auto createInfo = vk::ShaderModuleCreateInfo()
             .setCode(buffer);
-        return Core::GlobalDevice()->createShaderModule(createInfo);
+        return GlobalDevice()->createShaderModule(createInfo);
     }
 
     std::vector<uint32_t> Shader::CompileGLSLToSpirV(const std::string &source, const vk::ShaderStageFlagBits & stage) {

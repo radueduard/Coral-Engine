@@ -1,0 +1,42 @@
+{
+  "name" : "coral",
+  "version-string" : "1.0.0",
+  "builtin-baseline" : "782ccc18d8b819cdef6794a6c03eb3d9f7cd04aa",
+  "dependencies" : [ {
+    "name" : "assimp",
+    "version>=" : "5.4.3"
+  }, {
+    "name" : "boost-unordered",
+    "version>=" : "1.87.0#1"
+  }, {
+    "name" : "boost-uuid",
+    "version>=" : "1.87.0"
+  }, {
+    "name" : "glfw3",
+    "version>=" : "3.4#1"
+  }, {
+    "name" : "glslang",
+    "version>=" : "15.1.0"
+  }, {
+    "name" : "nlohmann-json",
+    "version>=" : "3.11.3#1"
+  }, {
+    "name" : "spirv-cross",
+    "version>=" : "1.4.304.1"
+  }, {
+    "name" : "spirv-headers",
+    "version>=" : "1.4.304.1"
+  }, {
+    "name" : "spirv-tools",
+    "version>=" : "1.4.304.1"
+  }, {
+    "name" : "stb",
+    "version>=" : "2024-07-29#1"
+  }, {
+    "name" : "entt",
+    "version>=" : "3.14.0"
+  }, {
+    "name" : "magic-enum",
+    "version>=" : "0.9.7#1"
+  } ]
+}

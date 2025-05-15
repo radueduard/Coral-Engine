@@ -1,8 +1,6 @@
 //
 // Created by radue on 3/1/2025.
 //
-
-
 #pragma once
 
 template <typename U>

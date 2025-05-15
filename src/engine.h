@@ -6,28 +6,31 @@
 #include <memory>
 
 #include "core/scheduler.h"
-#include "assets/manager.h"
+#include "scripting/domain.h"
 
-namespace Core {
+namespace Coral::Core {
     class Window;
     class Runtime;
-    class Device;
 }
 
-namespace Asset {
-    class Manager;
+namespace Coral {
+	namespace Asset {
+		class Manager;
+	}
+
+	class Engine {
+    public:
+        Engine();
+        ~Engine();
+
+        void Run() const;
+
+    private:
+        std::unique_ptr<Core::Window> m_window;
+        std::unique_ptr<Scripting::Domain> m_scriptingDomain;
+        std::unique_ptr<Core::Runtime> m_runtime;
+        std::unique_ptr<Core::Device> m_device;
+        std::unique_ptr<Core::Scheduler> m_scheduler;
+    	std::unique_ptr<Asset::Manager> m_assetManager;
+    };
 }
-
-class Engine {
-public:
-    Engine();
-    ~Engine() = default;
-
-    void Run() const;
-
-private:
-    std::unique_ptr<Core::Window> m_window;
-    std::unique_ptr<Core::Runtime> m_runtime;
-    std::unique_ptr<Core::Device> m_device;
-    std::unique_ptr<Core::Scheduler> m_scheduler;
-};

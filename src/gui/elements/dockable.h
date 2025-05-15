@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include <memory>
+
 #include <string>
 #include <utility>
 
@@ -11,64 +11,61 @@
 #include "element.h"
 #include "imgui.h"
 
-namespace GUI {
-    class Dockable final : public Element {
-    public:
-        Dockable(std::string  name, Element* child = nullptr, const Math::Vector2<float>& padding = 0.f, ContextMenu* contextMenu = nullptr)
-            : m_name(std::move(name)), m_child(child), m_contextMenu(contextMenu), m_padding(padding) {
-            if (m_child != nullptr) {
-                m_child->AttachTo(this);
-            }
-        }
+namespace Coral::Reef {
+    struct Dockable final : Element {
+        explicit Dockable(
+            String name,
+            const Style& style,
+            const std::initializer_list<Element*> children = {},
+            std::function<void(Math::Vector2<f32>)> onResize = nullptr,
+            ContextMenu* contextMenu = nullptr)
+        : Element(style, children), m_name(std::move(name)), m_minSize(style.size), m_onResize(std::move(onResize)), m_contextMenu(contextMenu) {}
+
         ~Dockable() override = default;
 
         Dockable(const Dockable&) = delete;
         Dockable& operator=(const Dockable&) = delete;
 
-        void Render() override {
+		bool Render() override {
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(m_minSize.width, m_minSize.height));
             ImGui::Begin(m_name.c_str(), nullptr, ImGuiWindowFlags_NoCollapse);
 
-            if (m_contextMenu != nullptr)
-                m_contextMenu->Show();
+            const auto size = Math::Vector2<f32>(ImGui::GetContentRegionAvail());
+            const auto position = Math::Vector2<f32>(ImGui::GetCursorScreenPos());
 
-            const auto startPoint = ImGui::GetCursorScreenPos();
-            const auto contentRegionAvail = ImGui::GetContentRegionAvail();
+            if (m_baseSize != size) {
+                m_baseSize = size;
+                m_position = position;
+                ComputeLayout();
 
-            const Math::Vector2 outerTopLeft = { startPoint.x, startPoint.y };
-            const Math::Vector2 outerBottomRight = { startPoint.x + contentRegionAvail.x, startPoint.y + contentRegionAvail.y };
-
-            const Math::Vector2 innerTopLeft = {
-                startPoint.x + m_padding.x,
-                startPoint.y + m_padding.y
-            };
-
-            const Math::Vector2 innerBottomRight = outerBottomRight - m_padding;
-
-            m_outerBounds = Math::Rect { outerTopLeft, outerBottomRight };
-            m_innerBounds = Math::Rect { innerTopLeft, innerBottomRight };
-
-            if (m_child != nullptr) {
-                m_child->Render();
+                if (m_onResize) {
+                    m_onResize(size);
+                }
+            } else if (m_position != position) {
+                SetPosition(position);
             }
 
-            ImGui::End();
-        }
+			const String childName = "##" + m_name + "Child";
+			ImGui::BeginChild(childName.c_str(), ImVec2(size.width, size.height), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+			if (Element::Render()) {
+				ComputeLayout();
+			}
+			ImGui::EndChild();
+			if (m_contextMenu) {
+				m_contextMenu->Render();
+			}
+			ImGui::End();
 
-        Math::Rect AllocatedArea(Element *element) const override {
-            if (element == m_child.get()) {
-                return m_innerBounds;
-            }
-            return Math::Rect::Zero();
-        }
+            ImGui::PopStyleVar();
 
-        [[nodiscard]] const Element& Child() const { return *m_child; }
+
+			return false;
+        }
 
     private:
-        std::string m_name;
-
-        std::unique_ptr<Element> m_child;
-        std::unique_ptr<ContextMenu> m_contextMenu = nullptr;
-
-        Math::Vector2<float> m_padding = { 0.f, 0.f };
+        String m_name;
+        Math::Vector2<f32> m_minSize;
+        std::function<void(Math::Vector2<f32>)> m_onResize;
+    	std::unique_ptr<ContextMenu> m_contextMenu;
     };
 }

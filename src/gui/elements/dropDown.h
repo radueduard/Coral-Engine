@@ -2,33 +2,32 @@
 // Created by radue on 3/2/2025.
 //
 
-
 #pragma once
+
 #include <type_traits>
-#include <utility>
-
 #include "element.h"
+#include "magic_enum/magic_enum.hpp"
 
-namespace GUI {
-	template <typename T, typename = std::enable_if_t<std::is_enum_v<T>>, typename = std::enable_if_t<std::is_same_v<std::string, decltype(std::to_string(std::declval<T>()))>>>
+namespace Coral::Reef {
+	template <typename T> requires std::is_enum_v<T>
 	class DropDown final : public Element {
 	public:
-		DropDown(std::string name, T* value) : m_name(std::move(name)), m_value(value) {}
+		DropDown(std::string name, T* value, UnorderedSet<T> excluded, const Style& style = Style())
+			: Element(style), m_name(std::move(name)), m_value(value), m_excluded(std::move(excluded)) {}
 		~DropDown() override = default;
 
-		void Render() override {
-			m_requiredArea = { 250 , 2 * ImGui::GetStyle().FramePadding.y + ImGui::GetFontSize() + 2 * ImGui::GetStyle().FrameBorderSize };
-			m_outerBounds = m_parent->AllocatedArea(this);
-			m_innerBounds = m_outerBounds;
+		bool Render() override {
+			const bool shouldReset = Element::Render();
 
-			ImGui::SetCursorScreenPos(m_innerBounds.min);
-
-			ImGui::SetNextItemWidth(m_requiredArea.x);
-			if (ImGui::BeginCombo(("##" + m_name).c_str(), std::to_string(*m_value).c_str())) {
-				for (int i = 0; i < static_cast<int>(T::Count); i++) {
-					const bool isSelected = *m_value == static_cast<T>(i);
-					if (ImGui::Selectable(std::to_string(static_cast<T>(i)).c_str(), isSelected)) {
-						*m_value = static_cast<T>(i);
+			ImGui::SetNextItemWidth(m_currentSize.width - m_padding.left - m_padding.right);
+			if (ImGui::BeginCombo(("##" + m_name).c_str(), magic_enum::enum_name(*m_value).data(), ImGuiComboFlags_HeightLarge)) {
+				for (auto [value, name] : magic_enum::enum_entries<T>()) {
+					if (m_excluded.contains(value) || name.empty()) {
+						continue;
+					}
+					const bool isSelected = *m_value == value;
+					if (ImGui::Selectable(name.data(), isSelected)) {
+						*m_value = static_cast<T>(value);
 					}
 					if (isSelected) {
 						ImGui::SetItemDefaultFocus();
@@ -36,10 +35,13 @@ namespace GUI {
 				}
 				ImGui::EndCombo();
 			}
+
+			return shouldReset;
 		}
 
 	private:
-		std::string m_name;
+		String m_name;
 		T* m_value;
+		UnorderedSet<T> m_excluded {};
     };
 }

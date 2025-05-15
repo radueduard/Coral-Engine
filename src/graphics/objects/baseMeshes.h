@@ -9,10 +9,12 @@
 #include "mesh.h"
 
 
-namespace mgv {
-	class Camera;
+namespace Coral {
+	namespace ECS {
+		class Camera;
+	}
 
-	std::unique_ptr<Mesh> Cube();
-	std::unique_ptr<Mesh> Sphere();
-	std::unique_ptr<Mesh> Frustum(const Camera *camera);
+	std::unique_ptr<Graphics::Mesh> Cube();
+	std::unique_ptr<Graphics::Mesh> Sphere();
+	std::unique_ptr<Graphics::Mesh> Frustum(const ECS::Camera *camera);
 }

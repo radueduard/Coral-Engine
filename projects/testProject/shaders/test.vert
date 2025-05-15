@@ -34,9 +34,9 @@ layout(location = 0) out VertexData
 
 void main()
 {
-    vec3 position = vec3(model * vec4(position, 1.0));
-    vertexData.position = position;
-    vertexData.normal = mat3(transpose(inverse(model))) * normal;
+    vec3 p = vec3(model.model * vec4(position, 1.0));
+    vertexData.position = p;
+    vertexData.normal = mat3(transpose(inverse(model.model))) * normal;
     vertexData.texCoord0 = texCoord0;
-    gl_Position = viewProjection * vec4(position, 1.0);
+    gl_Position = viewProjection * vec4(p, 1.0);
 }

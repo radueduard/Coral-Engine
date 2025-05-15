@@ -13,11 +13,11 @@
 #include "core/runtime.h"
 #include "utils/globalWrapper.h"
 
-namespace Core {
+namespace Coral::Core {
     class PhysicalDevice;
 }
 
-namespace Core {
+namespace Coral::Core {
     class Device;
 
     inline Device* g_device = nullptr;

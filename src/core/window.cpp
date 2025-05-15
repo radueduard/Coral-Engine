@@ -6,8 +6,9 @@
 #include "input.h"
 
 #include <iostream>
+#include <stb_image.h>
 
-namespace Core {
+namespace Coral::Core {
     Window::Window(const CreateInfo& createInfo) : m_info(createInfo) {
         if (const auto result = glfwInit(); result == GLFW_FALSE) {
             std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -18,7 +19,9 @@ namespace Core {
         // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
         // glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
-        auto [width, height] = createInfo.extent;
+
+        const u32 width = createInfo.extent.width;
+        const u32 height = createInfo.extent.height;
 
         if (createInfo.fullscreen) {
             m_monitor = glfwGetPrimaryMonitor();
@@ -27,9 +30,9 @@ namespace Core {
             }
 
             m_videoMode = glfwGetVideoMode(m_monitor);
-            m_info.extent = vk::Extent2D {
-                static_cast<unsigned int>(m_videoMode->width),
-                static_cast<unsigned int>(m_videoMode->height)
+            m_info.extent = Math::Vector2 {
+                static_cast<u32>(m_videoMode->width),
+                static_cast<u32>(m_videoMode->height)
             };
         } else {
             m_monitor = nullptr;
@@ -37,8 +40,8 @@ namespace Core {
         }
 
         m_window = glfwCreateWindow(
-            static_cast<int>(width),
-            static_cast<int>(height),
+            static_cast<i32>(width),
+            static_cast<i32>(height),
             createInfo.title.c_str(),
             m_monitor,
             nullptr);
@@ -47,13 +50,21 @@ namespace Core {
             std::cerr << "Failed to create window" << std::endl;
         }
 
+        GLFWimage images[1];
+        images[0].pixels = stbi_load("assets/icons/logo.png", &images[0].width, &images[0].height, nullptr, 4);
+        if (images[0].pixels == nullptr) {
+            std::cerr << "Failed to load window icon" << std::endl;
+        }
+        glfwSetWindowIcon(m_window, 1, images);
+        stbi_image_free(images[0].pixels);
+
         glfwSetWindowUserPointer(m_window, this);
 
-        glfwSetKeyCallback(m_window, Callbacks::keyCallback);
-        glfwSetCursorPosCallback(m_window, Callbacks::mouseMoveCallback);
-        glfwSetMouseButtonCallback(m_window, Callbacks::mouseButtonCallback);
-        glfwSetScrollCallback(m_window, Callbacks::scrollCallback);
-        glfwSetFramebufferSizeCallback(m_window, Callbacks::framebufferResize);
+        glfwSetKeyCallback(m_window, Input::Callbacks::keyCallback);
+        glfwSetCursorPosCallback(m_window, Input::Callbacks::mouseMoveCallback);
+        glfwSetMouseButtonCallback(m_window, Input::Callbacks::mouseButtonCallback);
+        glfwSetScrollCallback(m_window, Input::Callbacks::scrollCallback);
+        glfwSetFramebufferSizeCallback(m_window, FramebufferResize);
     }
 
     Window::~Window() {
@@ -83,53 +94,15 @@ namespace Core {
         m_lastTime = currentTime;
     }
 
-    void Window::Callbacks::keyCallback(GLFWwindow *, int key, int, const int action, int) {
-        const auto k = static_cast<Key>(key);
-        switch (action) {
-            case GLFW_PRESS:
-                Input::m_keyboardKeyStates[k] = Pressed;
-            break;
-            case GLFW_RELEASE:
-                Input::m_keyboardKeyStates[k] = Released;
-            break;
-            default:
-                break;
-        }
+	void Window::FramebufferResize(GLFWwindow* window, const int width, const int height) {
+    	const auto app = static_cast<Window*>(glfwGetWindowUserPointer(window));
+
+    	app->m_info.extent = { static_cast<u32>(width), static_cast<u32>(height) };
+    	if (width == 0 || height == 0) {
+    		app->Pause();
+    	} else {
+    		app->UnPause();
+    	}
     }
 
-    void Window::Callbacks::mouseMoveCallback(GLFWwindow *, const double x, const double y) {
-        const glm::ivec2 pos { static_cast<int>(x), static_cast<int>(y) };
-        Input::m_mouseDelta = pos - Input::m_mousePosition;
-        Input::m_mousePosition = pos;
-
-    }
-
-    void Window::Callbacks::mouseButtonCallback(GLFWwindow *, int button, const int action, int) {
-        const auto b = static_cast<MouseButton>(button);
-        switch (action) {
-            case GLFW_PRESS:
-                Input::m_mouseButtonStates[b] = Pressed;
-            break;
-            case GLFW_RELEASE:
-                Input::m_mouseButtonStates[b] = Released;
-            break;
-            default:
-                break;
-        }
-    }
-
-    void Window::Callbacks::scrollCallback(GLFWwindow *, const double x, const double y) {
-        Input::m_scrollDelta = { x, y };
-    }
-
-    void Window::Callbacks::framebufferResize(GLFWwindow* window, const int width, const int height) {
-        const auto app = static_cast<Window*>(glfwGetWindowUserPointer(window));
-
-        app->m_info.extent = vk::Extent2D { static_cast<unsigned int>(width), static_cast<unsigned int>(height) };
-        if (width == 0 || height == 0) {
-            app->Pause();
-        } else {
-            app->UnPause();
-        }
-    }
 }

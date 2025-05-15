@@ -7,7 +7,7 @@
 #include "physicalDevice.h"
 #include "runtime.h"
 
-namespace Core {
+namespace Coral::Core {
     PhysicalDevice::PhysicalDevice(const CreateInfo& createInfo)
         : m_runtime(createInfo.runtime), m_surface(createInfo.surface)
     {

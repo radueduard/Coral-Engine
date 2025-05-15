@@ -280,7 +280,7 @@ static void ImGui_ImplVulkan_ShutdownPlatformInterface();
 // backends/vulkan/glsl_shader.vert, compiled with:
 // # glslangValidator -V -x -o glsl_shader.vert.u32 glsl_shader.vert
 /*
-#version 450 core
+#version 450 re_core
 layout(location = 0) in vec2 aPos;
 layout(location = 1) in vec2 aUV;
 layout(location = 2) in vec4 aColor;
@@ -344,7 +344,7 @@ static uint32_t __glsl_shader_vert_spv[] =
 // backends/vulkan/glsl_shader.frag, compiled with:
 // # glslangValidator -V -x -o glsl_shader.frag.u32 glsl_shader.frag
 /*
-#version 450 core
+#version 450 re_core
 layout(location = 0) out vec4 fColor;
 layout(set=0, binding=0) uniform sampler2D sTexture;
 layout(location = 0) in struct { vec4 Color; vec2 UV; } In;

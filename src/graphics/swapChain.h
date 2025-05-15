@@ -4,27 +4,24 @@
 
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-
 #include "core/device.h"
-#include "gui/elements/image.h"
-#include "math/mathMGV.h"
+#include "math/vector.h"
 
-namespace Memory {
+namespace Coral::Memory {
     class Image;
 }
 
-namespace Core {
+namespace Coral::Core {
     class Frame;
     class Scheduler;
     class Queue;
 }
 
-namespace Graphics {
+namespace Coral::Graphics {
     class RenderPass;
 }
 
-namespace Graphics {
+namespace Coral::Graphics {
     class SwapChain : public EngineWrapper<vk::SwapchainKHR> {
     public:
         struct CreateInfo {
@@ -36,19 +33,19 @@ namespace Graphics {
         explicit SwapChain(const CreateInfo& createInfo);
         ~SwapChain() override;
 
-        [[nodiscard]] const Math::Vector2<uint32_t> &Extent() const { return m_extent; }
+        [[nodiscard]] const Math::Vector2<f32> &Extent() const { return m_extent; }
         [[nodiscard]] uint32_t MinImageCount() const { return m_minImageCount; }
         [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
         [[nodiscard]] vk::SampleCountFlagBits SampleCount() const { return m_sampleCount; }
         [[nodiscard]] std::vector<Memory::Image*> SwapChainImages() const;
         [[nodiscard]] vk::Format ImageFormat() const { return m_surfaceFormat.format; }
 
-        void Resize(const Math::Vector2<uint32_t>& newSize);
+        void Resize(const Math::Vector2<f32>& newSize);
         vk::Result Acquire(const Core::Frame &frame);
         vk::Result Present(const Core::Frame &frame);
 
     private:
-        Math::Vector2<uint32_t> m_extent = {};
+        Math::Vector2<f32> m_extent;
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
         uint32_t m_minImageCount = 0;
         uint32_t m_imageCount = 0;

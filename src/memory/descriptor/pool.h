@@ -8,7 +8,7 @@
 
 #include <vector>
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     class Pool {
     public:
         class Builder {

@@ -12,7 +12,7 @@
 #include "core/window.h"
 #include "core/physicalDevice.h"
 
-namespace Core {
+namespace Coral::Core {
     class Runtime {
         friend class PhysicalDevice;
         friend class Device;

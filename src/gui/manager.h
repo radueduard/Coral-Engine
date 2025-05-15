@@ -8,24 +8,27 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "imgui.h"
 #include "graphics/framebuffer.h"
+#include "imgui.h"
 #include "memory/descriptor/pool.h"
 
-namespace GUI {
+namespace Coral::Reef {
+	class Popup;
+}
+namespace Coral::Reef {
     class Manager;
 }
 
 struct ImFont;
 
-namespace Core {
+namespace Coral::Core {
     class Window;
     class Runtime;
     class Device;
     class Scheduler;
 }
 
-namespace GUI {
+namespace Coral::Reef {
     class Layer;
 
     enum class FontType {
@@ -34,8 +37,7 @@ namespace GUI {
         Medium,
         Bold,
         Italic,
-        Black,
-        Count
+        Black
     };
 
     inline Manager* g_manager = nullptr;
@@ -43,8 +45,9 @@ namespace GUI {
 
     class Manager {
     public:
-        static void AddFont(std::string path, float size, const ImWchar* ranges);
-        static ImFont* GetFont(FontType type, float size);
+        void AddFont(std::string path, float size, const ImWchar* ranges);
+        void RequestFont(FontType type, float size);
+        ImFont* GetFont(FontType type, float size);
 
         struct CreateInfo {
             const Core::Window& window;
@@ -53,7 +56,7 @@ namespace GUI {
             const Core::Queue& queue;
             const Graphics::RenderPass& renderPass;
 
-            uint32_t frameCount;
+            u32 frameCount;
             vk::Format imageFormat;
             vk::SampleCountFlagBits sampleCount;
         };
@@ -66,40 +69,39 @@ namespace GUI {
         void AddLayer(Layer* layer);
         void RemoveLayer(Layer* layer);
 
-        void Update(float deltaTime) const;
-        void Render(const Core::CommandBuffer& commandBuffer) const;
+        void Update(float deltaTime);
+        void Render(const Core::CommandBuffer& commandBuffer);
+
+    	void RegisterPopup(const String& name, Popup* popup) {
+			m_popups.emplace(name, popup);
+		}
+
+    	Popup* GetPopup(const String& name) const {
+			if (m_popups.contains(name)) {
+				return m_popups.at(name);
+			}
+			return nullptr;
+		}
+
+		void UnregisterPopup(const String& name) {
+    		m_popups.erase(name);
+    	}
 
     private:
+        std::vector<std::pair<FontType, float>> m_fontRequests {};
+
+    	bool m_frameStarted = false;
         const Core::Queue& m_queue;
         const Graphics::RenderPass& m_renderPass;
 
         std::vector<Layer*> m_layers;
+		std::unordered_map<String, Popup*> m_popups;
+
         std::unique_ptr<Memory::Descriptor::Pool> m_descriptorPool = nullptr;
 
-        uint32_t m_frameCount = 0;
+        u32 m_frameCount = 0;
 
         vk::SampleCountFlagBits m_sampleCount;
         vk::Format m_imageFormat;
     };
-}
-
-namespace std {
-    inline string to_string(const GUI::FontType& type) {
-        switch (type) {
-            case GUI::FontType::Light:
-                return "Light";
-            case GUI::FontType::Regular:
-                return "Regular";
-            case GUI::FontType::Medium:
-                return "Medium";
-            case GUI::FontType::Bold:
-                return "Bold";
-            case GUI::FontType::Italic:
-                return "Italic";
-            case GUI::FontType::Black:
-                return "Black";
-            default:
-                return "Unknown";
-        }
-    }
 }

@@ -2,6 +2,6 @@
 
 int main()
 {
-    Engine().Run();
+    Coral::Engine().Run();
     return 0;
 }

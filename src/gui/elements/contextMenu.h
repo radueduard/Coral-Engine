@@ -1,34 +1,54 @@
 //
-// Created by radue on 2/24/2025.
+// Created by radue on 5/10/2025.
 //
 
 #pragma once
-
-#include <filesystem>
 #include <functional>
-#include <string>
-#include <unordered_map>
 
-#include "imgui.h"
+#include "button.h"
+#include "element.h"
+#include "text.h"
 
-namespace GUI {
-	class ContextMenu {
+namespace Coral::Reef {
+	class ContextMenu final : public Element {
 	public:
-		ContextMenu(std::unordered_map<std::string, std::function<void()>> actions) : m_actions(std::move(actions)) {}
-		~ContextMenu() = default;
+		class Builder {
+			friend class ContextMenu;
 
-		void Show() {
-			if (ImGui::BeginPopupContextWindow()) {
-				for (const auto& [name, action] : m_actions) {
-					if (ImGui::MenuItem(name.c_str())) {
-						action();
+		public:
+			explicit Builder() = default;
+
+			Builder& AddItem(String text, std::function<bool()> onClick) {
+				m_items.emplace_back(text, std::move(onClick));
+				return *this;
+			}
+
+			ContextMenu* Build() { return new ContextMenu(this); }
+
+		private:
+			std::vector<std::pair<String, std::function<bool()>>> m_items;
+		};
+
+		bool Render() override {
+			if (ImGui::BeginPopupContextItem()) {
+				for (const auto& [text, onClick] : m_items) {
+					if (ImGui::Selectable(text.c_str())) {
+						if (onClick()) {
+							ImGui::CloseCurrentPopup();
+						}
 					}
 				}
 				ImGui::EndPopup();
 			}
+
+			return false;
 		}
 
 	private:
-		std::unordered_map<std::string, std::function<void()>> m_actions;
+		explicit ContextMenu(Builder* builder)
+			: Element(Style { .size = {Shrink, Shrink}, .direction = Vertical }),
+			  m_items(std::move(builder->m_items)) {}
+
+		std::vector<std::pair<String, std::function<bool()>>> m_items;
 	};
 }

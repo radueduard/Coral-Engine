@@ -6,19 +6,43 @@
 
 #include <memory>
 #include <vector>
-#include <boost/uuid/uuid.hpp>
-#include <glm/glm.hpp>
-#include <unordered_set>
-#include <unordered_map>
-#include <variant>
 
+#include <boost/uuid/uuid.hpp>
+#include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include "math/aabb.h"
 #include "memory/buffer.h"
 
-namespace mgv {
+static vk::Format FormatFromString(const std::string& format) {
+    if (format == "float" || format == "bool" || format == "int" || format == "uint") {
+        return vk::Format::eR32Sfloat;
+    }
+    if (format == "vec2" || format == "bvec2" || format == "ivec2 " || format == "uvec2") {
+        return vk::Format::eR32G32Sfloat;
+    }
+    if (format == "vec3" || format == "bvec3" || format == "ivec3" || format == "uvec3") {
+        return vk::Format::eR32G32B32Sfloat;
+    }
+    if (format == "vec4" || format == "bvec4" || format == "ivec4" || format == "uvec4") {
+        return vk::Format::eR32G32B32A32Sfloat;
+    }
+    if (format == "mat2" || format == "dmat2") {
+        return vk::Format::eR32G32Sfloat;
+    }
+    if (format == "mat3" || format == "dmat3") {
+        return vk::Format::eR32G32B32Sfloat;
+    }
+    if (format == "mat4" || format == "dmat4") {
+        return vk::Format::eR32G32B32A32Sfloat;
+    }
+    throw std::runtime_error("Unknown format");
+}
+
+namespace Coral::Graphics {
     struct Vertex {
-        enum class Attribute : uint16_t {
+        enum class Attribute : u16 {
             Position = 1 << 0,
             Normal = 1 << 1,
             Tangent = 1 << 2,
@@ -27,14 +51,14 @@ namespace mgv {
             Color0 = 1 << 5
         };
 
-        glm::vec3 position;
-        glm::vec3 normal;
-        glm::vec4 tangent;
-        glm::vec2 texCoord0;
-        glm::vec2 texCoord1;
-        glm::vec4 color0;
+        Math::Vector3<f32> position = {0.0f, 0.0f, 0.0f};
+        Math::Vector3<f32> normal = {0.0f, 0.0f, 0.0f};
+        Math::Vector4<f32> tangent = {0.0f, 0.0f, 0.0f, 1.0f};
+        Math::Vector2<f32> texCoord0 = {0.0f, 0.0f};
+        Math::Vector2<f32> texCoord1 = {0.0f, 0.0f};
+        Math::Vector4<f32> color0 = {1.0f, 1.0f, 1.0f, 1.0f};
 
-        static std::vector<vk::VertexInputBindingDescription> GetBindingDescriptions() {
+        static std::vector<vk::VertexInputBindingDescription> BindingDescriptions() {
             return {
                 vk::VertexInputBindingDescription()
                     .setBinding(0)
@@ -43,66 +67,37 @@ namespace mgv {
             };
         }
 
-        static std::vector<vk::VertexInputAttributeDescription> GetAttributeDescriptions(const std::unordered_set<Attribute> &attributes) {
+        static std::vector<vk::VertexInputAttributeDescription> AttributeDescriptions(const nlohmann::json &inputAnalysis) {
             std::vector<vk::VertexInputAttributeDescription> attributeDescriptions;
 
-            uint32_t location = 0;
-            if (attributes.contains(Attribute::Position)) {
-                attributeDescriptions.emplace_back(
-                    vk::VertexInputAttributeDescription()
-                        .setLocation(location++)
-                        .setBinding(0)
-                        .setFormat(vk::Format::eR32G32B32Sfloat)
-                        .setOffset(offsetof(Vertex, position))
-                );
-            }
-            if (attributes.contains(Attribute::Normal)) {
-                attributeDescriptions.emplace_back(
-                    vk::VertexInputAttributeDescription()
-                        .setLocation(location++)
-                        .setBinding(0)
-                        .setFormat(vk::Format::eR32G32B32Sfloat)
-                        .setOffset(offsetof(Vertex, normal))
-                );
-            }
-            if (attributes.contains(Attribute::Tangent)) {
-                attributeDescriptions.emplace_back(
-                    vk::VertexInputAttributeDescription()
-                        .setLocation(location++)
-                        .setBinding(0)
-                        .setFormat(vk::Format::eR32G32B32A32Sfloat)
-                        .setOffset(offsetof(Vertex, tangent))
-                );
-            }
-            if (attributes.contains(Attribute::TexCoord0)) {
-                attributeDescriptions.emplace_back(
-                    vk::VertexInputAttributeDescription()
-                        .setLocation(location++)
-                        .setBinding(0)
-                        .setFormat(vk::Format::eR32G32Sfloat)
-                        .setOffset(offsetof(Vertex, texCoord0))
-                );
+            for (const auto &input : inputAnalysis) {
+                const auto location = static_cast<u32>(input["location"].get<i32>());
+                const auto format = FormatFromString(input["type"].get<String>());
+            	auto attribute = magic_enum::enum_cast<Attribute>(input["attribute"].get<String>());
+                const auto offset = Offset(attribute.value());
 
-                if (attributes.contains(Attribute::TexCoord1)) {
-                    attributeDescriptions.emplace_back(
-                        vk::VertexInputAttributeDescription()
-                            .setLocation(location++)
-                            .setBinding(0)
-                            .setFormat(vk::Format::eR32G32Sfloat)
-                            .setOffset(offsetof(Vertex, texCoord1))
-                    );
-                }
-                if (attributes.contains(Attribute::Color0)) {
-                    attributeDescriptions.emplace_back(
-                        vk::VertexInputAttributeDescription()
-                            .setLocation(location++)
-                            .setBinding(0)
-                            .setFormat(vk::Format::eR32G32B32A32Sfloat)
-                            .setOffset(offsetof(Vertex, color0))
-                    );
-                }
+
+                attributeDescriptions.emplace_back(
+                    vk::VertexInputAttributeDescription()
+                        .setBinding(0)
+                        .setLocation(location)
+                        .setFormat(format)
+                        .setOffset(static_cast<uint32_t>(offset)));
             }
+
             return attributeDescriptions;
+        }
+    private:
+        static size_t Offset(const Attribute attribute) {
+            switch (attribute) {
+                case Attribute::Position: return offsetof(Vertex, position);
+                case Attribute::Normal: return offsetof(Vertex, normal);
+                case Attribute::Tangent: return offsetof(Vertex, tangent);
+                case Attribute::TexCoord0: return offsetof(Vertex, texCoord0);
+                case Attribute::TexCoord1: return offsetof(Vertex, texCoord1);
+                case Attribute::Color0: return offsetof(Vertex, color0);
+                default: throw std::runtime_error("Unknown attribute");
+            }
         }
     };
 
@@ -111,35 +106,60 @@ namespace mgv {
         class Builder {
             friend class Mesh;
         public:
-            explicit Builder(const std::string &name) : m_name(name) {}
+            explicit Builder(const boost::uuids::uuid &uuid) : m_uuid(uuid) {}
             ~Builder() = default;
+
+            Builder& Name(const std::string &name) {
+                m_name = name;
+                return *this;
+            }
 
             Builder& AddVertex(Vertex vertex) {
                 m_vertices.emplace_back(vertex);
                 return *this;
             }
 
-            Builder& AddIndex(uint32_t index) {
+            Builder& AddIndex(u32 index) {
                 m_indices.emplace_back(index);
                 return *this;
             }
+
+        	Builder& AABB(const Math::AABB &aabb) {
+				m_aabb = aabb;
+				return *this;
+			}
 
             std::unique_ptr<Mesh> Build() {
                 return std::make_unique<Mesh>(*this);
             }
         private:
-            std::string m_name;
+            UUID m_uuid;
+            String m_name;
+        	std::optional<Math::AABB> m_aabb = std::nullopt;
             std::vector<Vertex> m_vertices;
-            std::vector<uint32_t> m_indices;
+            std::vector<u32> m_indices;
         };
 
         explicit Mesh(Builder &builder) {
+            m_uuid = builder.m_uuid;
             m_name = builder.m_name;
+
+        	if (builder.m_aabb) {
+        		m_aabb = builder.m_aabb.value();
+        	} else {
+        		m_aabb = Math::AABB(builder.m_vertices[0].position, builder.m_vertices[0].position);
+				for (const auto &vertex : builder.m_vertices) {
+					m_aabb.Grow(vertex.position);
+				}
+			}
             CreateVertexBuffer(builder.m_vertices);
             CreateIndexBuffer(builder.m_indices);
         }
 
         ~Mesh() = default;
+
+        [[nodiscard]] const UUID &Id() const { return m_uuid; }
+        [[nodiscard]] const std::string &Name() const { return m_name; }
 
         void Bind(const vk::CommandBuffer &commandBuffer) const {
             const vk::ArrayProxy<const vk::Buffer> buffers = { **m_vertexBuffer };
@@ -148,30 +168,34 @@ namespace mgv {
             commandBuffer.bindIndexBuffer(**m_indexBuffer, 0, vk::IndexType::eUint32);
         }
 
-        void Draw(const vk::CommandBuffer &commandBuffer, const uint32_t instanceCount) const {
+        void Draw(const vk::CommandBuffer &commandBuffer, const uint32_t instanceCount = 1) const {
             commandBuffer.drawIndexed(m_indexBuffer->InstanceCount(), instanceCount, 0, 0, 0);
         }
 
     private:
-        std::string m_name;
-        std::unique_ptr<Memory::Buffer<uint32_t>> m_indexBuffer;
-        std::unique_ptr<Memory::Buffer<Vertex>> m_vertexBuffer;
+        UUID m_uuid;
+        String m_name;
+    	Math::AABB m_aabb;
+        std::unique_ptr<Memory::Buffer> m_indexBuffer;
+        std::unique_ptr<Memory::Buffer> m_vertexBuffer;
 
         void CreateVertexBuffer(std::vector<Vertex> &vertices) {
-            const auto stagingBuffer = Memory::Buffer<Vertex>::Builder()
+            const auto stagingBuffer = Memory::Buffer::Builder()
+        		.InstanceSize(sizeof(Vertex))
                 .InstanceCount(static_cast<uint32_t>(vertices.size()))
                 .UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
                 .MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
                 .MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
                 .Build();
 
-            stagingBuffer->Map();
+            stagingBuffer->Map<Vertex>();
             const auto copy = std::span(vertices.data(), vertices.size());
             stagingBuffer->Write(copy);
             stagingBuffer->Flush();
             stagingBuffer->Unmap();
 
-            m_vertexBuffer = Memory::Buffer<Vertex>::Builder()
+            m_vertexBuffer = Memory::Buffer::Builder()
+        		.InstanceSize(sizeof(Vertex))
                 .InstanceCount(static_cast<uint32_t>(vertices.size()))
                 .UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
                 .UsageFlags(vk::BufferUsageFlagBits::eVertexBuffer)
@@ -182,22 +206,24 @@ namespace mgv {
             m_vertexBuffer->CopyBuffer(stagingBuffer);
         }
 
-        void CreateIndexBuffer(std::vector<uint32_t> &indices) {
-            const auto stagingBuffer = Memory::Buffer<uint32_t>::Builder()
-                .InstanceCount(static_cast<uint32_t>(indices.size()))
+        void CreateIndexBuffer(std::vector<u32> &indices) {
+            const auto stagingBuffer = Memory::Buffer::Builder()
+        		.InstanceSize(sizeof(u32))
+                .InstanceCount(static_cast<u32>(indices.size()))
                 .UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
                 .MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
                 .MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
                 .Build();
 
-            stagingBuffer->Map();
+            stagingBuffer->Map<u32>();
             const auto copy = std::span(indices.data(), indices.size());
             stagingBuffer->Write(copy);
             stagingBuffer->Flush();
             stagingBuffer->Unmap();
 
-            m_indexBuffer = Memory::Buffer<uint32_t>::Builder()
-                .InstanceCount(static_cast<uint32_t>(indices.size()))
+            m_indexBuffer = Memory::Buffer::Builder()
+        		.InstanceSize(sizeof(u32))
+                .InstanceCount(static_cast<u32>(indices.size()))
                 .UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
                 .UsageFlags(vk::BufferUsageFlagBits::eIndexBuffer)
                 .UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)

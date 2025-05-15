@@ -8,12 +8,14 @@
 #include <functional>
 #include <ranges>
 
+#include "elements/dockable.h"
 #include "elements/element.h"
 
-namespace GUI {
+namespace Coral::Reef {
     class Layer {
-        template<class T>
+        template <typename T>
         friend class Container;
+
         friend class Manager;
 
     public:
@@ -24,37 +26,29 @@ namespace GUI {
         Layer& operator=(const Layer&) = delete;
 
     protected:
-        void ResetElement(const std::string& name) {
-            m_guiObjectReset[name] = true;
-        }
-
         virtual void OnGUIAttach() {}
         virtual void OnGUIDetach() {}
         virtual void OnGUIUpdate() {}
-        std::unordered_map<std::string, std::function<Element*()>> m_guiBuilder {};
 
-        Element* GUIObject(const std::string& name) {
-            return m_guiObjects[name].get();
+        Element* Dockable(const std::string& name) {
+            return m_dockables[name].get();
+        }
+
+        void AddDockable(const std::string& name, Reef::Dockable* dockable) {
+            m_dockables[name] = std::unique_ptr<Reef::Dockable>(dockable);
+        }
+
+        void RemoveDockable(const std::string& name) {
+            m_dockables.erase(name);
         }
 
     private:
         void OnGUIRender() const {
-            for (const auto& object : m_guiObjects | std::views::values) {
+            for (const auto& object : m_dockables | std::views::values) {
                 object->Render();
             }
         }
 
-        void OnGUIReset() {
-            for (auto& [name, object] : m_guiObjects) {
-                if (m_guiObjectReset[name]) {
-                    object.reset(m_guiBuilder[name]());
-                    m_guiObjectReset[name] = false;
-                }
-            }
-        }
-
-        std::unordered_map<std::string, bool> m_guiObjectReset {};
-        std::unordered_map<std::string, std::unique_ptr<Element>> m_guiObjects {};
-
+        std::unordered_map<std::string, std::unique_ptr<Reef::Dockable>> m_dockables {};
     };
 }

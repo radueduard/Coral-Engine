@@ -4,18 +4,16 @@
 
 #include "manager.h"
 
-#include <filesystem>
-#include <imgui_internal.h>
 #include <iostream>
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
-#include "imnodes.h"
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+#include <imnodes.h>
+
 #include "layer.h"
-#include "core/runtime.h"
 #include "core/scheduler.h"
-#include "core/physicalDevice.h"
 #include "core/window.h"
 #include "graphics/renderPass.h"
 #include "memory/descriptor/pool.h"
@@ -32,7 +30,28 @@ static void check_vk_result(VkResult err) {
         abort();
 }
 
-namespace GUI {
+
+
+namespace Coral::Reef {
+	std::string GetFontPath(const FontType type) {
+		switch (type) {
+		case FontType::Regular:
+			return "assets/fonts/Roboto-Regular.ttf";
+		case FontType::Black:
+			return "assets/fonts/Roboto-Black.ttf";
+		case FontType::Bold:
+			return "assets/fonts/Roboto-Bold.ttf";
+		case FontType::Light:
+			return "assets/fonts/Roboto-Light.ttf";
+		case FontType::Italic:
+			return "assets/fonts/Roboto-Italic.ttf";
+		case FontType::Medium:
+			return "assets/fonts/Roboto-Medium.ttf";
+		default:
+			throw std::runtime_error("Unknown font type");
+		}
+	}
+
     Manager::Manager(const CreateInfo& createInfo)
         : m_queue(createInfo.queue), m_renderPass(createInfo.renderPass), m_frameCount(createInfo.frameCount),
           m_sampleCount(createInfo.sampleCount), m_imageFormat(createInfo.imageFormat)
@@ -44,15 +63,18 @@ namespace GUI {
         ImNodes::CreateContext();
         ImGuiIO &io = ImGui::GetIO(); (void)io;
 
-        for (int baseFontSize = 8; baseFontSize <= 32; baseFontSize++) {
-            const auto fontSize = static_cast<float>(baseFontSize);
-            AddFont("assets/fonts/Roboto-Light.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Medium.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Regular.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Bold.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Italic.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-            AddFont("assets/fonts/Roboto-Black.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
-        }
+
+        AddFont("assets/fonts/Roboto-Regular.ttf", 13, io.Fonts->GetGlyphRangesDefault());
+
+        // for (int baseFontSize = 8; baseFontSize <= 32; baseFontSize++) {
+        //     const auto fontSize = static_cast<float>(baseFontSize);
+        //     AddFont("assets/fonts/Roboto-Light.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+        //     AddFont("assets/fonts/Roboto-Medium.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+        //     AddFont("assets/fonts/Roboto-Regular.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+        //     AddFont("assets/fonts/Roboto-Bold.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+        //     AddFont("assets/fonts/Roboto-Italic.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+        //     AddFont("assets/fonts/Roboto-Black.ttf", fontSize, io.Fonts->GetGlyphRangesDefault());
+        // }
 
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -87,7 +109,6 @@ namespace GUI {
         ImGui_ImplVulkan_Init(&init_info);
 
         io.FontDefault = GetFont(FontType::Regular, 13.0f);
-
     }
 
     Manager::~Manager() {
@@ -106,20 +127,26 @@ namespace GUI {
         std::erase(m_layers, layer);
     }
 
-    void Manager::Update(const float deltaTime) const {
+    void Manager::Update(const float deltaTime) {
+        for (auto& [fontType, size] : m_fontRequests) {
+            AddFont(GetFontPath(fontType), size, ImGui::GetIO().Fonts->GetGlyphRangesDefault());
+        }
+        if (!m_fontRequests.empty()) {
+            ImGui::GetIO().Fonts->Build();
+            ImGui_ImplVulkan_CreateFontsTexture();
+            m_fontRequests.clear();
+        }
+
         for (auto* layer : m_layers) {
             layer->OnGUIUpdate();
         }
-
-        for (auto* layer : m_layers) {
-            layer->OnGUIReset();
-        }
     }
 
-    void Manager::Render(const Core::CommandBuffer& commandBuffer) const {
+    void Manager::Render(const Core::CommandBuffer& commandBuffer) {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+    	m_frameStarted = true;
 
         static ImGuiDockNodeFlags dockSpaceFlags = ImGuiDockNodeFlags_NoWindowMenuButton;
 
@@ -212,6 +239,8 @@ namespace GUI {
         ImGui::PopStyleVar(3);
 
         ImGui::Render();
+		m_frameStarted = false;
+
         ImDrawData* draw_data = ImGui::GetDrawData();
         if (const bool main_is_minimized = draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f; !main_is_minimized) {
             ImGui_ImplVulkan_RenderDrawData(draw_data, *commandBuffer);
@@ -263,15 +292,25 @@ namespace GUI {
         static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
         ImGui::GetIO().Fonts->AddFontFromFileTTF(iconPath.c_str(), iconFontSize, &config, icons_ranges);
 
+
+    }
+
+    void Manager::RequestFont(FontType type, float size) {
+    	if (m_frameStarted) {
+    		m_fontRequests.emplace_back(type, size);
+    	} else {
+    		AddFont(GetFontPath(type), size, ImGui::GetIO().Fonts->GetGlyphRangesDefault());
+    	}
     }
 
     ImFont* Manager::GetFont(const FontType type, const float size) {
-        const std::string fontName = std::to_string(type) + "_" + std::to_string(size);
+        const std::string fontName = std::string(magic_enum::enum_name(type).data()) + "_" + std::to_string(size);
         for (const auto font : ImGui::GetIO().Fonts->Fonts) {
             if (strcmp(font->ConfigData->Name, fontName.c_str()) == 0) {
                 return font;
             }
         }
-        return ImGui::GetIO().Fonts->Fonts[0];
+        RequestFont(type, size);
+        return ImGui::GetIO().Fonts->Fonts.back();
     }
 }

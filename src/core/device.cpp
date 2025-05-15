@@ -14,7 +14,7 @@
 
 inline static std::thread::id mainThreadId = std::this_thread::get_id();
 
-namespace Core {
+namespace Coral::Core {
     Queue::Family::Family(const uint32_t index, const vk::QueueFamilyProperties &properties, const bool canPresent): m_index(index), m_properties(properties), m_canPresent(canPresent) {
         m_remainingQueues = properties.queueCount;
     }
@@ -61,8 +61,6 @@ namespace Core {
     }
 
     Device::Device(const CreateInfo& createInfo) : m_runtime(createInfo.runtime) {
-        g_device = this;
-
         const auto& physicalDevice = m_runtime.PhysicalDevice();
         for (const auto& queueFamily : physicalDevice.QueueFamilyProperties()) {
             const auto queueFamilyIndex = static_cast<uint32_t>(&queueFamily - physicalDevice.QueueFamilyProperties().data());
@@ -106,6 +104,7 @@ namespace Core {
 
     Device::~Device() {
         FreeCommandPools(0);
+        m_handle.waitIdle();
         m_handle.destroy();
     }
 
@@ -119,10 +118,8 @@ namespace Core {
     }
 
     void Device::FreeCommandPools(const uint32_t threadId) {
-        for (const auto& commandPool : m_commandPools | std::views::values) {
-            m_handle.destroyCommandPool(commandPool.at(threadId));
-        }
         for (const auto& queueFamily : m_queueFamilies) {
+            m_handle.destroyCommandPool(m_commandPools[queueFamily.Index()][threadId]);
             m_commandPools[queueFamily.Index()].erase(threadId);
         }
     }

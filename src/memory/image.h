@@ -4,22 +4,29 @@
 
 #pragma once
 
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <optional>
+#include <unordered_set>
 #include <vulkan/vulkan.hpp>
 
+#include "math/matrix.h"
 #include "utils/globalWrapper.h"
 
-namespace Core {
+
+namespace Coral::Core {
     class Device;
 }
 
-namespace Memory {
+namespace Coral::Memory {
     class Image final : public EngineWrapper<vk::Image> {
     public:
-        class Builder {
+        struct Builder {
             friend class Image;
-        public:
-            Builder() = default;
+
+            Builder() {
+	            m_name = to_string(boost::uuids::random_generator()());
+            }
 
             Builder& Image(const vk::Image image) {
                 m_image = image;
@@ -31,13 +38,13 @@ namespace Memory {
                 return *this;
             }
 
-            Builder& Extent(const vk::Extent3D extent) {
+            Builder& Extent(const Math::Vector3<u32>& extent) {
                 m_extent = extent;
                 return *this;
             }
 
-            Builder& UsageFlags(const vk::ImageUsageFlags usageFlags) {
-                m_usageFlags = usageFlags;
+            Builder& UsageFlags(const vk::ImageUsageFlagBits usageFlags) {
+                m_usageFlagsSet.emplace(usageFlags);
                 return *this;
             }
 
@@ -56,8 +63,6 @@ namespace Memory {
                 return *this;
             }
 
-
-
             Builder& InitialLayout(const vk::ImageLayout layout) {
                 m_layout = layout;
                 return *this;
@@ -69,14 +74,15 @@ namespace Memory {
                 }
                 return std::make_unique<Memory::Image>(*this);
             }
-        private:
+
+        	String m_name;
             vk::Format m_format = vk::Format::eUndefined;
-            vk::Extent3D m_extent = vk::Extent3D();
-            vk::ImageUsageFlags m_usageFlags = vk::ImageUsageFlagBits::eSampled;
+            Math::Vector3<u32> m_extent = { 1, 1, 1 };
+        	UnorderedSet<vk::ImageUsageFlagBits> m_usageFlagsSet = {};
             vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
-            uint32_t m_mipLevels = 1;
-            uint32_t m_layersCount = 1;
-            vk::ImageViewType m_viewType = vk::ImageViewType::e2D;
+            u32 m_mipLevels = 1;
+        	u32 m_maxMips = 1;
+            u32 m_layersCount = 1;
             vk::ImageLayout m_layout = vk::ImageLayout::eUndefined;
 
             std::optional<vk::Image> m_image = std::nullopt;
@@ -89,7 +95,7 @@ namespace Memory {
         Image& operator=(const Image&) = delete;
 
         [[nodiscard]] const vk::ImageLayout& Layout() const { return m_layout; }
-        [[nodiscard]] const vk::Extent3D& Extent() const { return m_extent; }
+        [[nodiscard]] const Math::Vector3<u32>& Extent() const { return m_extent; }
         [[nodiscard]] const vk::Format& Format() const { return m_format; }
         [[nodiscard]] const vk::ImageUsageFlags& UsageFlags() const { return m_usageFlags; }
         [[nodiscard]] const vk::SampleCountFlagBits& SampleCount() const { return m_sampleCount; }
@@ -100,15 +106,15 @@ namespace Memory {
         void TransitionLayout(vk::ImageLayout newLayout);
         void Barrier(const vk::CommandBuffer& commandBuffer, vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask, vk::PipelineStageFlags srcStage, vk::PipelineStageFlags dstStage) const;
         void GenerateMipmaps();
-        void Resize(const vk::Extent3D& extent);
+        void Resize(const Math::Vector3<u32>& extent);
 
     private:
         vk::DeviceMemory m_imageMemory;
 
         vk::Format m_format;
-        vk::Extent3D m_extent;
+        Math::Vector3<u32> m_extent;
         vk::ImageLayout m_layout = vk::ImageLayout::eUndefined;
-        vk::ImageUsageFlags m_usageFlags;
+        vk::ImageUsageFlags m_usageFlags = {};
         vk::SampleCountFlagBits m_sampleCount;
         // vk::ImageAspectFlags m_aspectMask;
 

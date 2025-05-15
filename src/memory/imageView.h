@@ -6,15 +6,15 @@
 #include "utils/globalWrapper.h"
 #include "vulkan/vulkan.hpp"
 
-namespace Memory {
+namespace Coral::Memory {
     class Image;
 }
 
-namespace Core {
+namespace Coral::Core {
     class Device;
 }
 
-namespace Memory {
+namespace Coral::Memory {
     class ImageView final : public EngineWrapper<vk::ImageView> {
     public:
         class Builder {

@@ -10,13 +10,14 @@
 
 #include <vulkan/vulkan.hpp>
 
-namespace Core {
+#include "math/vector.h"
+
+namespace Coral::Core {
     /**
      * @brief Window class
      * @details This class is used to create and manage a window using GLFW
      */
     class Window {
-        friend class Input;
     public:
         /**
          * @brief Window information
@@ -26,8 +27,8 @@ namespace Core {
          * @param fullscreen If the window is fullscreen (overrides the extent value)
          */
         struct CreateInfo {
-            std::string title;
-            vk::Extent2D extent;
+            String title;
+            Math::Vector2<u32> extent;
             bool resizable;
             bool fullscreen;
         };
@@ -43,7 +44,7 @@ namespace Core {
         void PollEvents() const { glfwPollEvents(); }
 
         [[nodiscard]] GLFWwindow* GetHandle() const { return m_window; }
-        [[nodiscard]] vk::Extent2D Extent() const { return m_info.extent; }
+        [[nodiscard]] Math::Vector2<f32> Extent() const { return m_info.extent; }
         [[nodiscard]] std::vector<const char*> GetRequiredExtensions() const;
         [[nodiscard]] vk::SurfaceKHR CreateSurface(const vk::Instance&) const;
 
@@ -60,18 +61,9 @@ namespace Core {
             m_info.title = title;
             glfwSetWindowTitle(m_window, title.c_str());
         }
+
     private:
-        /**
-         * @brief Callbacks for the window
-         * @details This struct contains the static methods that are used as callbacks for the window. They are set up in the constructor of the Window class
-         */
-        struct Callbacks {
-            static void keyCallback(GLFWwindow*, int, int, int, int);
-            static void mouseMoveCallback(GLFWwindow*, double, double);
-            static void mouseButtonCallback(GLFWwindow*, int, int, int);
-            static void scrollCallback(GLFWwindow*, double, double);
-            static void framebufferResize(GLFWwindow*, int, int);
-        };
+    	static void FramebufferResize(GLFWwindow* window, int width, int height);
 
         GLFWwindow* m_window;
         GLFWmonitor* m_monitor;

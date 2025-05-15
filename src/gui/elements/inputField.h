@@ -7,23 +7,34 @@
 #include <string>
 
 #include "element.h"
+#include "imgui_internal.h"
 
-namespace GUI {
+namespace Coral::Reef {
 	class InputField final : public Element {
 	public:
-		InputField(std::string name, std::string* value) : m_name(std::move(name)), m_value(value) {}
+		InputField(std::string name, std::string* value, const Style& style = Style())
+			: Element(style), m_name(std::move(name)), m_value(value) {}
 		~InputField() override = default;
 
-		void Render() override {
-			m_outerBounds = m_parent->AllocatedArea(this);
-			m_innerBounds.min = m_outerBounds.min;
-			ImGui::SetCursorScreenPos(m_innerBounds.min);
+		bool Render() override {
+			const bool shouldReset = Element::Render();
 
-			ImGui::PushItemWidth(250);
-			ImGui::InputText(("##" + m_name).c_str(), m_value->data(), m_value->capacity());
-			ImGui::PopItemWidth();
-			m_requiredArea = { 250, 2 * ImGui::GetStyle().FramePadding.y + ImGui::GetFontSize() };
-			m_innerBounds.max = m_innerBounds.min + m_requiredArea;
+			ImGui::PushID(this);
+			// ImGui::SetCursorScreenPos(m_position + Math::Vector2 { m_padding.left, m_padding.top });
+			ImGui::InputTextEx(
+				("##" + m_name).c_str(),
+				"object",
+				m_value->data(),
+				static_cast<i32>(m_value->capacity()),
+				{
+					m_currentSize.width - m_padding.left - m_padding.right,
+					m_currentSize.height - m_padding.top - m_padding.bottom,
+				},
+				ImGuiInputTextFlags_None
+			);
+			ImGui::PopID();
+
+			return shouldReset;
 		}
 
 	private:

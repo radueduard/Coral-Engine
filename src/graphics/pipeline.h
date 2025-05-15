@@ -12,46 +12,45 @@
 
 #include "../shader/shader.h"
 #include "memory/descriptor/set.h"
+#include "objects/mesh.h"
 
-namespace Memory::Descriptor {
+namespace Coral::Memory::Descriptor {
     class SetLayout;
 }
 
-namespace Graphics {
+namespace Coral::Graphics {
+    class RenderPass;
+
     class Pipeline {
     public:
         class Builder {
             friend class Pipeline;
         public:
-            Builder();
+            Builder(RenderPass &renderPass);
             ~Builder() = default;
 
             Builder(const Builder &) = delete;
             Builder &operator=(const Builder &) = delete;
 
-            Builder &AddShader(Core::Shader* shader);
-            Builder &VertexInputState(const vk::PipelineVertexInputStateCreateInfo &);
+            Builder &AddShader(const Core::Shader* shader);
             Builder &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
             Builder &Viewport(const vk::Viewport &);
             Builder &Scissor(const vk::Rect2D &);
             Builder &Rasterizer(const vk::PipelineRasterizationStateCreateInfo &);
-            Builder &Multisampling(const vk::PipelineMultisampleStateCreateInfo &);
             Builder &DepthStencil(const vk::PipelineDepthStencilStateCreateInfo &);
-
-            Builder &ColorBlendAttachment(const vk::PipelineColorBlendAttachmentState &);
-            Builder &ColorBlend(const vk::PipelineColorBlendStateCreateInfo &);
 
             Builder &DynamicState(const vk::DynamicState &);
             Builder &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
 
-            Builder &RenderPass(const vk::RenderPass &);
             Builder &Subpass(uint32_t);
+
+        	Builder &BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)> &function);
 
             std::unique_ptr<Pipeline> Build();
         private:
             std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
 
-            std::unordered_map<vk::ShaderStageFlagBits, Core::Shader*> m_shaders;
+            std::unordered_map<Core::Stage, const Core::Shader*> m_shaders;
             std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
 
             vk::PipelineVertexInputStateCreateInfo m_vertexInputInfo;
@@ -76,8 +75,10 @@ namespace Graphics {
             vk::PipelineDynamicStateCreateInfo m_dynamicState;
 
             vk::PipelineLayout m_pipelineLayout;
-            vk::RenderPass m_renderPass;
+            RenderPass& m_renderPass;
             uint32_t m_subpass = 0;
+
+        	std::function<void(const vk::CommandBuffer&, const Mesh&)> m_bindFunction = nullptr;
         };
 
         explicit Pipeline(Builder &);
@@ -100,10 +101,12 @@ namespace Graphics {
         void BindDescriptorSet(uint32_t, vk::CommandBuffer, const Memory::Descriptor::Set &) const;
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
 
+        [[nodiscard]] const vk::PipelineLayout &Layout() const { return m_pipelineLayout; }
+
     private:
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
         std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
-        std::unordered_map<vk::ShaderStageFlagBits, Core::Shader*> m_shaders;
+        std::unordered_map<Core::Stage, const Core::Shader*> m_shaders;
     };
 }
