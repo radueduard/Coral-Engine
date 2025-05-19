@@ -6,6 +6,7 @@
 #include <assimp/vector2.h>
 #include <assimp/vector3.h>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <vulkan/vulkan.hpp>

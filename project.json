@@ -1,6 +1,6 @@
 {
     "materials": {
-        "04fad6d3-e2a0-4110-9f83-21f197155785": {
+        "dd585578-3366-49e1-a643-41e130b88a0e": {
             "alphaCutoff": 0.5,
             "baseColorFactor": [
                 1.0,
@@ -19,27 +19,27 @@
             "name": "Material_MR",
             "roughnessFactor": 1.0,
             "textures": {
-                "Albedo": "fec449dc-c1a5-4102-adcf-3b6ce8bebba3",
-                "AmbientOcclusion": "322c7334-02d3-4ac7-9b37-fb9cf3c1877f",
-                "Emissive": "f6bc7279-cc1b-4fd8-a69c-c1f7070d31a1",
-                "Metalic": "075f4629-67ac-4c97-9063-4a3c27ee8370",
-                "Normal": "72cdf99c-92e4-4063-b290-b8f3e51653d0",
-                "Roughness": "075f4629-67ac-4c97-9063-4a3c27ee8370"
+                "Albedo": "968cf36d-becd-4174-aa0a-9a1726cfca8d",
+                "AmbientOcclusion": "bb52f9d7-a24d-4e82-a454-62911359f518",
+                "Emissive": "63407f7a-ab75-4400-8c7b-d11a3894eb6d",
+                "Metalic": "93777128-9353-4389-b070-09feceb4db0c",
+                "Normal": "bdf54376-a48d-40ed-a1d9-35b24f2b1fd9",
+                "Roughness": "93777128-9353-4389-b070-09feceb4db0c"
             }
         }
     },
     "meshes": {
-        "cafcc132-6f13-4948-8e9d-80d5a18b71ee": {
+        "9088e4c0-0022-47e0-82f9-d6485af23ca8": {
             "id": 0,
             "name": "mesh_helmet_LP_13930damagedHelmet"
         }
     },
     "objects": {
-        "57d2582c-4233-49e3-ac78-5686127a05a7": {
+        "36a11cce-67b4-4062-b558-315d0a11101c": {
             "meshes": [
                 {
-                    "material": "04fad6d3-e2a0-4110-9f83-21f197155785",
-                    "mesh": "cafcc132-6f13-4948-8e9d-80d5a18b71ee"
+                    "material": "dd585578-3366-49e1-a643-41e130b88a0e",
+                    "mesh": "9088e4c0-0022-47e0-82f9-d6485af23ca8"
                 }
             ],
             "name": "node_damagedHelmet_-6514",
@@ -64,24 +64,24 @@
         }
     },
     "textures": {
-        "075f4629-67ac-4c97-9063-4a3c27ee8370": {
-            "path": "assets/DamagedHelmet/Default_metalRoughness.jpg",
-            "size": 2048
-        },
-        "322c7334-02d3-4ac7-9b37-fb9cf3c1877f": {
-            "path": "assets/DamagedHelmet/Default_AO.jpg",
-            "size": 2048
-        },
-        "72cdf99c-92e4-4063-b290-b8f3e51653d0": {
-            "path": "assets/DamagedHelmet/Default_normal.jpg",
-            "size": 2048
-        },
-        "f6bc7279-cc1b-4fd8-a69c-c1f7070d31a1": {
+        "63407f7a-ab75-4400-8c7b-d11a3894eb6d": {
             "path": "assets/DamagedHelmet/Default_emissive.jpg",
             "size": 2048
         },
-        "fec449dc-c1a5-4102-adcf-3b6ce8bebba3": {
+        "93777128-9353-4389-b070-09feceb4db0c": {
+            "path": "assets/DamagedHelmet/Default_metalRoughness.jpg",
+            "size": 2048
+        },
+        "968cf36d-becd-4174-aa0a-9a1726cfca8d": {
             "path": "assets/DamagedHelmet/Default_albedo.jpg",
+            "size": 2048
+        },
+        "bb52f9d7-a24d-4e82-a454-62911359f518": {
+            "path": "assets/DamagedHelmet/Default_AO.jpg",
+            "size": 2048
+        },
+        "bdf54376-a48d-40ed-a1d9-35b24f2b1fd9": {
+            "path": "assets/DamagedHelmet/Default_normal.jpg",
             "size": 2048
         }
     }

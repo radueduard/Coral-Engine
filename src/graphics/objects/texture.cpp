@@ -4,10 +4,6 @@
 
 #include "texture.h"
 
-#include <stb_image.h>
-#include <glm/glm.hpp>
-
-#include "imgui_impl_vulkan.h"
 #include "memory/buffer.h"
 #include "memory/image.h"
 #include "memory/sampler.h"

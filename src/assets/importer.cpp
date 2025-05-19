@@ -148,10 +148,10 @@ namespace Coral::Asset {
                     materialData["baseColorFactor"] = {baseColorFactor.r, baseColorFactor.g, baseColorFactor.b, baseColorFactor.a};
 
                     materialData["textures"] = nlohmann::json::object();
-                    constexpr auto textureTypes = {
+                    constexpr std::array textureTypes = {
                         aiTextureType_BASE_COLOR, aiTextureType_NORMALS,
                         aiTextureType_EMISSIVE, aiTextureType_METALNESS,
-                        aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_LIGHTMAP,};
+                        aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_LIGHTMAP };
 
                     for (const auto& textureType : textureTypes) {
                         aiString path;

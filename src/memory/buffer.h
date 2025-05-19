@@ -29,12 +29,12 @@ namespace Coral::Memory {
         	}
         	~Builder() = default;
 
-        	Builder& InstanceSize(const uint32_t instanceSize) {
+        	Builder& InstanceSize(const u32 instanceSize) {
         		m_instanceSize = instanceSize;
         		return *this;
         	}
 
-        	Builder& InstanceCount(const uint32_t instanceCount) {
+        	Builder& InstanceCount(const u32 instanceCount) {
         		m_instanceCount = instanceCount;
         		return *this;
         	}
@@ -120,6 +120,8 @@ namespace Coral::Memory {
 
             if (instanceCount != vk::WholeSize) {
                 instanceCount *= m_alignmentSize;
+            } else {
+	            instanceCount = m_instanceCount * m_alignmentSize;
             }
 
             m_mapped = static_cast<T*>(Core::GlobalDevice()->mapMemory(
@@ -315,7 +317,7 @@ namespace Coral::Memory {
     private:
         vk::DeviceMemory m_memory;
 
-        uint32_t m_instanceCount;
+        u32 m_instanceCount;
         void* m_mapped = nullptr;
         vk::MappedMemoryRange m_mappedRange;
 

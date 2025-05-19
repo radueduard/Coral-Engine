@@ -119,7 +119,7 @@ namespace Coral::Graphics {
                 return *this;
             }
 
-            Builder& Data(uint8_t* data) {
+            Builder& Data(u8* data) {
                 m_data = data;
                 return *this;
             }

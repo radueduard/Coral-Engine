@@ -66,9 +66,9 @@ namespace Coral::Asset {
     Manager::Manager() {
     	instance = this;
 
-        uint8_t black[] = {0, 0, 0, 255};
-        uint8_t white[] = {255, 255, 255, 255};
-        uint8_t normal[] = {127, 127, 255, 255};
+        u8 black[] = { 0, 0, 0, 255 };
+        u8 white[] = { 255, 255, 255, 255 };
+        u8 normal[] = { 127, 127, 255, 255 };
 
         auto builder = Graphics::Texture::Builder(idProvider())
             .Name("black")
