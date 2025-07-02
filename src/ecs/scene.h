@@ -20,24 +20,33 @@ namespace Coral::ECS {
     class Scene final : public Reef::Layer {
     public:
         explicit Scene();
-        ~Scene() override = default;
+		~Scene() override = default;
 
         void OnGUIAttach() override;
+		void Setup();
 
-        static Scene& Get();
+		void Update(float deltaTime);
 
         [[nodiscard]] Entity& Root() const { return *m_root; }
-        [[nodiscard]] entt::registry& Registry() { return m_registry; }
+
+    	[[nodiscard]] Memory::Descriptor::Set& DescriptorSet() const { return *m_set; }
 
         Camera& MainCamera();
 
     private:
+
         Reef::EntityInspector* m_inspectorTemplate;
 
-        std::unique_ptr<Entity> m_root;
+        std::unique_ptr<Entity> m_root = nullptr;
         entt::entity m_selectedObject = entt::null;
-        entt::registry m_registry;
 
-        inline static Scene* m_currentScene = nullptr;
+    	std::unique_ptr<Memory::Descriptor::SetLayout> m_setLayout;
+    	std::unique_ptr<Memory::Descriptor::Set> m_set;
+
+    	std::unique_ptr<Memory::Buffer> m_cameraBuffer;
+    	std::unique_ptr<Memory::Buffer> m_lightCountsBuffer;
+    	std::unique_ptr<Memory::Buffer> m_pointLightBuffer;
+    	std::unique_ptr<Memory::Buffer> m_directionalLightBuffer;
+    	std::unique_ptr<Memory::Buffer> m_spotLightBuffer;
     };
 }

@@ -8,13 +8,13 @@
 #include <memory>
 #include "mesh.h"
 
+namespace Coral::ECS {
+	class Camera;
+}
 
-namespace Coral {
-	namespace ECS {
-		class Camera;
-	}
+namespace Coral::Graphics {
 
-	std::unique_ptr<Graphics::Mesh> Cube();
-	std::unique_ptr<Graphics::Mesh> Sphere();
-	std::unique_ptr<Graphics::Mesh> Frustum(const ECS::Camera *camera);
+	std::unique_ptr<Mesh> Cube();
+	std::unique_ptr<Mesh> Sphere();
+	std::unique_ptr<Mesh> Frustum(const ECS::Camera *camera);
 }

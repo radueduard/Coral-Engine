@@ -9,17 +9,29 @@
 
 #include <functional>
 
+#include "math/constants.h"
+
 namespace Coral::Reef {
     struct Padding {
         f32 left = 0.f;
         f32 right = 0.f;
         f32 top = 0.f;
         f32 bottom = 0.f;
+
+    	Padding() = default;
+    	explicit Padding(const f32 value)
+			: left(value), right(value), top(value), bottom(value) {}
+    	Padding(const f32 vertical, const f32 horizontal)
+    		: left(horizontal), right(horizontal), top(vertical), bottom(vertical) {}
+    	Padding(const f32 left, const f32 right, const f32 top, const f32 bottom)
+    		: left(left), right(right), top(top), bottom(bottom) {}
     };
 
-    using Axis = bool;
-    inline static constexpr Axis Horizontal = true;
-    inline static constexpr Axis Vertical = false;
+
+	enum class Axis : bool {
+		Horizontal,
+		Vertical,
+	};
 
     inline static constexpr f32 Grow = 0.f;
     inline static constexpr f32 Shrink = -1.f;
@@ -29,8 +41,9 @@ namespace Coral::Reef {
         Padding padding = { 0.f, 0.f, 0.f, 0.f };
         f32 spacing = ImGui::GetStyle().ItemSpacing.x;
         f32 cornerRadius = ImGui::GetStyle().FrameRounding;
-        Math::Color backgroundColor = { 0.f, 0.f, 0.f, 0.f };
-        Axis direction = Horizontal;
+        Color backgroundColor = { 0.f, 0.f, 0.f, 0.f };
+        Axis direction = Axis::Horizontal;
+    	bool scrollable = false;
     };
 
     class Element {
@@ -40,6 +53,7 @@ namespace Coral::Reef {
         explicit Element(const Style& style = {}, const std::vector<Element*>& children = {}) {
             m_baseSize = style.size;
             m_axis = style.direction;
+        	m_scrollable = style.scrollable;
             m_padding = style.padding;
             m_spacing = style.spacing;
             m_cornerRadius = style.cornerRadius;
@@ -65,7 +79,7 @@ namespace Coral::Reef {
                 for (const auto& child : m_children) {
                     ChildrenSize(axis) += child->ComputeFitSizeOnAxis(axis);
                 }
-                if (m_children.size() > 0) {
+                if (!m_children.empty()) {
                     ChildrenSize(axis) += m_spacing * static_cast<f32>(m_children.size() - 1);
                 }
             } else {
@@ -96,7 +110,7 @@ namespace Coral::Reef {
                     }
                 }
 
-                while (remainingSize > 0.f && growableChildren > 0) {
+                while (remainingSize > Math::Epsilon<f32>() && growableChildren > 0) {
                     f32 smallestSize = std::numeric_limits<f32>::max();
                     f32 secondSmallestSize = std::numeric_limits<f32>::max();
                     f32 sizeToAdd = remainingSize;
@@ -145,7 +159,7 @@ namespace Coral::Reef {
 
 			for (const auto& child : m_children) {
 				child->SetPosition(position);
-				if (m_axis == Horizontal) {
+				if (m_axis == Axis::Horizontal) {
 					position.x += child->CurrentSize(m_axis) + m_spacing;
 				}
 				else {
@@ -162,15 +176,14 @@ namespace Coral::Reef {
 
 		virtual void ComputeLayout() {
         	RecreateRequired();
-            ComputeFitSizeOnAxis(Horizontal);
-            ComputeFitSizeOnAxis(Vertical);
-            ComputeGrowSizeOnAxis(Horizontal);
-            ComputeGrowSizeOnAxis(Vertical);
+            ComputeFitSizeOnAxis(Axis::Horizontal);
+            ComputeFitSizeOnAxis(Axis::Vertical);
+            ComputeGrowSizeOnAxis(Axis::Horizontal);
+            ComputeGrowSizeOnAxis(Axis::Vertical);
             SetPosition(m_position);
         }
 
         virtual bool Render() {
-
             ImGui::SetCursorScreenPos({ m_position.x, m_position.y });
             const auto drawList = ImGui::GetWindowDrawList();
             drawList->AddRectFilled(
@@ -180,10 +193,23 @@ namespace Coral::Reef {
                 m_cornerRadius
             );
 
+        	if (m_scrollable) {
+        		ImGui::BeginChild(
+					("##" + std::to_string(reinterpret_cast<std::uintptr_t>(this))).c_str(),
+					ImVec2(m_currentSize.width - m_padding.left - m_padding.right, m_currentSize.height - m_padding.top - m_padding.bottom),
+					false,
+					ImGuiWindowFlags_NoScrollbar
+				);
+        	}
         	bool shouldReset = false;
             for (const auto& child : m_children) {
-                shouldReset |= child->Render();
+				if (child == nullptr)
+					continue;
+            	shouldReset |= child->Render();
             }
+        	if (m_scrollable) {
+				ImGui::EndChild();
+			}
         	return shouldReset;
         }
 
@@ -205,7 +231,7 @@ namespace Coral::Reef {
 
     protected:
         f32& CurrentSize(const Axis axis) {
-            if (axis == Horizontal) {
+            if (axis == Axis::Horizontal) {
                 return m_currentSize.width;
             } else {
                 return m_currentSize.height;
@@ -213,7 +239,7 @@ namespace Coral::Reef {
         }
 
         f32& BaseSize(const Axis axis) {
-            if (axis == Horizontal) {
+            if (axis == Axis::Horizontal) {
                 return m_baseSize.width;
             } else {
                 return m_baseSize.height;
@@ -221,7 +247,7 @@ namespace Coral::Reef {
         }
 
         f32& ChildrenSize(const Axis axis) {
-            if (axis == Horizontal) {
+            if (axis == Axis::Horizontal) {
                 return m_childrenSize.height;
             } else {
                 return m_childrenSize.width;
@@ -230,7 +256,7 @@ namespace Coral::Reef {
 
         [[nodiscard]]
         f32 Padding(const Axis axis) const {
-            if (axis == Horizontal) {
+            if (axis == Axis::Horizontal) {
                 return m_padding.left + m_padding.right;
             } else {
                 return m_padding.top + m_padding.bottom;
@@ -239,7 +265,7 @@ namespace Coral::Reef {
 
         [[nodiscard]]
         bool IsGrowOnAxis(const Axis axis) const {
-            if (axis == Horizontal) {
+            if (axis == Axis::Horizontal) {
                 return m_baseSize.width == Grow;
             } else {
                 return m_baseSize.height == Grow;
@@ -248,7 +274,7 @@ namespace Coral::Reef {
 
         [[nodiscard]]
         bool IsShrinkOnAxis(const Axis axis) const {
-            if (axis == Horizontal) {
+            if (axis == Axis::Horizontal) {
                 return m_baseSize.width <= Shrink;
             } else {
                 return m_baseSize.height <= Shrink;
@@ -267,8 +293,9 @@ namespace Coral::Reef {
         Reef::Padding m_padding;
         f32 m_spacing = 0.f;
         f32 m_cornerRadius = 0.f;
-        Axis m_axis = Horizontal;
-        Math::Color m_backgroundColor;
+        Axis m_axis = Axis::Horizontal;
+    	bool m_scrollable = false;
+        Color m_backgroundColor;
 
         Math::Vector2<f32> m_baseSize;
         Math::Vector2<f32> m_childrenSize;

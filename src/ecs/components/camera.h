@@ -4,18 +4,16 @@
 
 #pragma once
 
-#include "math/vector.h"
+#include "component.h"
 #include "math/matrix.h"
-
-#include "memory/buffer.h"
-#include "memory/descriptor/set.h"
+#include "math/vector.h"
 
 namespace Coral::Reef {
     class CameraTemplate;
 }
 
 namespace Coral::ECS {
-    class Camera {
+    class Camera final : public Component {
         friend class DebugCamera;
         friend class Reef::CameraTemplate;
 
@@ -30,9 +28,8 @@ namespace Coral::ECS {
         };
 
         enum class Type {
-            Perspective,
             Orthographic,
-            Count
+            Perspective,
         };
 
         struct Perspective {
@@ -76,21 +73,14 @@ namespace Coral::ECS {
         };
 
         struct CreateInfo {
-            ProjectionData projectionData;
+            ProjectionData projectionData = {};
             Math::Vector2<u32> size = { 800, 600 };
         };
 
-        struct Info {
-            Math::Matrix4<f32> view;
-            Math::Matrix4<f32> projection;
-            Math::Matrix4<f32> inverseView;
-            Math::Matrix4<f32> inverseProjection;
-        };
-
         explicit Camera(const CreateInfo &createInfo);
-        ~Camera() = default;
+        ~Camera() override = default;
 
-        void Resize(Math::Vector2<u32> size);
+        void Resize(const Math::Vector2<u32>& size);
 
         [[nodiscard]] bool Primary() const { return m_primary; }
         bool& Primary() { return m_primary; }
@@ -99,19 +89,20 @@ namespace Coral::ECS {
         [[nodiscard]] const Math::Matrix4<f32>& InverseProjection() const { return m_inverseProjection; }
         [[nodiscard]] const Math::Matrix4<f32>& View() const { return m_view; }
         [[nodiscard]] const Math::Matrix4<f32>& InverseView() const { return m_inverseView; }
-        [[nodiscard]] bool Moved() const { return m_moved; }
+        [[nodiscard]] bool& Moved() { return m_moved; }
+		[[nodiscard]] bool& Changed() { return m_changed; }
+
         [[nodiscard]] Math::Vector2<u32> Resolution() const { return m_viewportSize; }
-        [[nodiscard]] Info BufferData() const;
-        [[nodiscard]] const Memory::Descriptor::Set& DescriptorSet();
-        [[nodiscard]] const Memory::Descriptor::SetLayout& DescriptorSetLayout() const { return *m_setLayout; }
 
         [[nodiscard]] float AspectRatio() const { return static_cast<float>(m_viewportSize.x) / static_cast<float>(m_viewportSize.y); }
         [[nodiscard]] ProjectionData& GetProjectionData() { return m_projectionData; }
 
-    private:
+    	void Move(const Math::Vector3<f32>& amount);
+    	void Rotate(f32 yaw, f32 pitch);
+
         void RecalculateProjection();
         void RecalculateView();
-
+    private:
         Math::Matrix4<f32> m_projection { 1.0f };
         Math::Matrix4<f32> m_view { 1.0f };
         Math::Matrix4<f32> m_inverseProjection { 1.0f };
@@ -124,12 +115,7 @@ namespace Coral::ECS {
         bool m_moved = true;
         bool m_changed = false;
 
-        Math::Vector3<f32> m_position { 0.0f, 0.0f, 0.0f };
-        Math::Vector3<f32> m_forward { 0.0f, 0.0f, -1.0f };
-
-        std::unique_ptr<Memory::Buffer> m_buffer = nullptr;
-        std::unique_ptr<Memory::Descriptor::SetLayout> m_setLayout = nullptr;
-        std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet = nullptr;
-
+    	const Math::Vector3<f32> FORWARD = { 0.0f, 0.0f, -1.0f };
+    	const Math::Vector3<f32> UP = { 0.0f, -1.0f, 0.0f };
     };
 }

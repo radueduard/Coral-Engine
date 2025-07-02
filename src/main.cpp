@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "gui/elements/popup.h"
 
 int main()
 {

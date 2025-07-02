@@ -22,11 +22,13 @@ namespace Coral::Graphics {
     class RenderPass;
 
     class Pipeline {
+    	friend class RenderPass;
     public:
         class Builder {
             friend class Pipeline;
+        	friend class RenderPass;
         public:
-            Builder(RenderPass &renderPass);
+            Builder(RenderPass&);
             ~Builder() = default;
 
             Builder(const Builder &) = delete;
@@ -48,8 +50,9 @@ namespace Coral::Graphics {
 
             std::unique_ptr<Pipeline> Build();
         private:
-            std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
+			RenderPass &m_renderPass;
 
+            std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
             std::unordered_map<Core::Stage, const Core::Shader*> m_shaders;
             std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
 
@@ -75,10 +78,7 @@ namespace Coral::Graphics {
             vk::PipelineDynamicStateCreateInfo m_dynamicState;
 
             vk::PipelineLayout m_pipelineLayout;
-            RenderPass& m_renderPass;
             uint32_t m_subpass = 0;
-
-        	std::function<void(const vk::CommandBuffer&, const Mesh&)> m_bindFunction = nullptr;
         };
 
         explicit Pipeline(Builder &);
@@ -103,6 +103,7 @@ namespace Coral::Graphics {
 
         [[nodiscard]] const vk::PipelineLayout &Layout() const { return m_pipelineLayout; }
 
+        const std::unordered_map<Core::Stage, const Core::Shader*>& Shaders() { return m_shaders; }
     private:
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;

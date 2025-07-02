@@ -8,8 +8,8 @@
 
 #include "physicalDevice.h"
 #include "window.h"
-#include "../extensions/debugUtils.h"
-#include "../extensions/meshShader.h"
+#include "extensions/debugUtils.h"
+#include "extensions/meshShader.h"
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -23,7 +23,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 namespace Coral::Core {
-    Runtime::Runtime(const CreateInfo &createInfo) : m_window(createInfo.window) {
+    Runtime::Runtime(const CreateInfo &createInfo) {
+		s_runtime = this;
+
         m_deviceFeatures = createInfo.deviceFeatures;
         m_deviceExtensions = createInfo.deviceExtensions;
         m_deviceLayers = createInfo.deviceLayers;
@@ -54,7 +56,7 @@ namespace Coral::Core {
             .setEngineVersion(VK_MAKE_VERSION(1, 0, 0))
             .setApiVersion(VK_API_VERSION_1_3);
 
-        const auto windowExtensions = m_window.GetRequiredExtensions();
+        const auto windowExtensions = Window::Get().GetRequiredExtensions();
         m_instanceExtensions.insert(m_instanceExtensions.end(), windowExtensions.begin(), windowExtensions.end());
 
         const auto createInfo = vk::InstanceCreateInfo()
@@ -85,7 +87,7 @@ namespace Coral::Core {
     }
 
     void Runtime::SelectPhysicalDevice() {
-        m_surface = m_window.CreateSurface(m_instance);
+        m_surface = Window::Get().CreateSurface(m_instance);
         m_physicalDevices = m_instance.enumeratePhysicalDevices();
         for (const auto physicalDeviceCandidate : m_physicalDevices) {
             const PhysicalDevice::CreateInfo createInfo = {

@@ -77,11 +77,7 @@ namespace Coral::Core {
 
     class Device final : public EngineWrapper<vk::Device> {
     public:
-        struct CreateInfo {
-            const Runtime& runtime;
-        };
-
-        explicit Device(const CreateInfo &createInfo);
+        explicit Device();
         ~Device() override;
 
         Device(const Device &) = delete;
@@ -100,11 +96,9 @@ namespace Coral::Core {
         [[nodiscard]] std::optional<uint32_t> FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 
         void RunSingleTimeCommand(const std::function<void(const Core::CommandBuffer&)> &command, vk::QueueFlags requiredFlags,
-            vk::Fence fence = nullptr, vk::Semaphore waitSemaphore = nullptr, vk::Semaphore signalSemaphore = nullptr);
+            vk::Fence fence = nullptr, vk::Semaphore waitSemaphore = nullptr, vk::Semaphore signalSemaphore = nullptr, bool wait = true);
 
     private:
-        const Runtime& m_runtime;
-
         std::vector<class Queue::Family> m_queueFamilies;
         std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::CommandPool>> m_commandPools;
     };

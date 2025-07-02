@@ -8,7 +8,7 @@
 namespace Coral::Reef {
 	class Popup final : public Element {
 	public:
-		Popup(const String& name, const std::vector<Element*>& children, const Style& style = Style { .direction = Vertical })
+		Popup(const String& name, const std::vector<Element*>& children, const Style& style = Style { .direction = Axis::Vertical })
 			: Element(style, children), m_name(name) {
 			GlobalManager().RegisterPopup(name, this);
 		}

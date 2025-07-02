@@ -18,7 +18,6 @@ namespace Coral::Core {
         friend class Device;
     public:
         struct CreateInfo {
-            const Window &window;
             vk::PhysicalDeviceFeatures deviceFeatures;
             std::vector<const char*> instanceLayers;
             std::vector<const char*> instanceExtensions;
@@ -42,8 +41,15 @@ namespace Coral::Core {
         [[nodiscard]] const vk::SurfaceKHR& Surface() const { return m_surface; }
         [[nodiscard]] PhysicalDevice& PhysicalDevice() const { return *m_physicalDevice; }
 
+		static const Runtime& Get() {
+        	if (!s_runtime) {
+				throw std::runtime_error("Runtime is not initialized");
+			}
+        	return *s_runtime;
+        }
+
     private:
-        const Window &m_window;
+		inline static Runtime *s_runtime = nullptr;
 
         vk::PhysicalDeviceFeatures m_deviceFeatures;
         std::vector<const char*> m_instanceLayers;

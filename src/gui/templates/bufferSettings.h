@@ -14,9 +14,10 @@
 
 namespace Coral::Reef {
 	class BufferSettings final : public ReadWriteTemplate<Memory::Buffer::Builder> {
+		bool m_changed;
 	public:
 		Element* Build(Memory::Buffer::Builder& data) override {
-			constexpr Text::Style labelStyle {
+			const Text::Style labelStyle {
 				.color = { 0.8f, 0.8f, 0.8f, 1.f },
 				.fontSize = 15.f,
 				.fontType = FontType::Bold,
@@ -28,7 +29,7 @@ namespace Coral::Reef {
 					.spacing = 10.f,
 					.cornerRadius = 10.f,
 					.backgroundColor = { 0.1f, 0.1f, 0.1f, 1.f },
-					.direction = Vertical,
+					.direction = Axis::Vertical,
 				},
 				{
 					new LabeledRow(
@@ -38,12 +39,12 @@ namespace Coral::Reef {
 					),
 					new LabeledRow(
 						new Text(Text::Piece("InstanceSize", labelStyle), { .size = { Shrink, Grow } }),
-						new Drag<u32, 1>("instance size", &data.m_instanceSize, 1, 1, 256, std::nullopt, { .size = { 250.f, Grow } }),
+						new Drag<u32, 1>("instance size", &data.m_instanceSize, 1, 1, 256, &m_changed, std::nullopt, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
 						new Text(Text::Piece("InstanceCount", labelStyle), { .size = { Shrink, Grow } }),
-						new Drag<u32, 1>("instance count", &data.m_instanceCount, 1, 1, 256, std::nullopt, { .size = { 250.f, Grow } }),
+						new Drag<u32, 1>("instance count", &data.m_instanceCount, 1, 1, 256, &m_changed, std::nullopt, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(

@@ -6,10 +6,26 @@
 #include "input.h"
 
 #include <iostream>
+#include <mono/metadata/loader.h>
 #include <stb_image.h>
+
+auto get_elapsed() -> double {
+	return Coral::Core::Window::Get().TimeElapsed();
+};
+
+auto get_deltaTime() -> double {
+	return Coral::Core::Window::Get().DeltaTime();
+};
+
+auto get_fixedDeltaTime() -> double {
+	return Coral::Core::Window::Get().FixedDeltaTime();
+};
+
 
 namespace Coral::Core {
     Window::Window(const CreateInfo& createInfo) : m_info(createInfo) {
+		s_window = this;
+
         if (const auto result = glfwInit(); result == GLFW_FALSE) {
             std::cerr << "Failed to initialize GLFW" << std::endl;
         }
@@ -65,6 +81,10 @@ namespace Coral::Core {
         glfwSetMouseButtonCallback(m_window, Input::Callbacks::mouseButtonCallback);
         glfwSetScrollCallback(m_window, Input::Callbacks::scrollCallback);
         glfwSetFramebufferSizeCallback(m_window, FramebufferResize);
+
+    	mono_add_internal_call("Coral.Time::get_elapsedTime", get_elapsed);
+    	mono_add_internal_call("Coral.Time::get_deltaTime", get_deltaTime);
+    	mono_add_internal_call("Coral.Time::get_fixedDeltaTime", get_fixedDeltaTime);
     }
 
     Window::~Window() {
@@ -92,6 +112,13 @@ namespace Coral::Core {
         const double currentTime = glfwGetTime();
         m_deltaTime = currentTime - m_lastTime;
         m_lastTime = currentTime;
+
+    	m_timeSinceLastFixedUpdate += m_deltaTime;
+    	if (m_timeSinceLastFixedUpdate >= m_fixedDeltaTime) {
+			m_timeSinceLastFixedUpdate -= m_fixedDeltaTime;
+    		m_timeSinceLastFixedUpdate = 0.0;
+    		shouldRunFixedUpdate = true;
+		}
     }
 
 	void Window::FramebufferResize(GLFWwindow* window, const int width, const int height) {

@@ -4,6 +4,7 @@
 
 #include "domain.h"
 
+#include <iostream>
 #include <stdexcept>
 
 namespace Coral::Scripting {
@@ -12,8 +13,15 @@ namespace Coral::Scripting {
     }
 
     Domain::~Domain() {
-        if (m_domain && m_domain != s_rootDomain->m_domain) {
-            mono_domain_free(m_domain, true);
+        if (this != s_rootDomain) {
+            try {
+                s_rootDomain->Set();
+                mono_domain_free(m_domain, true);
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to free domain: " << e.what() << std::endl;
+            }
+        } else {
+            mono_jit_cleanup(m_domain);
         }
     }
 
@@ -26,21 +34,22 @@ namespace Coral::Scripting {
         return *s_setDomain;
     }
 
-
-    Domain::Domain(const std::string& fileName) {
-        if (!s_rootDomain) {
-            s_rootDomain = this;
-        } else {
-            throw std::runtime_error("Root domain already exists");
+    void Domain::CreateRoot() {
+        if (s_rootDomain == nullptr) {
+            const auto domain = mono_jit_init("RootDomain");
+            s_rootDomain = new Domain(domain);
+            s_rootDomain->Set();
         }
-
-        m_domain = mono_jit_init(fileName.c_str());
-        s_setDomain = this;
     }
 
-    void Domain::JitCleanup::operator()(const Domain* domain) const {
-        mono_jit_cleanup(domain->m_domain);
+    void Domain::DestroyRoot() {
+        if (s_rootDomain) {
+            delete s_rootDomain;
+            s_rootDomain = nullptr;
+        }
     }
+
+    Domain::Domain(MonoDomain* domain) : m_domain(domain) {}
 
     const Domain& Domain::Root() {
         if (!s_rootDomain) {

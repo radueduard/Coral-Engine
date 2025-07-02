@@ -8,17 +8,22 @@
 #include <boost/uuid/nil_generator.hpp>
 
 #include "core/scheduler.h"
+#include "ecs/entity.h"
 #include "graphics/pipeline.h"
 #include "gui/container.h"
+#include "gui/elements/popup.h"
 #include "gui/viewport.h"
+#include "shader/manager.h"
+#include "graphics/renderPass.h"
+
 
 namespace Coral::Project {
 	RenderGraph::RenderGraph(const CreateInfo& createInfo)
 		: m_guiEnabled(createInfo.guiEnabled), m_frameCount(createInfo.frameCount) {
 		m_generator = boost::uuids::random_generator_mt19937();
 
-		auto windowSize = createInfo.window.Extent();
-		Math::Vector3 extent = { static_cast<uint32_t>(windowSize.width), static_cast<uint32_t>(windowSize.height), 1u };
+		auto windowSize = Core::Window::Get().Extent();
+		Math::Vector3 extent = { static_cast<u32>(windowSize.width), static_cast<u32>(windowSize.height), 1u };
 
 		auto idGui = boost::uuids::nil_uuid();
 		if (m_guiEnabled) {
@@ -36,11 +41,11 @@ namespace Coral::Project {
 		for (uint32_t i = 0; i < m_frameCount; i++) {
 			Memory::Image* depthImage = m_imageStorage.emplace_back(
 				Memory::Image::Builder()
-					.Format(vk::Format::eD32Sfloat)
+					.Format(vk::Format::eD32SfloatS8Uint)
 					.Extent(extent)
 					.UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
 					.SampleCount(vk::SampleCountFlagBits::e2)
-					.InitialLayout(vk::ImageLayout::eUndefined)
+					.InitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 					.Build()).get();
 			m_images.at(idDepth).emplace_back(depthImage);
 
@@ -82,13 +87,13 @@ namespace Coral::Project {
 		}
 
 		auto depthPassDepthDescription = vk::AttachmentDescription()
-			.setFormat(vk::Format::eD32Sfloat)
+			.setFormat(vk::Format::eD32SfloatS8Uint)
 			.setSamples(vk::SampleCountFlagBits::e2)
 			.setLoadOp(vk::AttachmentLoadOp::eClear)
 			.setStoreOp(vk::AttachmentStoreOp::eStore)
 			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setInitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 			.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
 		auto depthPassDepthReference = vk::AttachmentReference()
@@ -102,9 +107,9 @@ namespace Coral::Project {
 			.clearValue = vk::ClearDepthStencilValue(1.0f, 0)
 		};
 
-		auto depthSubpass = vk::SubpassDescription()
-			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-			.setPDepthStencilAttachment(&depthPassDepthReference);
+		auto depthSubpass = Graphics::RenderPass::Subpass {
+			.depthStencilAttachment = depthPassDepthReference
+		};
 
 		m_renderPasses.emplace("depth", Graphics::RenderPass::Builder()
 			.OutputImageIndex(0)
@@ -115,7 +120,7 @@ namespace Coral::Project {
 			.Build());
 
 		auto colorPassDepthDescription = vk::AttachmentDescription()
-			.setFormat(vk::Format::eD32Sfloat)
+			.setFormat(vk::Format::eD32SfloatS8Uint)
 			.setSamples(vk::SampleCountFlagBits::e2)
 			.setLoadOp(vk::AttachmentLoadOp::eLoad)
 			.setStoreOp(vk::AttachmentStoreOp::eDontCare)
@@ -142,7 +147,7 @@ namespace Coral::Project {
 			.setStoreOp(vk::AttachmentStoreOp::eStore)
 			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setInitialLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
 			.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		auto colorPassColorReference = vk::AttachmentReference()
@@ -177,11 +182,11 @@ namespace Coral::Project {
 			.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
 		};
 
-		auto colorSubpass = vk::SubpassDescription()
-			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-			.setColorAttachments(colorPassColorReference)
-			.setResolveAttachments(colorPassColorResolveReference)
-			.setPDepthStencilAttachment(&colorPassDepthReference);
+		auto colorSubpass = Graphics::RenderPass::Subpass{
+			.colorAttachments = {colorPassColorReference},
+			.resolveAttachments = {colorPassColorResolveReference},
+			.depthStencilAttachment = colorPassDepthReference
+		};
 
 		m_renderPasses.emplace("color", Graphics::RenderPass::Builder()
 			.OutputImageIndex(2)
@@ -216,9 +221,9 @@ namespace Coral::Project {
 				.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
 			};
 
-			auto guiSubpass = vk::SubpassDescription()
-				.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-				.setColorAttachments(guiPassColorReference);
+			auto guiSubpass = Graphics::RenderPass::Subpass {
+				.colorAttachments = { guiPassColorReference },
+			};
 
 			m_guiRenderPass = Graphics::RenderPass::Builder()
 				.OutputImageIndex(0)
@@ -244,29 +249,26 @@ namespace Coral::Project {
 
 		// TODO: Delete this:
 
-		const auto vertexShader = Core::Shader("shaders/wireframe/wireframe.vert");
-		// const auto meshShader = Core::Shader("shaders/wireframe/aabb.frag");
-		const auto fragmentShader = Core::Shader("shaders/wireframe/wireframe.frag");
 
-		// std::unique_ptr<Graphics::Pipeline> aabbPipeline = Graphics::Pipeline::Builder(*m_renderPasses.at("color").get())
-		// 	.AddShader(&meshShader)
-		// 	.AddShader(&fragmentShader)
-		// 	.Build();
+		auto* vertexShader = Shader::Manager::Get().Shader("pbr/pbr.vert");
+		auto* fragmentShader = Shader::Manager::Get().Shader("pbr/pbr.frag");
 
-		std::unique_ptr<Graphics::Pipeline> pipeline = Graphics::Pipeline::Builder(*m_renderPasses.at("color").get())
-			.AddShader(&vertexShader)
-			.AddShader(&fragmentShader)
-			.Build();
+		// const auto vertexShader = Core::Shader("wireframe/wireframe.vert");
+		// const auto fragmentShader = Core::Shader("wireframe/wireframe.frag");
 
-		// m_renderPasses.at("color")->AddPipeline(std::move(aabbPipeline));
-		m_renderPasses.at("color")->AddPipeline(std::move(pipeline));
+		auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
+		pipelineBuilder->AddShader(vertexShader).AddShader(fragmentShader)
+			.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
+				.setPolygonMode(vk::PolygonMode::eFill)
+				.setCullMode(vk::CullModeFlagBits::eBack)
+				.setFrontFace(vk::FrontFace::eClockwise)
+				.setLineWidth(1.0f));
+		m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
 
 		// ------------------
 
 		if (m_guiEnabled) {
 			const auto guiCreateInfo = Reef::Manager::CreateInfo {
-				.window =  createInfo.window,
-				.runtime = createInfo.runtime,
 				.queue = *m_queues.at(vk::QueueFlagBits::eGraphics),
 				.renderPass = *m_guiRenderPass,
 				.frameCount = m_frameCount,
@@ -293,6 +295,9 @@ namespace Coral::Project {
 
 	void RenderGraph::Update(const float deltaTime) const
 	{
+		for (const auto& renderPass : m_renderPasses | std::views::values) {
+			renderPass->Update(deltaTime);
+		}
 		if (m_guiEnabled) {
 			m_guiManager->Update(deltaTime);
 		}
@@ -393,20 +398,6 @@ namespace Coral::Project {
 		}
 		return m_runNodes.back()->commandBuffers[frameIndex]->SignalSemaphore();
 	}
-	void RenderGraph::OnGUIAttach() {
-		Layer::OnGUIAttach();
-		AddDockable("RenderGraph",
-			new Reef::Dockable(
-				"RenderGraph", {},
-				{
-					new Reef::Element(
-						{ .direction = Reef::Vertical },
-						{
 
-						}
-					),
-				}
-			)
-		);
-	}
-} // namespace Coral::Project
+	void RenderGraph::OnGUIAttach() {}
+}

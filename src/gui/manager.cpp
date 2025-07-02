@@ -19,6 +19,10 @@
 #include "memory/descriptor/pool.h"
 
 #include "IconsFontAwesome6.h"
+#include "ecs/sceneManager.h"
+#include "ecs/entity.h"
+
+#include "gui/elements/popup.h"
 
 static void check_vk_result(VkResult err) {
     if (err == VK_SUCCESS)
@@ -89,10 +93,10 @@ namespace Coral::Reef {
         }
         style.AntiAliasedFill = true;
 
-        ImGui_ImplGlfw_InitForVulkan(createInfo.window.GetHandle(), true);
+        ImGui_ImplGlfw_InitForVulkan(*Core::Window::Get(), true);
         ImGui_ImplVulkan_InitInfo init_info = {
-            .Instance = createInfo.runtime.Instance(),
-            .PhysicalDevice = *createInfo.runtime.PhysicalDevice(),
+            .Instance = Core::Runtime::Get().Instance(),
+            .PhysicalDevice = *Core::Runtime::Get().PhysicalDevice(),
             .Device = *Core::GlobalDevice(),
             .QueueFamily = m_queue.Family().Index(),
             .Queue = *m_queue,
@@ -136,7 +140,6 @@ namespace Coral::Reef {
             ImGui_ImplVulkan_CreateFontsTexture();
             m_fontRequests.clear();
         }
-
         for (auto* layer : m_layers) {
             layer->OnGUIUpdate();
         }
@@ -223,6 +226,20 @@ namespace Coral::Reef {
         ImGui::PushFont(GetFont(FontType::Regular, 13.f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
+
+		// App menu bar
+		if (ImGui::BeginMainMenuBar()) {
+			if (ImGui::BeginMenu("File")) {
+				if (ImGui::MenuItem("New Project")) {
+					ECS::SceneManager::Get().RegisterEvent([] {
+						ECS::SceneManager::Get().NewScene();
+						Asset::Manager::Get().Reset();
+					});
+				}
+				ImGui::EndMenu();
+			}
+			ImGui::EndMainMenuBar();
+		}
 
         for (const auto* layer : m_layers) {
             layer->OnGUIRender();

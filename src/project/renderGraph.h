@@ -21,8 +21,6 @@ namespace Coral::Project {
     class RenderGraph : public Reef::Layer {
     public:
         struct CreateInfo {
-            const Core::Window& window;
-            const Core::Runtime& runtime;
             uint32_t frameCount = 2;
             bool guiEnabled = true;
         };
@@ -60,7 +58,7 @@ namespace Coral::Project {
         uint32_t m_frameCount;
         boost::unordered_map<boost::uuids::uuid, std::vector<Memory::Image*>> m_images;
         std::vector<std::unique_ptr<Memory::Image>> m_imageStorage;
-        boost::unordered_map<std::string, std::unique_ptr<Graphics::RenderPass>> m_renderPasses;
+        std::unordered_map<std::string, std::unique_ptr<Graphics::RenderPass>> m_renderPasses;
         std::vector<std::unique_ptr<RunNode>> m_runNodes;
 
     };

@@ -60,8 +60,8 @@ namespace Coral::Core {
         Core::GlobalDevice()->destroyFence(m_fence);
     }
 
-    Device::Device(const CreateInfo& createInfo) : m_runtime(createInfo.runtime) {
-        const auto& physicalDevice = m_runtime.PhysicalDevice();
+    Device::Device() {
+        const auto& physicalDevice = Runtime::Get().PhysicalDevice();
         for (const auto& queueFamily : physicalDevice.QueueFamilyProperties()) {
             const auto queueFamilyIndex = static_cast<uint32_t>(&queueFamily - physicalDevice.QueueFamilyProperties().data());
             const bool canPresent = physicalDevice->getSurfaceSupportKHR(queueFamilyIndex, physicalDevice.Surface());
@@ -89,10 +89,10 @@ namespace Coral::Core {
 
         const auto deviceCreateInfo = vk::DeviceCreateInfo()
             .setQueueCreateInfos(queueCreateInfos)
-            .setPEnabledFeatures(&m_runtime.m_deviceFeatures)
+            .setPEnabledFeatures(&Runtime::Get().m_deviceFeatures)
             .setPNext(&maintenance4Features)
-            .setPEnabledExtensionNames(m_runtime.m_deviceExtensions)
-            .setPEnabledLayerNames(m_runtime.m_deviceLayers);
+            .setPEnabledExtensionNames(Runtime::Get().m_deviceExtensions)
+            .setPEnabledLayerNames(Runtime::Get().m_deviceLayers);
 
         m_handle = physicalDevice->createDevice(deviceCreateInfo);
 
@@ -164,13 +164,13 @@ namespace Coral::Core {
     }
 
     const PhysicalDevice& Device::QuerySurfaceCapabilities() const {
-        auto& physicalDevice = m_runtime.PhysicalDevice();
+        auto& physicalDevice = Runtime::Get().PhysicalDevice();
         physicalDevice.QuerySurfaceCapabilities();
         return physicalDevice;
     }
 
     std::optional<uint32_t> Device::FindMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const {
-        const auto& physicalDevice = m_runtime.PhysicalDevice();
+        const auto& physicalDevice = Runtime::Get().PhysicalDevice();
         const auto memoryTypes = physicalDevice->getMemoryProperties().memoryTypes;
         for (uint32_t i = 0; i < memoryTypes.size(); i++) {
             if (typeFilter & 1 << i &&
@@ -184,7 +184,7 @@ namespace Coral::Core {
     }
 
     void Device::RunSingleTimeCommand(const std::function<void(const Core::CommandBuffer&)> &command, const vk::QueueFlags requiredFlags,
-        const vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSemaphore) {
+        const vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSemaphore, bool wait) {
         const auto threadId = std::this_thread::get_id();
         uint32_t thread = threadId._Get_underlying_id();
         if (threadId == mainThreadId) {
@@ -216,7 +216,9 @@ namespace Coral::Core {
         } catch (const std::runtime_error& e) {
             std::cerr << e.what() << std::endl;
         }
-        (*queue)->waitIdle();
+    	if (wait) {
+			(*queue)->waitIdle();
+		}
     }
 }
 

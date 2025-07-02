@@ -14,83 +14,50 @@
 
 #include "memory/descriptor/setLayout.h"
 
+namespace Coral::Shader {
+	class Manager;
+}
 namespace Coral::Core {
-    class Stage {
-    public:
-        enum class Values : uint32_t
-        {
-            Vertex                  = 1 << 0,
-            TessellationControl     = 1 << 1,
-            TessellationEvaluation  = 1 << 2,
-            Geometry                = 1 << 3,
-            Fragment                = 1 << 4,
-            AllGraphics             = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment,
-            Compute                 = 1 << 5,
-            Task                    = 1 << 6,
-            Mesh                    = 1 << 7,
-            Raygen                  = 1 << 8,
-            AnyHit                  = 1 << 9,
-            ClosestHit              = 1 << 10,
-            Miss                    = 1 << 11,
-            Intersection            = 1 << 12,
-            AllRayTracing           = Raygen | AnyHit | ClosestHit | Miss | Intersection,
-            Callable                = 1 << 13,
-            All                     = 0x7FFFFFFF
-        };
-
-        Stage(const Values value) : m_value(value) {}
-        Stage(const vk::ShaderStageFlagBits value) : m_value(static_cast<Values>(value)) {}
-
-        [[nodiscard]] bool operator==(const Stage &other) const { return m_value == other.m_value; }
-        [[nodiscard]] bool operator==(const Values &other) const { return m_value == other; }
-
-        auto operator<=>(const Stage &other) const {
-            return m_value <=> other.m_value;
-        }
-
-        uint32_t operator &(const Stage &other) const { return static_cast<uint32_t>(m_value) & static_cast<uint32_t>(other.m_value); }
-
-        [[nodiscard]] uint32_t Value() const { return static_cast<uint32_t>(m_value); }
-
-        static constexpr std::vector<Values> AllValues() {
-            return {
-                Values::Vertex,
-                Values::TessellationControl,
-                Values::TessellationEvaluation,
-                Values::Geometry,
-                Values::Fragment,
-                Values::Compute,
-                Values::Task,
-                Values::Mesh,
-                Values::Raygen,
-                Values::AnyHit,
-                Values::ClosestHit,
-                Values::Miss,
-                Values::Intersection
-            };
-        }
-
-        [[nodiscard]] bool IsGraphics() const { return *this & Values::AllGraphics; }
-        [[nodiscard]] bool IsCompute() const { return *this & Values::Compute; }
-        [[nodiscard]] bool IsRayTracing() const { return *this & Values::AllRayTracing; }
-
-        operator Values() const {
-            return m_value;
-        }
-
-        operator vk::ShaderStageFlagBits() const {
-            return static_cast<vk::ShaderStageFlagBits>(static_cast<uint32_t>(m_value));
-        }
-
-        operator vk::ShaderStageFlags() const {
-            return static_cast<vk::ShaderStageFlagBits>(m_value);
-        }
-
-    private:
-        Values m_value;
+    enum class Stage : uint32_t {
+        Vertex                  = 1 << 0,
+        TessellationControl     = 1 << 1,
+        TessellationEvaluation  = 1 << 2,
+        Geometry                = 1 << 3,
+        Fragment                = 1 << 4,
+        AllGraphics             = Vertex | TessellationControl | TessellationEvaluation | Geometry | Fragment,
+        Compute                 = 1 << 5,
+        Task                    = 1 << 6,
+        Mesh                    = 1 << 7,
+        Raygen                  = 1 << 8,
+        AnyHit                  = 1 << 9,
+        ClosestHit              = 1 << 10,
+        Miss                    = 1 << 11,
+        Intersection            = 1 << 12,
+        AllRayTracing           = Raygen | AnyHit | ClosestHit | Miss | Intersection,
+        Callable                = 1 << 13,
+        All                     = 0x7FFFFFFF
     };
 
+	inline Stage operator|(Stage lhs, Stage rhs) {
+		return static_cast<Stage>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+	}
+
+	inline Stage& operator|=(Stage &lhs, Stage rhs) {
+		lhs = static_cast<Stage>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+		return lhs;
+	}
+
+	inline Stage operator&(Stage lhs, Stage rhs) {
+		return static_cast<Stage>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+	}
+
+	inline Stage& operator&=(Stage &lhs, Stage rhs) {
+		lhs = static_cast<Stage>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+		return lhs;
+	}
+
     class Shader final : public EngineWrapper<vk::ShaderModule> {
+		friend class Coral::Shader::Manager;
     public:
         struct Descriptor {
             uint32_t set;
@@ -119,18 +86,29 @@ namespace Coral::Core {
 
         [[nodiscard]] std::string Name() const { return m_path.filename().string(); }
         [[nodiscard]] const std::filesystem::path& Path() const { return m_path; }
-        [[nodiscard]] Core::Stage Stage() const { return m_stage; }
+        [[nodiscard]] Stage Stage() const { return m_stage; }
 
         [[nodiscard]] const std::set<Descriptor> &Descriptors() const { return m_descriptors; }
         [[nodiscard]] const std::vector<PushConstantRange> &PushConstantRanges() const { return m_pushConstantRanges; }
         [[nodiscard]] const std::vector<uint32_t> &SpirVCode() const { return m_spirVCode; }
         [[nodiscard]] const nlohmann::json& Analysis() const { return m_analysis; }
 
+		[[nodiscard]] std::filesystem::file_time_type LastWriteTime() const { return m_lastWriteTime; }
+
         nlohmann::json AnalyzeShader() const;
+
+		void Reload();
+
+		[[nodiscard]] bool Changed() const { return m_changed; }
+		[[nodiscard]] bool Valid() const { return m_valid; }
 
     private:
         std::filesystem::path m_path;
+		std::filesystem::file_time_type m_lastWriteTime;
         Core::Stage m_stage;
+
+		bool m_valid = true;
+		bool m_changed = false;
 
         std::vector<uint32_t> m_spirVCode;
 
@@ -145,31 +123,3 @@ namespace Coral::Core {
     };
 }
 
-namespace std {
-    template<>
-    struct hash<Coral::Core::Stage> {
-        size_t operator()(const Coral::Core::Stage &stage) const noexcept {
-            return hash<uint32_t>()(stage.Value());
-        }
-    };
-
-    inline string to_string(const Coral::Core::Stage::Values &stage)
-    {
-        switch (stage) {
-            case Coral::Core::Stage::Values::Vertex: return "Vertex";
-            case Coral::Core::Stage::Values::TessellationControl: return "TessellationControl";
-            case Coral::Core::Stage::Values::TessellationEvaluation: return "TessellationEvaluation";
-            case Coral::Core::Stage::Values::Geometry: return "Geometry";
-            case Coral::Core::Stage::Values::Fragment: return "Fragment";
-            case Coral::Core::Stage::Values::Compute: return "Compute";
-            case Coral::Core::Stage::Values::Task: return "Task";
-            case Coral::Core::Stage::Values::Mesh: return "Mesh";
-            case Coral::Core::Stage::Values::Raygen: return "Raygen";
-            case Coral::Core::Stage::Values::AnyHit: return "AnyHit";
-            case Coral::Core::Stage::Values::ClosestHit: return "ClosestHit";
-            case Coral::Core::Stage::Values::Miss: return "Miss";
-            case Coral::Core::Stage::Values::Intersection: return "Intersection";
-            default: throw std::runtime_error("Unknown shader stage");
-        }
-    }
-}

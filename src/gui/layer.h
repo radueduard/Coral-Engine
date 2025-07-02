@@ -45,7 +45,7 @@ namespace Coral::Reef {
     private:
         void OnGUIRender() const {
             for (const auto& object : m_dockables | std::views::values) {
-                object->Render();
+            	object->Render();
             }
         }
 

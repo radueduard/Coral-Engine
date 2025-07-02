@@ -27,6 +27,13 @@ namespace Coral::Graphics {
             void Resize(const Math::Vector2<f32>& extent) const;
         };
 
+    	struct Subpass {
+    		std::vector<vk::AttachmentReference> colorAttachments = {};
+    		std::vector<vk::AttachmentReference> inputAttachments = {};
+    		std::vector<vk::AttachmentReference> resolveAttachments = {};
+    		std::optional<vk::AttachmentReference> depthStencilAttachment = std::nullopt;
+    	};
+
         class Builder {
             friend class RenderPass;
         public:
@@ -56,7 +63,7 @@ namespace Coral::Graphics {
                 return *this;
             }
 
-            Builder& Subpass(const vk::SubpassDescription& subpass) {
+            Builder& Subpass(const Subpass& subpass) {
                 m_subpasses.emplace_back(subpass);
                 return *this;
             }
@@ -76,7 +83,7 @@ namespace Coral::Graphics {
             uint32_t m_outputImageIndex = 0;
             Math::Vector2<uint32_t> m_extent;
             std::vector<RenderPass::Attachment> m_attachments;
-            std::vector<vk::SubpassDescription> m_subpasses;
+            std::vector<struct Subpass> m_subpasses;
             std::vector<vk::SubpassDependency> m_dependencies;
         };
 
@@ -88,19 +95,21 @@ namespace Coral::Graphics {
         RenderPass &operator=(const RenderPass &) = delete;
 
         void Begin(const Core::CommandBuffer& commandBuffer, uint32_t imageIndex);
-        void Update(float deltaTime) const;
+        void Update(float deltaTime);
         void Draw(const Core::CommandBuffer& commandBuffer) const;
         void End(const Core::CommandBuffer& commandBuffer);
 
         [[nodiscard]] const std::vector<Attachment>& Attachments() const { return m_attachments; }
-        [[nodiscard]] std::vector<Attachment> Subpass(const uint32_t index) const {
+        [[nodiscard]] std::vector<Attachment> SubpassColorAttachments(const uint32_t index) const {
             if (index >= m_subpasses.size()) {
                 std::cerr << "Subpass index out of range" << std::endl;
                 return {};
             }
             std::vector<Attachment> attachments;
-            for (u32 i = 0; i < m_subpasses[index].colorAttachmentCount; i++) {
-                const auto& attachment = m_attachments[m_subpasses[index].pColorAttachments[i].attachment];
+        	// std::cout << m_subpasses[index].colorAttachmentCount << std::endl;
+            for (u32 i = 0; i < m_subpasses[index].colorAttachments.size(); i++) {
+            	// std::cout << i << std::endl;
+                const auto& attachment = m_attachments[m_subpasses[index].colorAttachments[i].attachment];
                 attachments.emplace_back(attachment);
             }
             return attachments;
@@ -128,8 +137,9 @@ namespace Coral::Graphics {
         void CreateFrameBuffers();
         void DestroyFrameBuffers();
 
-        void AddPipeline(std::unique_ptr<Pipeline> pipeline) {
-            m_pipelines.emplace_back(std::move(pipeline));
+        void AddPipeline(std::unique_ptr<Pipeline::Builder> pipelineBuilder) {
+        	std::unique_ptr<Pipeline> pipeline = pipelineBuilder->Build();
+            m_pipelines.emplace_back(std::move(pipelineBuilder), std::move(pipeline));
         }
 
         bool Resize(uint32_t imageCount, const Math::Vector2<f32>& extent);
@@ -146,11 +156,11 @@ namespace Coral::Graphics {
         std::vector<Attachment> m_attachments;
         std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;
 
-        std::vector<vk::SubpassDescription> m_subpasses;
+        std::vector<struct Subpass> m_subpasses;
         std::vector<vk::SubpassDependency> m_dependencies;
 
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
 
-        std::vector<std::unique_ptr<Pipeline>> m_pipelines;
+        std::vector<std::pair<std::unique_ptr<Pipeline::Builder>, std::unique_ptr<Pipeline>>> m_pipelines;
     };
 }

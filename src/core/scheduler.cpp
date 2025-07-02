@@ -4,13 +4,12 @@
 
 #include "scheduler.h"
 
-#include <iostream>
-#include <ranges>
-
 #include "graphics/renderPass.h"
-#include "gui/manager.h"
 #include "memory/descriptor/pool.h"
 #include "project/renderGraph.h"
+#include "ecs/entity.h"
+#include "gui/elements/popup.h"
+
 
 namespace Coral::Core {
     Frame::Frame(const uint32_t imageIndex)
@@ -27,7 +26,7 @@ namespace Coral::Core {
     }
 
     Scheduler::Scheduler(const CreateInfo& createInfo)
-        : m_window(createInfo.window), m_runtime(createInfo.runtime), m_imageCount(createInfo.imageCount)
+        : m_imageCount(createInfo.imageCount)
     {
         g_scheduler = this;
         CreateFrames();
@@ -42,8 +41,6 @@ namespace Coral::Core {
         CreateDescriptorPool();
 
         const auto renderGraphCreateInfo = Project::RenderGraph::CreateInfo {
-            .window = createInfo.window,
-            .runtime = createInfo.runtime,
             .frameCount = m_imageCount,
             .guiEnabled = true,
         };
@@ -93,14 +90,14 @@ namespace Coral::Core {
 
         if (const auto result = m_swapChain->Acquire(currentFrame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
-            m_swapChain->Resize(m_window.Extent());
-            m_renderGraph->Resize(m_window.Extent());
+            m_swapChain->Resize(Window::Get().Extent());
+            m_renderGraph->Resize(Window::Get().Extent());
             return;
         }
 
-        m_renderGraph->Execute(currentFrame);
+    	m_renderGraph->Execute(currentFrame);
 
-        GlobalDevice().RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
+        GlobalDevice().RunSingleTimeCommand([&](const CommandBuffer& commandBuffer) {
             const Memory::Image& outputImage = m_renderGraph->OutputImage(currentFrame.ImageIndex());
             const Memory::Image& swapChainImage = *m_swapChain->SwapChainImages()[currentFrame.ImageIndex()];
 
@@ -204,11 +201,9 @@ namespace Coral::Core {
 
         if (const auto result = m_swapChain->Present(currentFrame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
-            m_swapChain->Resize(m_window.Extent());
-            m_renderGraph->Resize(m_window.Extent());
+            m_swapChain->Resize(Window::Get().Extent());
+            m_renderGraph->Resize(Window::Get().Extent());
             return;
         }
-        m_currentFrame = (m_currentFrame + 1) % m_imageCount;
-
     }
 }

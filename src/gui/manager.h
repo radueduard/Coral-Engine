@@ -50,9 +50,6 @@ namespace Coral::Reef {
         ImFont* GetFont(FontType type, float size);
 
         struct CreateInfo {
-            const Core::Window& window;
-            const Core::Runtime& runtime;
-
             const Core::Queue& queue;
             const Graphics::RenderPass& renderPass;
 

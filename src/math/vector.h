@@ -11,6 +11,7 @@
 #include <imgui.h>
 #include <vulkan/vulkan.hpp>
 
+#include "scripting/remote.h"
 #include "utils/types.h"
 
 namespace Coral::Math {
@@ -61,7 +62,7 @@ namespace Coral::Math {
 
 
 	template <typename T, u32 N> requires std::is_arithmetic_v<T> && (N > 0)
-	struct Vector : Data<T, N> {
+	struct Vector : Data<T, N>, Scripting::Remote<Vector<T, N>> {
 		constexpr explicit Vector() : Data<T, N>() {}
 
 		constexpr explicit Vector(const T& scalar) {
@@ -74,12 +75,6 @@ namespace Coral::Math {
 				*offsetData = arg;
 				++offsetData;
 			}
-		}
-
-		template <u32 M> requires (M > N)
-		constexpr explicit Vector(const Vector<T, M>& other) {
-			constexpr auto vectorSize = std::min(N, M);
-			std::copy(other.data, other.data + vectorSize, this->data);
 		}
 
 		template <u32 M, typename... Args> requires (M > 0) && (M < N) && (sizeof...(Args) == (N - M))
@@ -95,6 +90,11 @@ namespace Coral::Math {
 			for (; offsetData < this->data + N; ++offsetData) {
 				*offsetData = static_cast<T>(0);
 			}
+		}
+
+		template<u32 M> requires (M > N)
+		constexpr Vector(const Vector<T, M>& other) {
+			std::copy(other.data, other.data + N, this->data);
 		}
 
 		constexpr Vector(const Vector& other) = default;
@@ -239,60 +239,37 @@ namespace Coral::Math {
 			return !(*this == other);
 		}
 
-		template <typename U, u32 M> requires std::is_arithmetic_v<U> && (M > 0)
-		operator Vector<U, M>() const {
-			Vector<U, M> result;
-			for (int i = 0; i < std::min(N, M); ++i) {
+		template <typename U> requires std::is_arithmetic_v<U>
+		operator Vector<U, N>() const {
+			Vector<U, N> result;
+			for (int i = 0; i < N; ++i) {
 				result.data[i] = static_cast<U>(this->data[i]);
-			}
-			for (int i = N; i < M; ++i) {
-				result.data[i] = 0;
 			}
 			return result;
 		}
 
 		constexpr T Length() const {
-			T length = 0;
-			for (int i = 0; i < N; ++i) {
-				length += this->data[i] * this->data[i];
-			}
-			return std::sqrt(length);
+			return glm::length(glm::vec<N, T>(*this));
 		}
 
 		constexpr T Dot(const Vector& other) const {
-			T dot = 0;
-			for (int i = 0; i < N; ++i) {
-				dot += this->data[i] * other.data[i];
-			}
-			return dot;
+			return glm::dot(glm::vec<N, T>(*this), glm::vec<N, T>(other));
 		}
 
-		constexpr Vector Normalize() const {
-			T length = Length();
-			if (length == 0) {
-				throw std::runtime_error("Cannot normalize a zero vector");
-			}
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = this->data[i] / length;
-			}
-			return result;
+		constexpr Vector Normalized() const {
+			return Vector(glm::normalize(glm::vec<N, T>(*this)));
 		}
 
 		constexpr static T Dot(const Vector& a, const Vector& b) {
 			return a.Dot(b);
 		}
 
-		template<int M = N> requires (M == 3)
-		constexpr Vector Cross(const Vector& other) const {
-			return Vector {
-				this->data[1] * other.data[2] - this->data[2] * other.data[1],
-				this->data[2] * other.data[0] - this->data[0] * other.data[2],
-				this->data[0] * other.data[1] - this->data[1] * other.data[0]
-			};
+		constexpr Vector<T, 3> Cross(const Vector<T, 3>& other) const {
+			static_assert(N == 3, "Cross product is only defined for 3D vectors");
+			return Vector(glm::cross(glm::vec3(*this), glm::vec3(other)));
 		}
 
-		constexpr static Vector Cross(const Vector& a, const Vector& b) {
+		constexpr static Vector Cross(const Vector<T, 3>& a, const Vector<T, 3>& b) {
 			return a.Cross(b);
 		}
 
@@ -328,6 +305,17 @@ namespace Coral::Math {
 			std::array<T, N> result;
 			std::copy(this->data, this->data + N, result.data());
 			return result;
+		}
+
+		constexpr explicit Vector(const std::array<T, N>& other) {
+			std::copy(other.data(), other.data() + N, this->data);
+		}
+
+		constexpr explicit Vector(const glm::vec<N, T>& other) {
+			static_assert(N > 0, "Vector size must be greater than 0");
+			for (int i = 0; i < N; ++i) {
+				this->data[i] = other[i];
+			}
 		}
 
 		constexpr explicit operator glm::vec<N, T>() const {
@@ -450,7 +438,30 @@ namespace Coral::Math {
 
 	template <typename T> requires std::is_arithmetic_v<T>
 	using Vector4 = Vector<T, 4>;
+}
 
-	using Color = Vector4<f32>;
-
+namespace Coral {
+	using Color = Math::Vector4<f32>;
+	namespace Colors {
+		inline Color White { 1.f, 1.f, 1.f, 1.f };
+		inline Color Black { 0.f, 0.f, 0.f, 1.f };
+		inline Color Red { 1.f, 0.f, 0.f, 1.f };
+		inline Color Green { 0.f, 1.f, 0.f, 1.f };
+		inline Color Blue { 0.f, 0.f, 1.f, 1.f };
+		inline Color Yellow { 1.f, 1.f, 0.f, 1.f };
+		inline Color Cyan { 0.f, 1.f, 1.f, 1.f };
+		inline Color Magenta { 1.f, 0.f, 1.f, 1.f };
+		inline Color Transparent { 0.f, 0.f, 0.f, 0.f };
+		inline Color Gray { 0.5f, 0.5f, 0.5f, 1.f };
+		inline Color DarkGray { 0.2f, 0.2f, 0.2f, 1.f };
+		inline Color LightGray { 0.8f, 0.8f, 0.8f, 1.f };
+		inline Color Orange { 1.f, 0.5f, 0.f, 1.f };
+		inline Color Purple { 0.5f, 0.f, 0.5f, 1.f };
+		inline Color Brown { 0.6f, 0.4f, 0.2f, 1.f };
+		inline Color Pink { 1.f, 0.75f, 0.8f, 1.f };
+		inline Color LightBlue { 0.68f, 0.85f, 0.9f, 1.f };
+		inline Color DarkRed { 0.5f, 0.f, 0.f, 1.f };
+		inline Color DarkGreen { 0.f, 0.5f, 0.f, 1.f };
+		inline Color DarkBlue { 0.f, 0.f, 0.5f, 1.f };
+	}
 }

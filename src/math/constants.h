@@ -3,6 +3,7 @@
 //
 #pragma once
 
+#define GLM_FORCE_RADIANS
 import <glm/ext/scalar_constants.hpp>;
 import <glm/gtc/constants.hpp>;
 
@@ -17,22 +18,27 @@ namespace Coral::Math {
 
     template<typename T> requires std::is_floating_point_v<T>
     constexpr T Radians(T degrees) {
-        return degrees * Pi<T>() / static_cast<T>(180);
+        return glm::radians(degrees);
     }
 
     template<typename T, i32 N> requires std::is_floating_point_v<T>
     constexpr Vector<T, N> Radians(const Vector<T, N>& degrees) {
-        return degrees * Pi<T>() / static_cast<T>(180);
+        return Vector<T, N>(glm::radians(reinterpret_cast<const glm::vec<N, T>&>(degrees)));
     }
 
     template<typename T> requires std::is_floating_point_v<T>
     constexpr T Degrees(T radians) {
-        return radians * static_cast<T>(180) / Pi<T>();
+        return glm::degrees(radians);
     }
 
     template<typename T, i32 N> requires std::is_floating_point_v<T>
     constexpr Vector<T, N> Degrees(const Vector<T, N>& radians) {
-        return radians * static_cast<T>(180) / Pi<T>();
+        return Vector<T, N>(glm::degrees(reinterpret_cast<const glm::vec<N, T>&>(radians)));
     }
+
+	template<typename T> requires std::is_floating_point_v<T>
+	constexpr T Epsilon() {
+		return glm::epsilon<T>();
+	}
 
 }

@@ -17,7 +17,7 @@ namespace Coral::Reef {
 		explicit SetSelection(UnorderedSet<T>* set, const Style& style = Style())
 			: Element(style), m_newValue(T{}), m_set(set)
 		{
-			m_axis = Vertical;
+			m_axis = Axis::Vertical;
 			Recreate();
 		}
 		~SetSelection() override = default;

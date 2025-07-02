@@ -6,13 +6,18 @@
 
 #include <ranges>
 
-#include "framebuffer.h"
 #include "core/device.h"
-#include "ecs/scene.h"
 #include "ecs/components/camera.h"
 #include "ecs/components/renderTarget.h"
 #include "ecs/components/transform.h"
+#include "ecs/scene.h"
+#include "ecs/sceneManager.h"
+#include "ecs/entity.h"
+
+#include "framebuffer.h"
 #include "memory/image.h"
+
+#include "gui/elements/popup.h"
 
 namespace Coral::Graphics {
     void RenderPass::Attachment::Resize(const Math::Vector2<f32>& extent) const {
@@ -22,9 +27,11 @@ namespace Coral::Graphics {
     }
 
     RenderPass::RenderPass(Builder* builder)
-        : m_outputAttachmentIndex(builder->m_outputImageIndex), m_imageCount(builder->m_imageCount), m_extent(builder->m_extent) {
+        : m_outputAttachmentIndex(builder->m_outputImageIndex),
+		m_imageCount(builder->m_imageCount),
+		m_extent(builder->m_extent) {
         m_attachments = std::move(builder->m_attachments);
-        m_subpasses = builder->m_subpasses;
+        m_subpasses = std::move(builder->m_subpasses);
         m_dependencies = builder->m_dependencies;
         m_sampleCount = m_attachments[0].description.samples;
 
@@ -44,9 +51,32 @@ namespace Coral::Graphics {
             attachmentDescriptions.emplace_back(attachment.description);
         }
 
+    	std::vector<vk::SubpassDescription> subpassDescriptions;
+    	subpassDescriptions.reserve(m_subpasses.size());
+    	for (const auto &subpass : m_subpasses) {
+    		auto subpassDescription = vk::SubpassDescription();
+    		if (!subpass.colorAttachments.empty()) {
+				subpassDescription.setColorAttachments(subpass.colorAttachments);
+			}
+    		if (!subpass.inputAttachments.empty()) {
+				subpassDescription.setInputAttachments(subpass.inputAttachments);
+			}
+    		if (!subpass.resolveAttachments.empty()) {
+    			subpassDescription.setResolveAttachments(subpass.resolveAttachments);
+    		}
+    		if (subpass.depthStencilAttachment.has_value()) {
+    			subpassDescription.setPDepthStencilAttachment(&subpass.depthStencilAttachment.value());
+    		}
+			subpassDescriptions.emplace_back(subpassDescription);
+		}
+
+		if (m_outputAttachmentIndex >= m_attachments.size()) {
+			throw std::runtime_error("Output attachment index is out of bounds.");
+		}
+
         const auto renderPassInfo = vk::RenderPassCreateInfo()
             .setAttachments(attachmentDescriptions)
-            .setSubpasses(m_subpasses)
+            .setSubpasses(subpassDescriptions)
             .setDependencies(m_dependencies);
 
         m_handle = Core::GlobalDevice()->createRenderPass(renderPassInfo);
@@ -105,22 +135,45 @@ namespace Coral::Graphics {
         commandBuffer->setScissor(0, scissor);
     }
 
-    void RenderPass::Update(const float deltaTime) const {
-        // for (const auto& program : m_programs) {
-        //     if (program) {
-        //         program->Update(deltaTime);
-        //     }
-        // }
+    void RenderPass::Update(const float deltaTime) {
+        for (auto& [builder, pipeline] : m_pipelines) {
+	        bool shouldRebuild = false;
+        	for (const auto shader : pipeline->Shaders() | std::views::values) {
+        		if (shader->Changed()) {
+        			shouldRebuild = true;
+        		}
+        	}
+
+        	if (shouldRebuild) {
+        		if (std::ranges::all_of(
+					pipeline->Shaders() | std::views::values,
+					[](const auto& shader) { return shader->Valid(); }))
+        		{
+        			builder->m_shaders = std::move(pipeline->m_shaders);
+        			pipeline = builder->Build();
+        		}
+        	}
+        }
     }
 
     void RenderPass::Draw(const Core::CommandBuffer& commandBuffer) const {
-        for (const auto& pipeline : m_pipelines) {
+		if (!ECS::SceneManager::Get().IsSceneLoaded())
+			return;
+
+    	for (const auto& pipeline : m_pipelines | std::views::values) {
             pipeline->Bind(*commandBuffer);
-            pipeline->BindDescriptorSet(0, *commandBuffer, ECS::Scene::Get().MainCamera().DescriptorSet());
-            ECS::Scene::Get().Registry().group<ECS::Transform, ECS::RenderTarget>().each(
-            [&](const ECS::Transform& transform, const ECS::RenderTarget& renderTarget) {
-                for (const auto mesh : renderTarget.Targets() | std::views::keys) {
-                    pipeline->PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, transform.Matrix());
+            pipeline->BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().DescriptorSet());
+            ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
+            [&](const ECS::Entity* entity, const ECS::RenderTarget& renderTarget) {
+                Math::Matrix4<f32> matrix = Math::Matrix4<f32>::Identity();
+            	while (entity) {
+            		auto& transform = entity->Get<ECS::Transform>();
+            		matrix *= transform.Matrix();
+            		entity = entity->Parent();
+            	}
+                for (const auto [mesh, material] : renderTarget.Targets()) {
+                	pipeline->BindDescriptorSet(1, *commandBuffer, material->DescriptorSet());
+                    pipeline->PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, matrix);
                     mesh->Bind(*commandBuffer);
                     mesh->Draw(*commandBuffer);
                 }

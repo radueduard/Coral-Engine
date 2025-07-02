@@ -9,24 +9,17 @@
 #include <boost/uuid/uuid.hpp>
 #include <glm/glm.hpp>
 
+#include "memory/buffer.h"
+#include "memory/descriptor/set.h"
 #include "texture.h"
 
 namespace Coral::Graphics {
-    struct Parameters {
-        float alphaCutoff;
-        uint32_t doubleSided;
-        float roughnessFactor;
-        float metallicFactor;
-        alignas(16) glm::vec3 emissiveFactor;
-        glm::vec4 baseColorFactor;
-    };
-
     class Material {
     public:
         class Builder {
             friend class Material;
         public:
-            Builder(const boost::uuids::uuid& uuid) : m_uuid(uuid) {}
+            explicit Builder(const boost::uuids::uuid& uuid) : m_uuid(uuid) {}
 
             Builder& Name(const std::string& name) {
                 m_name = name;
@@ -78,8 +71,8 @@ namespace Coral::Graphics {
             uint32_t m_doubleSided = 0;
             float m_roughnessFactor = 0.5f;
             float m_metallicFactor = 0.5f;
-            glm::vec3 m_emissiveFactor = {0.0f, 0.0f, 0.0f};
-            glm::vec4 m_baseColorFactor = {1.0f, 1.0f, 1.0f, 1.0f};
+            glm::vec3 m_emissiveFactor = { 0.0f, 0.0f, 0.0f };
+            glm::vec4 m_baseColorFactor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
             std::unordered_map<PBR::Usage, const Texture*> m_textures {};
         };
@@ -95,12 +88,17 @@ namespace Coral::Graphics {
         }
 
         [[nodiscard]] const std::string& Name() const { return m_name; }
-        [[nodiscard]] const Parameters& Parameters() const { return m_parameters; }
+    	[[nodiscard]] const Memory::Descriptor::Set& DescriptorSet() const { return *m_descriptorSet; }
+
 
     private:
         boost::uuids::uuid m_uuid;
         std::string m_name;
-        Graphics::Parameters m_parameters {};
+
+    	std::unique_ptr<Memory::Buffer> m_parametersBuffer;
+    	std::unique_ptr<Memory::Descriptor::Set> m_descriptorSet;
+
         std::unordered_map<PBR::Usage, const Graphics::Texture*> m_textures {};
+
     };
 }

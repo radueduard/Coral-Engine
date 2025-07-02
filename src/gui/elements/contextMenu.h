@@ -46,7 +46,7 @@ namespace Coral::Reef {
 
 	private:
 		explicit ContextMenu(Builder* builder)
-			: Element(Style { .size = {Shrink, Shrink}, .direction = Vertical }),
+			: Element(Style { .size = {Shrink, Shrink}, .direction = Axis::Vertical }),
 			  m_items(std::move(builder->m_items)) {}
 
 		std::vector<std::pair<String, std::function<bool()>>> m_items;

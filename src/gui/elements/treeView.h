@@ -14,6 +14,7 @@
 #include "IconsFontAwesome6.h"
 
 #include "ecs/scene.h"
+#include "ecs/sceneManager.h"
 
 namespace Coral::Reef {
     template<typename T, typename IdType> requires std::is_base_of_v<NarryTree<T, IdType>, T>
@@ -32,7 +33,7 @@ namespace Coral::Reef {
                 if (const auto payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                     IdType recvObject = *static_cast<IdType*>(payload->Data);
                     if (m_tree.Id() != recvObject) {
-                        T* recv = ECS::Scene::Get().Registry().get<T*>(recvObject);
+                        T* recv = ECS::SceneManager::Get().Registry().get<T*>(recvObject);
                         if (recv != nullptr) {
                             auto detached = recv->Detach();
                             m_tree.AddChild(std::move(detached));
@@ -93,7 +94,7 @@ namespace Coral::Reef {
                 if (const auto payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                     IdType recvObject = *static_cast<IdType*>(payload->Data);
                     if (object.Id() != recvObject) {
-                        T* recv = ECS::Scene::Get().Registry().get<T*>(recvObject);
+                        T* recv = ECS::SceneManager::Get().Registry().get<T*>(recvObject);
                         if (recv != nullptr) {
                             try {
                                 recv->FindChild(object.Id());
@@ -111,80 +112,30 @@ namespace Coral::Reef {
 
             static std::pair<std::string, std::array<char, 256>> popupName;
 
-            bool openPopup = false;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::Selectable(ICON_FA_PLUS "    Add Child", false)) {
-                    openPopup = true;
-                    popupName.first = name;
-                    popupName.second.fill('\0');
+                if (ImGui::MenuItem(ICON_FA_PLUS "    Add Empty", nullptr, false)) {
+                	object.AddEmpty();
                 }
-                if (ImGui::Selectable(ICON_FA_TRASH "    Delete", false)) {
+            	if (ImGui::MenuItem(ICON_FA_CAMERA "    Add Camera", nullptr, false)) {
+            		object.AddCamera();
+				}
+            	if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Light", nullptr, false)) {
+					object.AddLight();
+            	}
+            	if (ImGui::BeginMenu(ICON_FA_HASHTAG "    Add Mesh")) {
+					if (ImGui::MenuItem(ICON_FA_CUBE "    Add Cube", nullptr, false)) {
+						object.AddCube();
+					}
+            		if (ImGui::MenuItem(ICON_FA_CIRCLE "    Add Sphere", nullptr, false)) {
+            			object.AddSphere();
+            		}
+            		ImGui::EndMenu();
+				}
+                if (ImGui::MenuItem(ICON_FA_TRASH "    Delete", nullptr, false)) {
                     object.Detach();
                 }
                 ImGui::EndPopup();
             }
-            if (openPopup) {
-                ImGui::OpenPopup((name + "##popup").c_str());
-            }
-
-            const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 10.0f));
-            if (ImGui::BeginPopupModal((name + "##popup").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar)) {
-                ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("New object").x) / 2.0f);
-                ImGui::Text("New object");
-
-                static bool displayErrorMessage = false;
-
-                if (ImGui::IsWindowAppearing()) {
-                    ImGui::SetKeyboardFocusHere();
-                }
-
-                if (ImGui::InputTextEx("##name", "name", popupName.second.data(), popupName.second.size(), ImVec2(0, 0), ImGuiInputTextFlags_None)) {
-                    displayErrorMessage = false;
-                }
-
-                if (displayErrorMessage) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-
-                    ImGui::TextWrapped("Object with this name already exists under this parent");
-
-                    ImGui::PopStyleColor();
-                }
-
-                const float buttonWidth = 2 * ImGui::GetStyle().FramePadding.x + ImGui::CalcTextSize("Cancel").x + 10.0f;
-                const float buttonAreaWidth = buttonWidth * 2 + ImGui::GetStyle().ItemSpacing.x;
-
-                ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonAreaWidth) / 2.0f);
-
-                if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0))) {
-                    ImGui::CloseCurrentPopup();
-                    displayErrorMessage = false;
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Add", ImVec2(buttonWidth, 0))) {
-                    if (popupName.second[0] != '\0') {
-                        const auto _n = std::string(popupName.second.data());
-                        bool exists = false;
-                        for (const auto& child : object.Children()) {
-                            if (to_string(*child) == _n) {
-                                exists = true;
-                                break;
-                            }
-                        }
-                        if (!exists) {
-                            object.AddChild(std::make_unique<T>(popupName.second.data()));
-                            ImGui::CloseCurrentPopup();
-                        } else {
-                            displayErrorMessage = true;
-                        }
-                    }
-                }
-
-                ImGui::EndPopup();
-            }
-            ImGui::PopStyleVar();
 
             const auto nodeRect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 

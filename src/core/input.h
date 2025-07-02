@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include <unordered_map>
-#include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
+#include <unordered_map>
+
+#include "math/vector.h"
 
 namespace Coral {
     class Engine;
@@ -184,27 +185,26 @@ namespace Coral {
         static bool IsMouseButtonHeld(MouseButton button);
         static bool IsMouseButtonReleased(MouseButton button);
 
-        static glm::ivec2 GetMousePosition();
-        static glm::ivec2 GetMousePositionDelta();
-        static glm::vec2 GetMoseScrollDelta();
+        static Math::Vector2<i32>& GetMousePosition();
+        static Math::Vector2<i32>& GetMousePositionDelta();
+        static Math::Vector2<f32>& GetMouseScrollDelta();
 
     private:
         static void Setup();
         static void Update();
 
-        static std::unordered_map<Key, KeyState> m_keyboardKeyStates;
-        static std::unordered_map<MouseButton, KeyState> m_mouseButtonStates;
+        inline static std::unordered_map<Key, KeyState> m_keyboardKeyStates;
+        inline static std::unordered_map<MouseButton, KeyState> m_mouseButtonStates;
 
-        static glm::ivec2 m_mousePosition;
-        static glm::ivec2 m_mouseDelta;
-        static glm::vec2 m_scrollDelta;
+        inline static Math::Vector2<i32> m_mousePosition = {0, 0};
+        inline static Math::Vector2<i32> m_mouseDelta = {0, 0};
+        inline static Math::Vector2<f32> m_scrollDelta = {0.0f, 0.0f};
 
     	struct Callbacks {
     		static void keyCallback(GLFWwindow*, int, int, int, int);
     		static void mouseMoveCallback(GLFWwindow*, double, double);
     		static void mouseButtonCallback(GLFWwindow*, int, int, int);
     		static void scrollCallback(GLFWwindow*, double, double);
-    		static void framebufferResize(GLFWwindow*, int, int);
     	};
     };
 }

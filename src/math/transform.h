@@ -3,20 +3,23 @@
 //
 #pragma once
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
 
-#include "vector.h"
+#include "constants.h"
 #include "matrix.h"
 #include "quaternion.h"
+#include "vector.h"
 
 namespace Coral::Math {
     inline Matrix4<f32> Translate(const Vector3<f32>& position) {
         auto result = Matrix4<f32>::Identity();
-        result[3] = Vector4 { position, 1.0f };
+        result[3] = Vector4(position, 1.0f);
         return result;
     }
 
@@ -37,7 +40,9 @@ namespace Coral::Math {
     }
 
     inline Vector3<f32> Rotate(const Quaternion& rotation, const Vector3<f32>& direction) {
-        return Vector3(rotation.ToMatrix() * Math::Vector4<f32>(direction, 1.0f));
+        return Vector3(glm::rotate(
+			reinterpret_cast<const glm::quat&>(rotation),
+			reinterpret_cast<const glm::vec3&>(direction)));
     }
 
     /**
@@ -74,14 +79,22 @@ namespace Coral::Math {
      */
     inline Matrix4<f32> LookAt(const Vector3<f32>& position, const Vector3<f32>& target, const Vector3<f32>& up) {
         return static_cast<Matrix4<f32>>(glm::lookAt(
-            static_cast<glm::vec3>(position),
-            static_cast<glm::vec3>(target),
-            static_cast<glm::vec3>(up)));
+            reinterpret_cast<const glm::vec3&>(position),
+            reinterpret_cast<const glm::vec3&>(target),
+            reinterpret_cast<const glm::vec3&>(up)));
     }
 
     inline Quaternion LookAt(const Vector3<f32>& direction, const Vector3<f32>& up) {
         return Quaternion(glm::quatLookAt(
-            static_cast<glm::vec3>(direction),
-            static_cast<glm::vec3>(up)));
+            reinterpret_cast<const glm::vec3&>(direction),
+            reinterpret_cast<const glm::vec3&>(up)));
+    }
+
+	inline Vector3<f32> Direction(const Vector3<f32>& eulerAngles) {
+    	return Vector3 {
+    		glm::cos(eulerAngles.y) * glm::cos(eulerAngles.x),
+			glm::sin(eulerAngles.x),
+			glm::sin(eulerAngles.y) * glm::cos(eulerAngles.x)
+		}.Normalized();
     }
 }

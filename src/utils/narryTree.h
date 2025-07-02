@@ -14,29 +14,28 @@ public:
 
 	[[nodiscard]] T* Parent() const { return m_parent; }
 	[[nodiscard]] std::vector<T*> Children() const {
-		std::vector<T*> result;
-		result.reserve(m_children.size());
-		for (const auto &child: m_children) {
-			result.emplace_back(child.get());
+		std::vector<T*> children;
+		for (const auto &child : m_children) {
+			children.emplace_back(child.get());
 		}
-		return result;
+		return children;
 	}
 
 	void AddChild(std::unique_ptr<T> child) {
 		child->m_parent = static_cast<T*>(this);
-		m_children.push_back(std::move(child));
+		m_children.emplace_back(std::move(child));
 	}
 
 	void AddChild(T* child) {
 		child->m_parent = static_cast<T*>(this);
-		m_children.push_back(std::unique_ptr<T>(child));
+		m_children.emplace_back(std::unique_ptr<T>(child));
 	}
 
 	template <class... Args>
 	void AddChild(Args&&... args) {
 		auto child = std::make_unique<T>(std::forward<Args>(args)...);
 		child->m_parent = static_cast<T*>(this);
-		m_children.push_back(std::move(child));
+		m_children.emplace_back(std::move(child));
 	}
 
 

@@ -18,19 +18,18 @@ namespace Coral::ECS {
 }
 
 namespace Coral::Asset {
-    class Importer;
-}
-
-namespace Coral::Asset {
     class Importer {
     public:
         explicit Importer(const std::string& path);
         void Import();
-        [[nodiscard]] Reef::Container<ECS::Scene> LoadScene() const;
     private:
-        void LoadMeshes() const;
-        void LoadMaterials() const;
-        void LoadTextures() const;
+        void LoadMeshes();
+        void LoadMaterials();
+        void LoadTextures();
+
+    	bool m_meshesLoaded = false;
+    	bool m_materialsLoaded = false;
+		bool m_texturesLoaded = false;
 
         String m_path;
         String m_name;

@@ -120,7 +120,8 @@ namespace Coral::Memory {
 
             if (instanceCount != vk::WholeSize) {
                 instanceCount *= m_alignmentSize;
-            } else {
+            }
+    		else {
 	            instanceCount = m_instanceCount * m_alignmentSize;
             }
 
@@ -230,9 +231,6 @@ namespace Coral::Memory {
 
     	template<typename T>
         [[nodiscard]] T ReadAt(const u32 index) const {
-            static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
-            static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
-
             if (!m_mapped) {
                 throw std::runtime_error("Buffer::ReadAt : Buffer not mapped");
             }
@@ -242,9 +240,6 @@ namespace Coral::Memory {
 
     	template <typename T>
         void WriteAt(const uint32_t index, const T& data) {
-            static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable");
-            static_assert(std::is_standard_layout_v<T>, "Type must be standard layout");
-
             if (!m_mapped) {
                 throw std::runtime_error("Buffer::WriteAt : Buffer not mapped");
             }

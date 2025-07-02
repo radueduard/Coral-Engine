@@ -61,7 +61,7 @@ namespace Coral::Reef {
 					.spacing = 10.f,
 					.cornerRadius = 10.f,
 					.backgroundColor = { 0.1f, 0.1f, 0.1f, 1.f },
-					.direction = Vertical,
+					.direction = Axis::Vertical,
 				},
 				targets
 	        );

@@ -39,6 +39,7 @@ namespace Coral::Graphics {
         [[nodiscard]] vk::SampleCountFlagBits SampleCount() const { return m_sampleCount; }
         [[nodiscard]] std::vector<Memory::Image*> SwapChainImages() const;
         [[nodiscard]] vk::Format ImageFormat() const { return m_surfaceFormat.format; }
+    	[[nodiscard]] u32 CurrentImageIndex() const { return m_imageIndex; }
 
         void Resize(const Math::Vector2<f32>& newSize);
         vk::Result Acquire(const Core::Frame &frame);

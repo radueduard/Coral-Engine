@@ -41,7 +41,7 @@ namespace Coral::Reef {
 				}
 			};
 
-			constexpr Text::Style labelStyle {
+			const Text::Style labelStyle {
 				.color = { 0.8f, 0.8f, 0.8f, 1.f },
 				.fontSize = 15.f,
 				.fontType = FontType::Bold,
@@ -53,7 +53,7 @@ namespace Coral::Reef {
 					.padding = { 10.f, 10.f, 10.f, 10.f },
 					.cornerRadius = 10.f,
 					.backgroundColor = { .1f, .1f, .1f, 1.f },
-					.direction = Vertical,
+					.direction = Axis::Vertical,
 				},
 				{
 					Text::Builder({ .size = { 0.f, 20.f } })
@@ -68,17 +68,17 @@ namespace Coral::Reef {
 					new Separator(),
 					new LabeledRow {
 						new Text(Text::Piece {"position", labelStyle}, { .size = { Shrink, Grow } }),
-						new Drag<f32, 3>("Position", reinterpret_cast<f32*>(&data.position), 0.5f, -100.f, 100.f, labels, {.size = { 250.f, 0.f }}),
+						new Drag<f32, 3>("Position", reinterpret_cast<f32*>(&data.position), 0.5f, -100.f, 100.f, &data.m_changed, labels, {.size = { 250.f, 0.f }}),
 						{ .size = { 0.f, 23.f } }
 					},
 					new LabeledRow {
 						new Text(Text::Piece {"rotation", labelStyle}, { .size = { Shrink, Grow } }),
-						new Drag<f32, 3>("Rotation", reinterpret_cast<f32*>(&data.rotation), 1.f, -180.f, 180.f, labels, {.size = { 250.f, 0.f }}),
+						new Drag<f32, 3>("Rotation", reinterpret_cast<f32*>(&data.rotation), 1.f, -360.f, 360.f, &data.m_changed, labels, {.size = { 250.f, 0.f }}),
 						{ .size = { 0.f, 23.f } }
 					},
 					new LabeledRow {
 						new Text(Text::Piece {"scale", labelStyle}, { .size = { Shrink, Grow } }),
-						new Drag<f32, 3>("Scale", reinterpret_cast<f32*>(&data.scale), 0.1f, -10.f, 10.f, labels, {.size = { 250.f, 0.f }}),
+						new Drag<f32, 3>("Scale", reinterpret_cast<f32*>(&data.scale), 0.1f, -10.f, 10.f, &data.m_changed, labels, {.size = { 250.f, 0.f }}),
 						{ .size = { 0.f, 23.f } }
 					},
 				}

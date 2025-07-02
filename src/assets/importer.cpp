@@ -4,26 +4,31 @@
 
 #include "importer.h"
 
+#include <boost/uuid/uuid_io.hpp>
+#include <execution>
+#include <thread>
 #include <fstream>
 #include <iostream>
 #include <queue>
 #include <set>
 #include <stack>
 #include <stb_image.h>
-#include <boost/uuid/uuid_io.hpp>
 
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/GltfMaterial.h>
 #include <glm/gtc/quaternion.hpp>
 
-#include "manager.h"
 #include "../ecs/components/RenderTarget.h"
-#include "graphics/objects/mesh.h"
-#include "graphics/objects/textureArray.h"
-#include "graphics/objects/material.h"
 #include "../ecs/scene.h"
 #include "ecs/Entity.h"
+#include "ecs/components/camera.h"
+#include "graphics/objects/material.h"
+#include "graphics/objects/mesh.h"
+#include "graphics/objects/textureArray.h"
+#include "gui/elements/popup.h"
+#include "manager.h"
+#include "prefab.h"
 
 namespace Coral::ECS {
     struct Transform;
@@ -58,6 +63,8 @@ namespace Coral::Asset {
         m_metadata["meshes"] = nlohmann::json::object();
         m_metadata["materials"] = nlohmann::json::object();
         m_metadata["textures"] = nlohmann::json::object();
+    	m_metadata["lights"] = nlohmann::json::object();
+    	m_metadata["cameras"] = nlohmann::json::object();
         m_metadata["objects"] = nlohmann::json::object();
 
         std::stack<std::pair<const aiNode*, std::string>> nodes;
@@ -69,7 +76,20 @@ namespace Coral::Asset {
             aiVector3D position;
             aiQuaternion rotation;
             aiVector3D scale;
-            node->mTransformation.Decompose(scale, rotation, position);
+
+        	aiMatrix4x4 transform = node->mTransformation;
+        	aiNode* parentNode = node->mParent;
+        	while (parentNode) {
+        		transform = parentNode->mTransformation.Inverse() * transform;
+        		parentNode = parentNode->mParent;
+        	}
+        	if (transform.IsIdentity()) {
+				position = aiVector3D(0, 0, 0);
+				rotation = aiQuaternion(1, 0, 0, 0);
+				scale = aiVector3D(1, 1, 1);
+			} else {
+				transform.Decompose(scale, rotation, position);
+			}
             glm::quat rotationQuaternion = {rotation.w, rotation.x, rotation.y, rotation.z};
             glm::vec3 positionVector = {position.x, position.y, position.z};
             glm::vec3 rotationVector = glm::degrees(glm::eulerAngles(rotationQuaternion));
@@ -84,6 +104,7 @@ namespace Coral::Asset {
             objectData["transform"]["rotation"] = { rotationVector.x, rotationVector.y, rotationVector.z };
             objectData["transform"]["scale"] = { scaleVector.x, scaleVector.y, scaleVector.z };
             objectData["meshes"] = nlohmann::json::array();
+
             for (uint32_t i = 0; i < node->mNumMeshes; i++) {
                 const auto meshId = node->mMeshes[i];
                 const auto materialIndex = m_scene->mMeshes[meshId]->mMaterialIndex;
@@ -118,7 +139,7 @@ namespace Coral::Asset {
                     auto& materialData = m_metadata["materials"][materialUUID];
                     materialData["id"] = materialIndex;
 
-                    const auto material = m_scene->mMaterials[i];
+                    const auto material = m_scene->mMaterials[materialIndex];
                     aiString name;
                     material->Get(AI_MATKEY_NAME, name);
                     materialData["name"] = name.C_Str();
@@ -156,7 +177,7 @@ namespace Coral::Asset {
                     for (const auto& textureType : textureTypes) {
                         aiString path;
                         if (m_scene->mMaterials[materialIndex]->GetTexture(textureType, 0, &path) == AI_SUCCESS) {
-                            std::string textureTypeName = std::to_string(PBR::Usage(textureType));
+                            std::string textureTypeName = magic_enum::enum_name(textureType).data();
                             bool textureExists = false;
                             std::string textureUUID;
                             for (const auto& texture : m_metadata["textures"].items()) {
@@ -175,7 +196,25 @@ namespace Coral::Asset {
                             auto& textureData = m_metadata["textures"][textureUUID];
                             textureData["path"] = m_path + "/" + path.C_Str();
                             textureData["size"] = m_textureSize;
+                        	textureData["normalMap"] = textureType == aiTextureType_NORMALS;
                             materialData["textures"][textureTypeName] = textureUUID;
+                        } else {
+                        	std::string textureTypeName = magic_enum::enum_name(textureType).data();
+                        	std::string textureUUID;
+                        	if (textureType == aiTextureType_BASE_COLOR) {
+								textureUUID = "00000000-0000-0000-0000-000000000002";
+							} else if (textureType == aiTextureType_NORMALS) {
+								textureUUID = "00000000-0000-0000-0000-000000000003";
+							} else if (textureType == aiTextureType_EMISSIVE) {
+								textureUUID = "00000000-0000-0000-0000-000000000002";
+							} else if (textureType == aiTextureType_METALNESS) {
+								textureUUID = "00000000-0000-0000-0000-000000000001";
+							} else if (textureType == aiTextureType_DIFFUSE_ROUGHNESS) {
+								textureUUID = "00000000-0000-0000-0000-000000000001";
+							} else if (textureType == aiTextureType_LIGHTMAP) {
+								textureUUID = "00000000-0000-0000-0000-000000000002";
+							}
+                        	materialData["textures"][textureTypeName] = textureUUID;
                         }
                     }
 
@@ -186,20 +225,107 @@ namespace Coral::Asset {
                     {"material", materialUUID}
                 });
             }
+
+
             for (uint32_t i = 0; i < node->mNumChildren; i++) {
                 nodes.emplace(node->mChildren[i], objectUUID);
             }
         }
 
+    	for (uint32_t i = 0; i < m_scene->mNumLights; i++) {
+    		const auto light = m_scene->mLights[i];
+			auto lightUUID = boost::uuids::to_string(generator());
+			auto& lightData = m_metadata["lights"][lightUUID];
+			lightData["name"] = light->mName.C_Str();
+			lightData["type"] = magic_enum::enum_name(light->mType).data();
+    		lightData["diffuseColor"] = { light->mColorDiffuse.r, light->mColorDiffuse.g, light->mColorDiffuse.b };
+    		lightData["specularColor"] = { light->mColorSpecular.r, light->mColorSpecular.g, light->mColorSpecular.b };
+			switch (light->mType) {
+				case aiLightSource_DIRECTIONAL: {
+					lightData["direction"] = { light->mDirection.x, light->mDirection.y, light->mDirection.z };
+					lightData["intensity"] = 1.f;
+					break;
+				}
+				case aiLightSource_POINT: {
+					lightData["position"] = { light->mPosition.x, light->mPosition.y, light->mPosition.z };
+					lightData["range"] = light->mSize.x;
+					lightData["attenuation"] = {
+						light->mAttenuationConstant,
+						light->mAttenuationLinear,
+						light->mAttenuationQuadratic
+					};
+					break;
+				}
+				case aiLightSource_SPOT: {
+					lightData["position"] = { light->mPosition.x, light->mPosition.y, light->mPosition.z };
+					lightData["direction"] = { light->mDirection.x, light->mDirection.y, light->mDirection.z };
+					lightData["innerAngle"] = glm::degrees(light->mAngleInnerCone);
+					lightData["outerAngle"] = glm::degrees(light->mAngleOuterCone);
+					lightData["attenuation"] = {
+						light->mAttenuationConstant,
+						light->mAttenuationLinear,
+						light->mAttenuationQuadratic
+					};
+					break;
+				}
+				default:
+					break;
+			}
+
+    		for (auto& [uuid, objectData] : m_metadata["objects"].items()) {
+				if (objectData["name"] == light->mName.C_Str()) {
+					if (!objectData.contains("lights")) {
+						objectData["lights"] = nlohmann::json::array();
+					}
+					objectData["lights"].push_back(lightUUID);
+					break;
+				}
+			}
+    	}
+
+    	for (uint32_t i = 0; i < m_scene->mNumCameras; i++) {
+    		const auto& camera = m_scene->mCameras[i];
+			ECS::Camera::Type cameraType = camera->mOrthographicWidth != 0.f ? ECS::Camera::Type::Orthographic : ECS::Camera::Type::Perspective;
+    		auto cameraUUID = boost::uuids::to_string(generator());
+    		auto& cameraData = m_metadata["cameras"][cameraUUID];
+    		cameraData["type"] = magic_enum::enum_name(cameraType).data();
+    		if (cameraType == ECS::Camera::Type::Perspective) {
+				cameraData["fov"] = glm::degrees(camera->mHorizontalFOV);
+				cameraData["near"] = camera->mClipPlaneNear;
+				cameraData["far"] = camera->mClipPlaneFar;
+			} else {
+				cameraData["left"] = -camera->mOrthographicWidth;
+				cameraData["right"] = camera->mOrthographicWidth;
+				cameraData["bottom"] = -camera->mOrthographicWidth / camera->mAspect;
+				cameraData["top"] = camera->mOrthographicWidth / camera->mAspect;
+				cameraData["near"] = camera->mClipPlaneNear;
+				cameraData["far"] = camera->mClipPlaneFar;
+			}
+
+    		std::string cameraName = camera->mName.C_Str();
+    		for (auto& [uuid, objectData] : m_metadata["objects"].items()) {
+    			if (objectData["name"] == cameraName) {
+					if (!objectData.contains("cameras")) {
+						objectData["cameras"] = nlohmann::json::array();
+					}
+					objectData["cameras"].push_back(cameraUUID);
+					break;
+				}
+    		}
+    	}
+
         std::ofstream file("project.json");
         file << m_metadata.dump(4) << std::endl;
         file.close();
+
+    	LoadMeshes();
+    	LoadMaterials();
+    	Manager::Get().AddPrefab(std::make_unique<Prefab>(m_name, m_metadata));
     }
 
 
-    void Importer::LoadMeshes() const {
-        static bool meshesLoaded = false;
-        if (meshesLoaded)
+    void Importer::LoadMeshes() {
+        if (m_meshesLoaded)
             return;
         for (const auto& [uuid, meshData] : m_metadata["meshes"].items()) {
             const auto assimpId = meshData["id"].get<uint32_t>();
@@ -223,21 +349,23 @@ namespace Coral::Asset {
                 Math::Vector2 texCoord1 = { 0.0f, 0.0f };
                 if (mesh->mTextureCoords[1] != nullptr) {
                     texCoord1 = {mesh->mTextureCoords[1][j].x, mesh->mTextureCoords[1][j].y};
+                } else {
+	                texCoord1 = texCoord0;
                 }
-                Math::Color color = { 1.0f, 1.0f, 1.0f, 1.0f };
+                Color color = { 1.0f, 1.0f, 1.0f, 1.0f };
                 if (mesh->mColors[0] != nullptr) {
                     color = {mesh->mColors[0][j].r, mesh->mColors[0][j].g, mesh->mColors[0][j].b, mesh->mColors[0][j].a};
                 }
 
-                const auto N = Math::Vector3<f32>(normal).Normalize();
-                const auto T = Math::Vector3<f32>(tangent).Normalize();
-                const auto B = Math::Vector3<f32>(bitangent).Normalize();
+                const auto N = Math::Vector3<f32>(normal).Normalized();
+                const auto T = Math::Vector3<f32>(tangent).Normalized();
+                const auto B = Math::Vector3<f32>(bitangent).Normalized();
                 const auto sign = N.Cross(T).Dot(B) < 0.0f ? -1.0f : 1.0f;
 
                 builder.AddVertex({
                     .position = { position.x, position.y, position.z },
                     .normal = N,
-                    .tangent = Math::Vector4<f32>(T, sign),
+                    .tangent = Math::Vector4(T, sign),
                     .texCoord0 = { texCoord0.x, texCoord0.y },
                     .texCoord1 = { texCoord1.x, texCoord1.y },
                     .color0 = color
@@ -253,15 +381,17 @@ namespace Coral::Asset {
 
             Manager::Get().AddMesh(builder.Build());
         }
-        meshesLoaded = true;
+        m_meshesLoaded = true;
     }
 
-    void Importer::LoadMaterials() const {
-
-        static bool materialsLoaded = false;
-        if (materialsLoaded)
+    void Importer::LoadMaterials() {
+        if (m_materialsLoaded)
             return;
         LoadTextures();
+
+  //   	for (const auto&[uuid, texture] : Manager::Get().textures) {
+		// 	std::cout << "Loaded texture: " << uuid << " - " << texture->Name() << std::endl;
+		// }
 
         for (const auto& [uuid, materialData] : m_metadata["materials"].items()) {
             auto emissiveFactor = materialData["emissiveFactor"].get<std::array<float, 3>>();
@@ -278,23 +408,32 @@ namespace Coral::Asset {
 
             for (const auto& [textureType, textureUUID] : materialData["textures"].items()) {
                 const auto textureId = _stringToUuid(textureUUID.get<std::string>());
-                builder.AddTexture(textureType, Manager::Get().GetTexture(textureId));
+            	const auto textureEnum = PBR::FromAiTextureType(magic_enum::enum_cast<aiTextureType>(textureType).value());
+                builder.AddTexture(textureEnum, Manager::Get().GetTexture(textureId));
             }
             Manager::Get().AddMaterial(builder.Build());
         }
 
-        materialsLoaded = true;
+        m_materialsLoaded = true;
     }
 
-    void Importer::LoadTextures() const {
-        static bool texturesLoaded = false;
-        if (texturesLoaded)
+    void Importer::LoadTextures() {
+        if (m_texturesLoaded)
             return;
 
-        for (const auto& [uuid, textureData] : m_metadata["textures"].items()) {
+    	std::vector<std::pair<std::string, nlohmann::json>> textures;
+    	for (const auto& [uuid, textureData] : m_metadata["textures"].items()) {
+			textures.emplace_back(uuid, textureData);
+		}
+
+    	std::vector<Graphics::Texture::Builder> builders;
+    	std::vector<stbi_uc*> datas;
+    	std::mutex mtx;
+        std::for_each(std::execution::par, textures.begin(), textures.end(), [this, &builders, &datas, &mtx] (const auto& texture) {
+        	const auto& [strUuid, textureData] = texture;
             const auto path = textureData["path"].get<std::string>();
             const auto size = textureData["size"].get<uint32_t>();
-            const auto textureId = _stringToUuid(uuid);
+            const auto textureId = _stringToUuid(strUuid);
             const auto texturePath = m_path + '/' + path;
 
             int width, height, channels;
@@ -302,66 +441,33 @@ namespace Coral::Asset {
             if (!data) {
                 throw std::runtime_error("Failed to load texture: " + path);
             }
-            auto texture = Graphics::Texture::Builder(_stringToUuid(uuid))
-                .Name(path)
-                .Data(data)
-                .Width(width)
-                .Height(height)
-                .Format(vk::Format::eR8G8B8A8Unorm)
-                .Build();
-            stbi_image_free(data);
-            Manager::Get().AddTexture(std::move(texture));
-        }
 
-        texturesLoaded = true;
+			{
+				std::lock_guard lock(mtx);
+				auto& builder = builders.emplace_back(Graphics::Texture::Builder(textureId));
+
+				builder.Name(path.substr(path.find_last_of('/') + 1))
+					.Data(data)
+					.Width(width)
+					.Height(height)
+					.Format(vk::Format::eR8G8B8A8Unorm)
+					.CreateMipmaps();
+	        }
+        	datas.emplace_back(data);
+        });
+
+    	for (auto& builder : builders) {
+    		auto texture = builder.Build();
+			if (!texture) {
+				throw std::runtime_error("Failed to create texture from builder");
+			}
+			Manager::Get().AddTexture(std::move(texture));
+		}
+
+		for (const auto data : datas) {
+			stbi_image_free(data);
+    	}
+
+        m_texturesLoaded = true;
     }
-
-    Reef::Container<ECS::Scene> Importer::LoadScene() const {
-        auto scene = Reef::MakeContainer<ECS::Scene>();
-
-        LoadMeshes();
-        LoadMaterials();
-
-        boost::unordered_map<boost::uuids::uuid, ECS::Entity*> objectMap;
-        for (const auto& [uuid, objectData] : m_metadata["objects"].items()) {
-            auto object = new ECS::Entity(objectData["name"].get<std::string>());
-            object->Add<boost::uuids::uuid>(_stringToUuid(uuid));
-            auto& transform = object->Get<ECS::Transform>();
-            transform.position = { objectData["transform"]["position"][0].get<float>(),
-                                objectData["transform"]["position"][1].get<float>(),
-                                objectData["transform"]["position"][2].get<float>() };
-            transform.rotation = { objectData["transform"]["rotation"][0].get<float>(),
-                                objectData["transform"]["rotation"][1].get<float>(),
-                                objectData["transform"]["rotation"][2].get<float>() };
-            transform.scale = { objectData["transform"]["scale"][0].get<float>(),
-                            objectData["transform"]["scale"][1].get<float>(),
-                            objectData["transform"]["scale"][2].get<float>() };
-            objectMap[_stringToUuid(uuid)] = object;
-        }
-
-        ECS::Entity* root = nullptr;
-        for (const auto& [uuid, objectData] : m_metadata["objects"].items()) {
-            const auto childUUID = _stringToUuid(uuid);
-            const auto parentUUID = _stringToUuid(objectData["parent"].get<std::string>());
-
-            auto* child = objectMap[childUUID];
-            if (objectData.contains("meshes") && !objectData["meshes"].empty()) {
-                auto& renderTarget = child->Add<ECS::RenderTarget>();
-                for (const auto& meshData : objectData["meshes"]) {
-                    const auto meshUUID = _stringToUuid(meshData["mesh"].get<std::string>());
-                    const auto materialUUID = _stringToUuid(meshData["material"].get<std::string>());
-                    renderTarget.Add(Manager::Get().GetMesh(meshUUID), Manager::Get().GetMaterial(materialUUID));
-                }
-            }
-
-            if (parentUUID != boost::uuids::nil_uuid()) {
-                objectMap[parentUUID]->AddChild(child);
-            } else {
-                root = objectMap[childUUID];
-            }
-        }
-        scene->Root().AddChild(root);
-        return scene;
-    }
-
 }

@@ -14,7 +14,7 @@ namespace Coral::Reef {
 	public:
 		LabeledRow(Text* label, Element* element, const Style& style = Style())
 			: Element(style) {
-			m_axis = Horizontal;
+			m_axis = Axis::Horizontal;
 			m_children.emplace_back(label);
 			if (element->m_baseSize.width != Grow) {
 				m_children.emplace_back(new Element());

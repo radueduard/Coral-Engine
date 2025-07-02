@@ -5,13 +5,26 @@
 #include "manager.h"
 
 #include "IconsFontAwesome6.h"
+#include "prefab.h"
 
 #include "gui/elements/popup.h"
 #include "gui/elements/separator.h"
+#include "gui/templates/importAssetPopup.h"
+
+#include "ecs/components/RenderTarget.h"
+#include "ecs/entity.h"
+#include "ecs/scene.h"
+#include "gui/templates/bufferSettings.h"
+#include "gui/templates/imageSettings.h"
+#include "gui/templates/meshList.h"
+
+#include "graphics/objects/baseMeshes.h"
+#include "gui/templates/createBufferPopup.h"
 
 namespace Coral::Asset {
     void Manager::AddMesh(std::unique_ptr<Graphics::Mesh> mesh) {
         meshes[mesh->Id()] = std::move(mesh);
+    	m_meshesChanged = true;
     }
 
     const Graphics::Mesh* Manager::GetMesh(const boost::uuids::uuid &id) {
@@ -23,10 +36,12 @@ namespace Coral::Asset {
 
     void Manager::RemoveMesh(const boost::uuids::uuid &id) {
         meshes.erase(id);
+    	m_meshesChanged = true;
     }
 
     void Manager::AddMaterial(std::unique_ptr<Graphics::Material> material) {
         materials[material->UUID()] = std::move(material);
+    	m_materialsChanged = true;
     }
 
     const Graphics::Material * Manager::GetMaterial(const boost::uuids::uuid &id) {
@@ -38,24 +53,46 @@ namespace Coral::Asset {
 
     void Manager::RemoveMaterial(const boost::uuids::uuid &id) {
         materials.erase(id);
+    	m_materialsChanged = true;
     }
 
     void Manager::AddTexture(std::unique_ptr<Graphics::Texture> texture) {
-        textures[texture->UUID()] = std::move(texture);
+        textures.emplace(texture->UUID(), std::move(texture));
     }
 
-    const Graphics::Texture * Manager::GetTexture(const boost::uuids::uuid &id) {
+	bool Manager::HasTexture(const boost::uuids::uuid &id) const {
+		return textures.contains(id);
+	}
+
+    const Graphics::Texture* Manager::GetTexture(const boost::uuids::uuid &id) {
         if (textures.contains(id)) {
             return textures[id].get();
         }
-        return nullptr;
+        throw std::runtime_error("Texture not found: " + boost::uuids::to_string(id));
     }
 
-    void Manager::RemoveTexture(const boost::uuids::uuid &id) {
-        textures.erase(id);
+    void Manager::RemoveTexture(const boost::uuids::uuid& id) {
+	    textures.erase(id);
+    	m_texturesChanged = true;
     }
 
-    Graphics::Mesh * Manager::GetRandomMesh() {
+	void Manager::AddPrefab(std::unique_ptr<Prefab> prefab) {
+		prefabs.emplace(boost::uuids::random_generator()(), std::move(prefab));
+		m_prefabsChanged = true;
+	}
+	const Prefab& Manager::GetPrefab(const boost::uuids::uuid& id) const {
+	    if (prefabs.contains(id)) {
+			return *prefabs.at(id);
+		}
+		throw std::runtime_error("Prefab not found: " + boost::uuids::to_string(id));
+	}
+
+	void Manager::RemovePrefab(const boost::uuids::uuid& id) {
+		prefabs.erase(id);
+    	m_prefabsChanged = true;
+    }
+
+	Graphics::Mesh * Manager::GetRandomMesh() {
         if (meshes.empty()) {
             return nullptr;
         }
@@ -66,30 +103,55 @@ namespace Coral::Asset {
     Manager::Manager() {
     	instance = this;
 
-        u8 black[] = { 0, 0, 0, 255 };
-        u8 white[] = { 255, 255, 255, 255 };
-        u8 normal[] = { 127, 127, 255, 255 };
+        Reset();
 
-        auto builder = Graphics::Texture::Builder(idProvider())
-            .Name("black")
-            .Size(1)
-            .Data(black);
-        AddTexture(builder.Build());
+    	m_meshList = std::make_unique<Reef::MeshList>();
+    	m_materialList = std::make_unique<Reef::MaterialList>();
+    	m_texturesList = std::make_unique<Reef::TextureList>();
+    	m_prefabsList = std::make_unique<Reef::PrefabList>();
+    }
 
-        builder = Graphics::Texture::Builder(idProvider())
-            .Name("white")
-            .Size(1)
-            .Data(white);
-        AddTexture(builder.Build());
+	void Manager::Reset() {
+		meshes.clear();
+    	materials.clear();
+    	textures.clear();
+    	prefabs.clear();
 
-        builder = Graphics::Texture::Builder(idProvider())
-            .Name("baseNormal")
-            .Size(1)
-            .Data(normal);
-        AddTexture(builder.Build());
+    	u8 black[] = { 0, 0, 0, 255 };
+    	u8 white[] = { 255, 255, 255, 255 };
+    	u8 normal[] = { 127, 127, 255, 255 };
 
-    	imageSettings = std::make_unique<Reef::ImageSettings>();
-    	bufferSettings = std::make_unique<Reef::BufferSettings>();
+    	auto stringGenerator = boost::uuids::string_generator();
+    	auto builder = Graphics::Texture::Builder(stringGenerator("00000000-0000-0000-0000-000000000001"))
+			.Name("black")
+			.Size(1)
+			.Data(black);
+    	AddTexture(builder.Build());
+
+    	builder = Graphics::Texture::Builder(stringGenerator("00000000-0000-0000-0000-000000000002"))
+			.Name("white")
+			.Size(1)
+			.Data(white);
+    	AddTexture(builder.Build());
+
+    	builder = Graphics::Texture::Builder(stringGenerator("00000000-0000-0000-0000-000000000003"))
+			.Name("baseNormal")
+			.Size(1)
+			.Data(normal);
+    	AddTexture(builder.Build());
+
+    	AddMesh(Graphics::Cube());
+    	AddMesh(Graphics::Sphere());
+
+    	AddMaterial(Graphics::Material::Builder(boost::uuids::nil_uuid())
+			.Name("default")
+			.AddTexture(PBR::Usage::Albedo, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")))
+			.AddTexture(PBR::Usage::Normal, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000003")))
+			.AddTexture(PBR::Usage::Metalic, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
+			.AddTexture(PBR::Usage::Roughness, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
+			.AddTexture(PBR::Usage::AmbientOcclusion, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")))
+			.AddTexture(PBR::Usage::Emissive, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
+			.Build());
     }
 
     Manager::~Manager() {
@@ -98,167 +160,67 @@ namespace Coral::Asset {
 		materials.clear();
 	}
 
-	void Manager::OnGUIAttach() {
-	    Layer::OnGUIAttach();
+	void Manager::CreateUI() {
+		RemoveDockable("assetManager");
 
-    	AddDockable(
-    		"assetManager",
-    		new Reef::Dockable(
+    	auto* dockable = new Reef::Dockable(
 				ICON_FA_CUBE "   Asset Manager",
+				{.padding = {10.f, 10.f, 10.f, 10.f}, .backgroundColor = {0.f, 0.f, 0.f, 1.f}},
 				{
-					.padding = { 10.f, 10.f, 10.f, 10.f },
-					.backgroundColor = { 0.f, 0.f, 0.f, 1.f }
-				},
-				{
-					new Reef::Popup(
-						"##CreateImage",
-						{
-							new Reef::Element({},
-								{
-									new Reef::Element(),
-									new Reef::Text(
-										Reef::Text::Piece(
-											"Create Image",
-											{
-												.fontSize = 20.f,
-												.fontType = Reef::FontType::Black,
-											}
-										),
-										{
-											.size = { Reef::Shrink, 20.f },
-										}
-									),
-									new Reef::Element(),
-								}
-							),
-							new Reef::Separator(),
-							imageSettings->Build(imageBuilder),
-							new Reef::Element (
-								{
-									.size = {Reef::Grow, Reef::Shrink },
-									.spacing = 10.f,
-								},
-								{
-									new Reef::Element(),
-									new Reef::Button({
-											.size = {Reef::Shrink, 23.f },
-											.padding = { 10.f, 10.f, 0.f, 0.f },
-											.cornerRadius = 5.f,
-										},
-										[this] () -> bool {
-											Reef::GlobalManager().GetPopup("##CreateImage")->Close();
-											imageBuilder = Memory::Image::Builder();
-											return true;
-										},
-										{ new Reef::Text(Reef::Text::Piece("Cancel"), { .size = {Reef::Shrink, Reef::Grow } }) }
-									),
-									new Reef::Button(
-										{
-											.size = {Reef::Shrink, 23.f },
-											.padding = { 10.f, 10.f, 0.f, 0.f },
-											.cornerRadius = 5.f,
-										},
-										[this] () -> bool {
-											Reef::GlobalManager().GetPopup("##CreateImage")->Close();
-											auto image = imageBuilder.Build();
-											imageBuilder = Memory::Image::Builder();
-											return true;
-										},
-										{ new Reef::Text(Reef::Text::Piece("Submit"), { .size = {Reef::Shrink, Reef::Grow } }) }
-									),
-									new Reef::Element(),
-								}
-							)
-						},
-						{
-							.padding = { 10.f, 10.f, 10.f, 10.f },
-							.cornerRadius = 10.f,
-							.direction = Reef::Vertical,
-						}
-					),
-					new Reef::Popup(
-						"##CreateBuffer",
-						{
-							new Reef::Element({},
-								{
-									new Reef::Element(),
-									new Reef::Text(
-										Reef::Text::Piece(
-											"Create Buffer",
-											{
-												.fontSize = 20.f,
-												.fontType = Reef::FontType::Black,
-											}
-										),
-										{
-											.size = { Reef::Shrink, 20.f },
-										}
-									),
-									new Reef::Element(),
-								}
-							),
-							new Reef::Separator(),
-							bufferSettings->Build(bufferBuilder),
-							new Reef::Element (
-								{
-									.size = {Reef::Grow, Reef::Shrink },
-									.spacing = 10.f,
-								},
-								{
-									new Reef::Element(),
-									new Reef::Button({
-											.size = {Reef::Shrink, 23.f },
-											.padding = { 10.f, 10.f, 0.f, 0.f },
-											.cornerRadius = 5.f,
-										},
-										[this] () -> bool {
-											Reef::GlobalManager().GetPopup("##CreateBuffer")->Close();
-											bufferBuilder = Memory::Buffer::Builder();
-											return true;
-										},
-										{ new Reef::Text(Reef::Text::Piece("Cancel"), { .size = {Reef::Shrink, Reef::Grow } }) }
-									),
-									new Reef::Button(
-										{
-											.size = {Reef::Shrink, 23.f },
-											.padding = { 10.f, 10.f, 0.f, 0.f },
-											.cornerRadius = 5.f,
-										},
-										[this] () -> bool {
-											Reef::GlobalManager().GetPopup("##CreateBuffer")->Close();
-											auto buffer = bufferBuilder.Build();
-											bufferBuilder = Memory::Buffer::Builder();
-											return true;
-										},
-										{ new Reef::Text(Reef::Text::Piece("Submit"), { .size = {Reef::Shrink, Reef::Grow } }) }
-									),
-									new Reef::Element(),
-								}
-							)
-						},
-						{
-							.padding = { 10.f, 10.f, 10.f, 10.f },
-							.cornerRadius = 10.f,
-							.direction = Reef::Vertical,
-						}
-					),
+					m_meshList->Build(meshes | std::views::values |
+									 std::views::transform([](const auto& pair) { return pair.get(); }) |
+									 std::ranges::to<std::vector>()),
+					m_materialList->Build(materials | std::views::values |
+									 std::views::transform([](const auto& pair) { return pair.get(); }) |
+									 std::ranges::to<std::vector>()),
+					m_texturesList->Build(textures | std::views::values |
+									 std::views::transform([](const auto& pair) { return pair.get(); }) |
+									 std::ranges::to<std::vector>()),
+					m_prefabsList->Build(prefabs | std::views::values |
+									 std::views::transform([](const auto& pair) { return pair.get(); }) |
+									 std::ranges::to<std::vector>()),
 				},
 				nullptr,
 				Reef::ContextMenu::Builder()
 					.AddItem("Create Image",
-						[&]() -> bool {
-							Reef::GlobalManager().GetPopup("##CreateImage")->Open();
-							return true;
-						}
-					)
+							 [&]() -> bool {
+								 Reef::GlobalManager().GetPopup("##CreateImage")->Open();
+								 return true;
+							 })
 					.AddItem("Create Buffer",
-						[&]() -> bool {
-							Reef::GlobalManager().GetPopup("##CreateBuffer")->Open();
-							return true;
-						}
-					)
-					.Build()
-			)
-		);
+							 [&]() -> bool {
+								 Reef::GlobalManager().GetPopup("##CreateBuffer")->Open();
+								 return true;
+							 })
+					.AddItem("Import",
+							 [&]() -> bool {
+								 Reef::GlobalManager().GetPopup("##Import")->Open();
+								 return true;
+							 })
+					.Build());
+
+    	dockable->AddPopups(std::vector<Reef::Element*> {
+    		new Reef::CreateBufferPopup(),
+    		new Reef::CreateImagePopup(),
+			new Reef::ImportAssetPopup(),
+    	});
+
+	    AddDockable("assetManager", dockable);
     }
-}
+
+	void Manager::OnGUIAttach() {
+		Layer::OnGUIAttach();
+		CreateUI();
+	}
+
+	void Manager::OnGUIUpdate() {
+	    Layer::OnGUIUpdate();
+    	if (m_meshesChanged || m_materialsChanged || m_texturesChanged || m_prefabsChanged) {
+			CreateUI();
+    		m_meshesChanged = false;
+    		m_materialsChanged = false;
+    		m_texturesChanged = false;
+    		m_prefabsChanged = false;
+		}
+    }
+} // namespace Coral::Asset

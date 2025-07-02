@@ -54,6 +54,13 @@ namespace Coral::Reef {
 			if (m_contextMenu) {
 				m_contextMenu->Render();
 			}
+
+			for (auto& popup : m_popups) {
+				if (popup->Render()) {
+					ComputeLayout();
+				}
+			}
+
 			ImGui::End();
 
             ImGui::PopStyleVar();
@@ -62,10 +69,20 @@ namespace Coral::Reef {
 			return false;
         }
 
+    	void AddPopups(const std::vector<Element*>& popups) {
+			for (auto* popup : popups) {
+				m_popups.emplace_back(std::unique_ptr<Element>(popup));
+			}
+		}
+
     private:
         String m_name;
         Math::Vector2<f32> m_minSize;
         std::function<void(Math::Vector2<f32>)> m_onResize;
     	std::unique_ptr<ContextMenu> m_contextMenu;
+
+    	std::vector<std::unique_ptr<Element>> m_popups;
     };
 }
+
+

@@ -66,9 +66,6 @@ namespace Coral::Core {
         friend class Reef::Manager;
     public:
         struct CreateInfo {
-            const Window &window;
-            const Runtime &runtime;
-
             uint32_t minImageCount;
             uint32_t imageCount;
             vk::SampleCountFlagBits multiSampling;
@@ -85,7 +82,7 @@ namespace Coral::Core {
 
         [[nodiscard]] const Graphics::SwapChain &SwapChain() const { return *m_swapChain; }
         [[nodiscard]] const Memory::Descriptor::Pool &DescriptorPool() const { return *m_descriptorPool; }
-        [[nodiscard]] const Frame &CurrentFrame() const { return *m_frames.at(m_currentFrame); }
+        [[nodiscard]] const Frame &CurrentFrame() const { return *m_frames.at(m_swapChain->CurrentImageIndex()); }
         [[nodiscard]] const vk::Extent2D &Extent() const { return m_extent; }
         [[nodiscard]] bool IsResized() const { return m_resized; }
         [[nodiscard]] uint32_t ImageCount() const { return m_imageCount; }
@@ -95,9 +92,6 @@ namespace Coral::Core {
         Project::RenderGraph& RenderGraph() { return *m_renderGraph; }
 
     private:
-        const Window& m_window;
-        const Runtime& m_runtime;
-
         std::unique_ptr<Reef::Manager> m_guiManager;
         Reef::Container<Project::RenderGraph> m_renderGraph = nullptr;
         std::unique_ptr<Graphics::SwapChain> m_swapChain;
@@ -105,7 +99,6 @@ namespace Coral::Core {
 
         void CreateFrames();
         unsigned int m_imageCount;
-        uint32_t m_currentFrame = 0;
         std::vector<std::unique_ptr<Frame>> m_frames;
 
 

@@ -3,14 +3,15 @@
 //
 #pragma once
 
-#include "graphics/objects/mesh.h"
+#include "component.h"
 #include "graphics/objects/material.h"
+#include "graphics/objects/mesh.h"
 
 namespace Coral::ECS {
-    class RenderTarget {
+    class RenderTarget final : public Component {
     public:
         explicit RenderTarget() = default;
-        ~RenderTarget() = default;
+        ~RenderTarget() override = default;
 
         void Add(const Graphics::Mesh *mesh, const Graphics::Material *material);
 

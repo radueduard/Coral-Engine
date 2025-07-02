@@ -34,10 +34,10 @@ namespace Coral::Math {
 
 		void Update(const Vector3<f32>& position, const Vector3<f32>& direction, const Vector3<f32>& up, f32 fov, f32 aspectRatio, f32 nearPlane, f32 farPlane) {
 			// Normalize input vectors
-			Vector3<f32> normalizedDirection = direction.Normalize();
-			Vector3<f32> normalizedUp = up.Normalize();
-			Vector3<f32> right = Vector3<f32>::Cross(normalizedDirection, normalizedUp).Normalize();
-			Vector3<f32> trueUp = Vector3<f32>::Cross(right, normalizedDirection).Normalize();
+			Vector3<f32> normalizedDirection = direction.Normalized();
+			Vector3<f32> normalizedUp = up.Normalized();
+			Vector3<f32> right = Vector3<f32>::Cross(normalizedDirection, normalizedUp).Normalized();
+			Vector3<f32> trueUp = Vector3<f32>::Cross(right, normalizedDirection).Normalized();
 
 			// Cache values
 			f32 halfVSide = farPlane * tanf(fov * 0.5f);
@@ -69,19 +69,19 @@ namespace Coral::Math {
 			m_planes[static_cast<i32>(Plane::Far)].normal = normalizedDirection;
 			m_planes[static_cast<i32>(Plane::Far)].distance = -Vector3<f32>::Dot(normalizedDirection, m_farCenter);
 
-			Vector3<f32> leftNormal = Vector3<f32>::Cross(farTopLeft - nearTopLeft, nearBottomLeft - nearTopLeft).Normalize();
+			Vector3<f32> leftNormal = Vector3<f32>::Cross(farTopLeft - nearTopLeft, nearBottomLeft - nearTopLeft).Normalized();
 			m_planes[static_cast<i32>(Plane::Left)].normal = leftNormal;
 			m_planes[static_cast<i32>(Plane::Left)].distance = -Vector3<f32>::Dot(leftNormal, nearTopLeft);
 
-			Vector3<f32> rightNormal = Vector3<f32>::Cross(nearBottomRight - nearTopRight, farTopRight - nearTopRight).Normalize();
+			Vector3<f32> rightNormal = Vector3<f32>::Cross(nearBottomRight - nearTopRight, farTopRight - nearTopRight).Normalized();
 			m_planes[static_cast<i32>(Plane::Right)].normal = rightNormal;
 			m_planes[static_cast<i32>(Plane::Right)].distance = -Vector3<f32>::Dot(rightNormal, nearTopRight);
 
-			Vector3<f32> topNormal = Vector3<f32>::Cross(farTopRight - nearTopRight, nearTopLeft - nearTopRight).Normalize();
+			Vector3<f32> topNormal = Vector3<f32>::Cross(farTopRight - nearTopRight, nearTopLeft - nearTopRight).Normalized();
 			m_planes[static_cast<i32>(Plane::Top)].normal = topNormal;
 			m_planes[static_cast<i32>(Plane::Top)].distance = -Vector3<f32>::Dot(topNormal, nearTopRight);
 
-			Vector3<f32> bottomNormal = Vector3<f32>::Cross(nearBottomLeft - nearBottomRight, farBottomRight - nearBottomRight).Normalize();
+			Vector3<f32> bottomNormal = Vector3<f32>::Cross(nearBottomLeft - nearBottomRight, farBottomRight - nearBottomRight).Normalized();
 			m_planes[static_cast<i32>(Plane::Bottom)].normal = bottomNormal;
 			m_planes[static_cast<i32>(Plane::Bottom)].distance = -Vector3<f32>::Dot(bottomNormal, nearBottomRight);
 		}

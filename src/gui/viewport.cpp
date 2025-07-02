@@ -6,7 +6,10 @@
 
 #include "core/scheduler.h"
 #include "ecs/components/camera.h"
+#include "ecs/sceneManager.h"
+#include "ecs/entity.h"
 #include "project/renderGraph.h"
+#include "gui/elements/popup.h"
 
 namespace Coral::Reef {
 	Viewport::Viewport(Graphics::RenderPass& renderPass): m_renderPass(renderPass) {
@@ -46,24 +49,27 @@ namespace Coral::Reef {
             {
 	            m_image,
             },
-            [this] (const Math::Vector2<f32> newSize) {
+            [this] (const Math::Vector2<f32>& newSize) {
 	            Core::GlobalScheduler().RenderGraph().Resize(newSize, true);
-            	ECS::Scene::Get().MainCamera().Resize(newSize);
+            	if (ECS::SceneManager::Get().IsSceneLoaded()) {
+            		auto& scene = ECS::SceneManager::Get().GetLoadedScene();
+					scene.MainCamera().Resize(newSize);
 
-	            for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {
-		            ImGui_ImplVulkan_RemoveTexture(m_viewportTextures[i]);
-	            }
-	            m_viewportTextures.clear();
-	            m_viewportTextures.reserve(m_renderPass.ImageCount());
-	            const uint32_t outputAttachmentIndex = m_renderPass.OutputAttachmentIndex();
-	            for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {
-		            const auto& framebuffer = m_renderPass.Framebuffer(i);
-		            m_viewportTextures.emplace_back(ImGui_ImplVulkan_AddTexture(
-			            **m_sampler,
-			            *framebuffer.ImageView(outputAttachmentIndex),
-			            static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal)));
-	            }
-	            m_image->SetTexture(m_viewportTextures[Core::GlobalScheduler().CurrentFrame().ImageIndex()]);
+					for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {
+						ImGui_ImplVulkan_RemoveTexture(m_viewportTextures[i]);
+					}
+					m_viewportTextures.clear();
+					m_viewportTextures.reserve(m_renderPass.ImageCount());
+					const uint32_t outputAttachmentIndex = m_renderPass.OutputAttachmentIndex();
+					for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {
+						const auto& framebuffer = m_renderPass.Framebuffer(i);
+						m_viewportTextures.emplace_back(ImGui_ImplVulkan_AddTexture(
+							**m_sampler,
+							*framebuffer.ImageView(outputAttachmentIndex),
+							static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal)));
+					}
+					m_image->SetTexture(m_viewportTextures[Core::GlobalScheduler().CurrentFrame().ImageIndex()]);
+				}
             }
         ));
 	}

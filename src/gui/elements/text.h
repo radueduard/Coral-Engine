@@ -14,7 +14,7 @@ namespace Coral::Reef {
 	class Text final : public Element {
 	public:
 		struct Style {
-			Math::Color color = { 1.f, 1.f, 1.f, 1.f };
+			Color color = { 1.f, 1.f, 1.f, 1.f };
 			f32 fontSize = 13.f;
 			FontType fontType = FontType::Regular;
 			Math::Vector2<f32> minSize = { 0.f, 0.f };

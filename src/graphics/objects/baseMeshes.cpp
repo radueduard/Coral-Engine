@@ -10,44 +10,90 @@
 
 namespace Coral::Graphics {
     std::unique_ptr<Mesh> Cube() {
-        return Mesh::Builder(boost::uuids::random_generator()())
+		// Create a cube mesh with 24 vertices and 36 indices
+
+        return Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"))
             .Name("Cube")
-            .AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-            .AddVertex({{ 1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-            .AddVertex({{ 1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-            .AddVertex({{-1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-            .AddVertex({{-1.0f, -1.0f,  1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-            .AddVertex({{ 1.0f, -1.0f,  1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-            .AddVertex({{ 1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-            .AddVertex({{-1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-            .AddIndex(0).AddIndex(1).AddIndex(2).AddIndex(2).AddIndex(3).AddIndex(0)
-            .AddIndex(4).AddIndex(5).AddIndex(6).AddIndex(6).AddIndex(7).AddIndex(4)
-            .AddIndex(0).AddIndex(4).AddIndex(7).AddIndex(7).AddIndex(3).AddIndex(0)
-            .AddIndex(1).AddIndex(5).AddIndex(6).AddIndex(6).AddIndex(2).AddIndex(1)
-            .AddIndex(0).AddIndex(1).AddIndex(5).AddIndex(5).AddIndex(4).AddIndex(0)
-            .AddIndex(2).AddIndex(6).AddIndex(7).AddIndex(7).AddIndex(3).AddIndex(2)
-            .Build();
+	        // Front face
+	        .AddVertex({{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+	        .AddVertex({{1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+	        .AddVertex({{-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+	        .AddVertex({{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
+	        // Back face
+	        .AddVertex({{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
+	        .AddVertex({{1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+	        .AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+	        .AddVertex({{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+	        // Right face
+	        .AddVertex({{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {1.0f, 1.0f}})
+	        .AddVertex({{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {1.0f, 0.0f}})
+	        .AddVertex({{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {0.0f, 0.0f}})
+	        .AddVertex({{1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {0.0f, 1.0f}})
+	        // Left face
+	        .AddVertex({{-1.0f, 1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 1.0f}})
+	        .AddVertex({{-1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f}})
+	        .AddVertex({{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 0.0f}})
+	        .AddVertex({{-1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}})
+	        // Top face
+	        .AddVertex({{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+	        .AddVertex({{1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+	        .AddVertex({{-1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
+	        .AddVertex({{-1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+	        // Bottom face
+	        .AddVertex({{1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+	        .AddVertex({{1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+	        .AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+	        .AddVertex({{-1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
+	        // Indices for 6 faces (2 triangles per face)
+	        // Front face
+	        .AddIndex(0).AddIndex(2).AddIndex(1)
+	        .AddIndex(2).AddIndex(0).AddIndex(3)
+	        // Back face
+	        .AddIndex(4).AddIndex(6).AddIndex(7)
+	        .AddIndex(6).AddIndex(4).AddIndex(5)
+	        // Right face
+	        .AddIndex(8).AddIndex(9).AddIndex(10)
+	        .AddIndex(10).AddIndex(11).AddIndex(8)
+	        // Left face
+	        .AddIndex(12).AddIndex(15).AddIndex(14)
+	        .AddIndex(14).AddIndex(13).AddIndex(12)
+	        // Top face
+	        .AddIndex(16).AddIndex(17).AddIndex(18)
+	        .AddIndex(18).AddIndex(19).AddIndex(16)
+	        // Bottom face
+	        .AddIndex(20).AddIndex(23).AddIndex(22)
+	        .AddIndex(22).AddIndex(21).AddIndex(20)
+	        .Build();
     }
 
     std::unique_ptr<Mesh> Sphere() {
-        auto sphere = Mesh::Builder(boost::uuids::random_generator()())
+        auto sphere = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002"))
             .Name("Sphere");
 
-        int density = 5;
+        int density = 20;
         for (int i = 0; i <= density; i++) {
             const float theta = static_cast<float>(i) * glm::pi<float>() / static_cast<float>(density);
             for (int j = 0; j <= density; j++) {
                 const float phi = static_cast<float>(j) * 2.0f * glm::pi<float>() / static_cast<float>(density);
 
-               Math::Vector3 position = {
-                    sin(theta) * cos(phi),
-                    cos(theta),
-                    sin(theta) * sin(phi)
-                };
+            	Math::Vector3 position = {
+            		sin(theta) * cos(phi),
+            		cos(theta),
+            		sin(theta) * sin(phi)
+            	};
+            	Math::Vector3<f32> normal = position.Normalized();
 
-                Math::Vector3<f32> normal = position.Normalize();
-                Math::Vector3<f32> tangent = normal.Cross(Math::Vector3 { 0.0f, 1.0f, 0.0f }).Normalize();
-                Math::Vector3<f32> bitangent = normal.Cross(tangent).Normalize();
+            	f32 r = position.Length();
+            	f32 tangentTheta = std::acos(position.z / r);
+            	f32 tangentPhi = std::atan2(position.y, position.x);
+
+                Math::Vector3<f32> tangent =Math::Vector3 {
+					-sin(tangentTheta) * cos(tangentPhi),
+					sin(tangentTheta) * sin(tangentPhi),
+					cos(tangentTheta)
+				}.Normalized();
+
+                Math::Vector3<f32> bitangent = normal.Cross(tangent).Normalized();
                 Math::Vector2 texCoord = {static_cast<float>(j) / static_cast<float>(density), static_cast<float>(i) / static_cast<float>(density)};
                 Math::Vector4<f32> tangent4 = Math::Vector4(tangent, normal.Cross(tangent).Dot(bitangent) < 0.0f ? -1.0f : 1.0f);
                 sphere.AddVertex({position, normal, tangent4, texCoord});
@@ -59,8 +105,8 @@ namespace Coral::Graphics {
                 const int first = i * (density + 1) + j;
                 const int second = first + density + 1;
 
-                sphere.AddIndex(first).AddIndex(second).AddIndex(first + 1);
-                sphere.AddIndex(second).AddIndex(second + 1).AddIndex(first + 1);
+                sphere.AddIndex(first).AddIndex(first + 1).AddIndex(second);
+                sphere.AddIndex(second).AddIndex(first + 1).AddIndex(second + 1);
             }
         }
         return sphere.Build();

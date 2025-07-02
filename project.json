@@ -1,6 +1,8 @@
 {
+    "cameras": {},
+    "lights": {},
     "materials": {
-        "dd585578-3366-49e1-a643-41e130b88a0e": {
+        "3d561246-a182-4785-8f27-1672e8997adc": {
             "alphaCutoff": 0.5,
             "baseColorFactor": [
                 1.0,
@@ -8,41 +10,183 @@
                 1.0,
                 1.0
             ],
-            "doubleSided": 0,
+            "doubleSided": 1,
             "emissiveFactor": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "id": 1,
+            "metallicFactor": 0.0,
+            "name": "LeafSpring",
+            "roughnessFactor": 0.5,
+            "textures": {
+                "aiTextureType_BASE_COLOR": "4107de24-1bbd-45d9-82ec-a1556f6ec745",
+                "aiTextureType_DIFFUSE_ROUGHNESS": "00000000-0000-0000-0000-000000000001",
+                "aiTextureType_EMISSIVE": "00000000-0000-0000-0000-000000000002",
+                "aiTextureType_LIGHTMAP": "00000000-0000-0000-0000-000000000002",
+                "aiTextureType_METALNESS": "00000000-0000-0000-0000-000000000001",
+                "aiTextureType_NORMALS": "44db5473-4521-4465-bc2f-1cfb1ad5e705"
+            }
+        },
+        "eac9a6fa-1c5b-4f67-8b26-6dd149a27161": {
+            "alphaCutoff": 0.5,
+            "baseColorFactor": [
+                0.06800000369548798,
+                0.1120000034570694,
+                0.019999999552965164,
+                1.0
+            ],
+            "doubleSided": 1,
+            "emissiveFactor": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "id": 2,
+            "metallicFactor": 0.0,
+            "name": "SmallBranches",
+            "roughnessFactor": 1.0,
+            "textures": {
+                "aiTextureType_BASE_COLOR": "00000000-0000-0000-0000-000000000002",
+                "aiTextureType_DIFFUSE_ROUGHNESS": "00000000-0000-0000-0000-000000000001",
+                "aiTextureType_EMISSIVE": "00000000-0000-0000-0000-000000000002",
+                "aiTextureType_LIGHTMAP": "00000000-0000-0000-0000-000000000002",
+                "aiTextureType_METALNESS": "00000000-0000-0000-0000-000000000001",
+                "aiTextureType_NORMALS": "00000000-0000-0000-0000-000000000003"
+            }
+        },
+        "f0a394ab-5cae-4308-b327-4446ba1e510e": {
+            "alphaCutoff": 0.5,
+            "baseColorFactor": [
+                1.0,
                 1.0,
                 1.0,
                 1.0
             ],
+            "doubleSided": 1,
+            "emissiveFactor": [
+                0.0,
+                0.0,
+                0.0
+            ],
             "id": 0,
-            "metallicFactor": 1.0,
-            "name": "Material_MR",
-            "roughnessFactor": 1.0,
+            "metallicFactor": 0.0,
+            "name": "Bark",
+            "roughnessFactor": 0.5,
             "textures": {
-                "Albedo": "968cf36d-becd-4174-aa0a-9a1726cfca8d",
-                "AmbientOcclusion": "bb52f9d7-a24d-4e82-a454-62911359f518",
-                "Emissive": "63407f7a-ab75-4400-8c7b-d11a3894eb6d",
-                "Metalic": "93777128-9353-4389-b070-09feceb4db0c",
-                "Normal": "bdf54376-a48d-40ed-a1d9-35b24f2b1fd9",
-                "Roughness": "93777128-9353-4389-b070-09feceb4db0c"
+                "aiTextureType_BASE_COLOR": "296273f5-93d7-4fe5-b3ba-00c26e42fabc",
+                "aiTextureType_DIFFUSE_ROUGHNESS": "00000000-0000-0000-0000-000000000001",
+                "aiTextureType_EMISSIVE": "00000000-0000-0000-0000-000000000002",
+                "aiTextureType_LIGHTMAP": "00000000-0000-0000-0000-000000000002",
+                "aiTextureType_METALNESS": "00000000-0000-0000-0000-000000000001",
+                "aiTextureType_NORMALS": "1474962e-bc2a-49b7-9665-4d2033e2677c"
             }
         }
     },
     "meshes": {
-        "9088e4c0-0022-47e0-82f9-d6485af23ca8": {
+        "25c47326-5557-455d-96ec-97652875d1ca": {
+            "id": 2,
+            "name": "Cypress_LF_GroundCover"
+        },
+        "2ef7951c-d638-4710-962f-b6c3f894fd55": {
+            "id": 3,
+            "name": "Cypress_SM"
+        },
+        "3174c084-b8dc-476c-b7fe-149851ff1620": {
+            "id": 1,
+            "name": "Cypress_LF"
+        },
+        "60d3858c-15aa-4a4a-8c99-2d4f25720499": {
             "id": 0,
-            "name": "mesh_helmet_LP_13930damagedHelmet"
+            "name": "Cypress_BK"
         }
     },
     "objects": {
-        "36a11cce-67b4-4062-b558-315d0a11101c": {
+        "139c450c-5d65-415e-bda4-3a4fb8f84411": {
             "meshes": [
                 {
-                    "material": "dd585578-3366-49e1-a643-41e130b88a0e",
-                    "mesh": "9088e4c0-0022-47e0-82f9-d6485af23ca8"
+                    "material": "3d561246-a182-4785-8f27-1672e8997adc",
+                    "mesh": "3174c084-b8dc-476c-b7fe-149851ff1620"
                 }
             ],
-            "name": "node_damagedHelmet_-6514",
+            "name": "Cypress_LF",
+            "parent": "b5a064c8-2675-4936-bb92-08f8c13df4b1",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.649999976158142,
+                    1.649999976158142,
+                    1.649999976158142
+                ]
+            }
+        },
+        "59876ece-67fe-4725-a1f0-523b31470812": {
+            "meshes": [
+                {
+                    "material": "3d561246-a182-4785-8f27-1672e8997adc",
+                    "mesh": "25c47326-5557-455d-96ec-97652875d1ca"
+                }
+            ],
+            "name": "Cypress_LF_GroundCover",
+            "parent": "b5a064c8-2675-4936-bb92-08f8c13df4b1",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.649999976158142,
+                    1.649999976158142,
+                    1.649999976158142
+                ]
+            }
+        },
+        "91f75b2e-4fb8-4b86-b083-fada967571d7": {
+            "meshes": [
+                {
+                    "material": "eac9a6fa-1c5b-4f67-8b26-6dd149a27161",
+                    "mesh": "2ef7951c-d638-4710-962f-b6c3f894fd55"
+                }
+            ],
+            "name": "Cypress_SM",
+            "parent": "b5a064c8-2675-4936-bb92-08f8c13df4b1",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.649999976158142,
+                    1.649999976158142,
+                    1.649999976158142
+                ]
+            }
+        },
+        "b5a064c8-2675-4936-bb92-08f8c13df4b1": {
+            "meshes": [],
+            "name": "Italian_Cypress_Dense_Custom_05b",
             "parent": "00000000-0000-0000-0000-000000000000",
             "transform": {
                 "position": [
@@ -51,38 +195,65 @@
                     0.0
                 ],
                 "rotation": [
-                    90.00000762939453,
+                    0.0,
                     -0.0,
                     0.0
                 ],
                 "scale": [
                     1.0,
-                    1.0000001192092896,
-                    1.0000001192092896
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        "efc6e3a2-9783-4a00-a5f5-eb9139ee68e4": {
+            "meshes": [
+                {
+                    "material": "f0a394ab-5cae-4308-b327-4446ba1e510e",
+                    "mesh": "60d3858c-15aa-4a4a-8c99-2d4f25720499"
+                }
+            ],
+            "name": "Cypress_BK",
+            "parent": "b5a064c8-2675-4936-bb92-08f8c13df4b1",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.649999976158142,
+                    1.649999976158142,
+                    1.649999976158142
                 ]
             }
         }
     },
     "textures": {
-        "63407f7a-ab75-4400-8c7b-d11a3894eb6d": {
-            "path": "assets/DamagedHelmet/Default_emissive.jpg",
-            "size": 2048
+        "1474962e-bc2a-49b7-9665-4d2033e2677c": {
+            "normalMap": true,
+            "path": "C:/Users/radue/Downloads/pkg_c_trees/pkg_c_trees/./textures/Bark_Normal.png",
+            "size": 4096
         },
-        "93777128-9353-4389-b070-09feceb4db0c": {
-            "path": "assets/DamagedHelmet/Default_metalRoughness.jpg",
-            "size": 2048
+        "296273f5-93d7-4fe5-b3ba-00c26e42fabc": {
+            "normalMap": false,
+            "path": "C:/Users/radue/Downloads/pkg_c_trees/pkg_c_trees/./textures/Bark_BaseColor.png",
+            "size": 4096
         },
-        "968cf36d-becd-4174-aa0a-9a1726cfca8d": {
-            "path": "assets/DamagedHelmet/Default_albedo.jpg",
-            "size": 2048
+        "4107de24-1bbd-45d9-82ec-a1556f6ec745": {
+            "normalMap": false,
+            "path": "C:/Users/radue/Downloads/pkg_c_trees/pkg_c_trees/./textures/Cypress_LF01_Spring_BaseColor.png",
+            "size": 4096
         },
-        "bb52f9d7-a24d-4e82-a454-62911359f518": {
-            "path": "assets/DamagedHelmet/Default_AO.jpg",
-            "size": 2048
-        },
-        "bdf54376-a48d-40ed-a1d9-35b24f2b1fd9": {
-            "path": "assets/DamagedHelmet/Default_normal.jpg",
-            "size": 2048
+        "44db5473-4521-4465-bc2f-1cfb1ad5e705": {
+            "normalMap": true,
+            "path": "C:/Users/radue/Downloads/pkg_c_trees/pkg_c_trees/./textures/Cypress_LF01_Spring_Normal.png",
+            "size": 4096
         }
     }
 }

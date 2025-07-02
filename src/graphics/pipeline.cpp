@@ -106,9 +106,9 @@ namespace Coral::Graphics {
                     layoutBuilders.resize(descriptor.set + 1);
                 }
                 if (auto& currentLayout = layoutBuilders[descriptor.set]; currentLayout.HasBinding(descriptor.binding)) {
-                    currentLayout.Binding(descriptor.binding).stageFlags |= shader->Stage();
+                    currentLayout.Binding(descriptor.binding).stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage()));
                 } else {
-                    currentLayout.AddBinding(descriptor.binding, descriptor.type, vk::ShaderStageFlags(shader->Stage()), std::max(descriptor.count, 1u));
+                    currentLayout.AddBinding(descriptor.binding, descriptor.type, vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage())), std::max(descriptor.count, 1u));
                 }
             }
             for (const auto&[size, offset] : shader->PushConstantRanges()) {
@@ -118,13 +118,13 @@ namespace Coral::Graphics {
                 });
 
                 if (foundRange.has_value()) {
-                    foundRange->stageFlags |= shader->Stage();
+                    foundRange->stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage()));
                 } else {
                     pushConstantRanges.emplace_back(
                         vk::PushConstantRange()
                             .setOffset(offset)
                             .setSize(size)
-                            .setStageFlags(vk::ShaderStageFlags(shader->Stage())));
+                            .setStageFlags(vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage()))));
                 }
             }
         }
@@ -145,7 +145,7 @@ namespace Coral::Graphics {
 
         std::vector<vk::VertexInputBindingDescription> bindingDescriptions = {};
         std::vector<vk::VertexInputAttributeDescription> attributeDescriptions = {};
-        if (const auto& vertexShader = Utils::FindIf(m_shaders | std::views::values, [](const auto* shader) { return shader->Stage() == Core::Stage::Values::Vertex; }); vertexShader.has_value()) {
+        if (const auto& vertexShader = Utils::FindIf(m_shaders | std::views::values, [](const auto* shader) { return shader->Stage() == Core::Stage::Vertex; }); vertexShader.has_value()) {
             const auto& inputAnalysis = vertexShader.value()->Analysis().at("inputs");
             bindingDescriptions = Vertex::BindingDescriptions();
             attributeDescriptions = Vertex::AttributeDescriptions(inputAnalysis);
@@ -156,9 +156,9 @@ namespace Coral::Graphics {
             .setVertexAttributeDescriptions(attributeDescriptions);
 
         m_stages.clear();
-        for (const auto &[stage, shader] : m_shaders) {
+        for (const auto& shader : m_shaders | std::views::values) {
             m_stages.emplace_back(vk::PipelineShaderStageCreateInfo()
-                .setStage(stage)
+                .setStage(static_cast<vk::ShaderStageFlagBits>(shader->Stage()))
                 .setModule(**shader)
                 .setPName("main"));
         }
@@ -177,7 +177,8 @@ namespace Coral::Graphics {
             .setDynamicStates(m_dynamicStates);
 
         m_colorBlendAttachments.clear();
-        for (const auto& attachment : m_renderPass.Subpass(m_subpass)) {
+    	auto subpass = m_renderPass.SubpassColorAttachments(m_subpass);
+        for (const auto& attachment : subpass) {
             m_colorBlendAttachments.emplace_back(vk::PipelineColorBlendAttachmentState()
                 .setBlendEnable(vk::False)
                 .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA));
@@ -198,8 +199,10 @@ namespace Coral::Graphics {
         return std::make_unique<Pipeline>(*this);
     }
 
-    Pipeline::Pipeline(Builder &builder)
-        : m_pipelineLayout(builder.m_pipelineLayout), m_setLayouts(std::move(builder.m_setLayouts)), m_shaders(builder.m_shaders)
+    Pipeline::Pipeline(Builder& builder)
+		: m_pipelineLayout(builder.m_pipelineLayout),
+		m_setLayouts(std::move(builder.m_setLayouts)),
+		m_shaders(std::move(builder.m_shaders))
     {
         const auto m_createInfo = vk::GraphicsPipelineCreateInfo()
             .setStages(builder.m_stages)
@@ -218,7 +221,6 @@ namespace Coral::Graphics {
 
         try {
             const auto pipeline = Core::GlobalDevice()->createGraphicsPipeline(nullptr, m_createInfo);
-
             if (pipeline.result != vk::Result::eSuccess) {
                 std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
             }

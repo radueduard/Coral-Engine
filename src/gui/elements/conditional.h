@@ -10,35 +10,32 @@
 namespace Coral::Reef {
 	class Conditional final : public Element {
 	public:
-		explicit Conditional(const std::function<bool()>& condition, Element* trueElement, Element* falseElement) :
-			m_trueElement(trueElement), m_falseElement(falseElement), m_condition(condition) {
-			m_children.emplace_back(std::move(m_trueElement));
+		explicit Conditional(const std::function<u8()>& condition, const std::vector<Element*>& children) : m_condition(condition) {
+			for (auto* child : children) {
+				m_elements.emplace_back(child);
+			}
+			m_state = m_condition();
+			m_children.emplace_back(std::move(m_elements[m_state]));
+			m_lastState = m_state;
 		}
 
 		bool Render() override {
 			m_state = m_condition();
 			if (m_state != m_lastState) {
-				m_lastState = m_state;
 				ResetState([this] {
-					if (m_state) {
-						m_falseElement = std::move(m_children.back());
-						m_children.clear();
-						m_children.emplace_back(std::move(m_trueElement));
-					} else {
-						m_trueElement = std::move(m_children.back());
-						m_children.clear();
-						m_children.emplace_back(std::move(m_falseElement));
-					}
+					auto oldElement = std::move(m_children.front());
+					m_children.clear();
+					m_elements[m_lastState] = std::move(oldElement);
+					m_children.emplace_back(std::move(m_elements[m_state]));
 				});
+				m_lastState = m_state;
 			}
-
 			return Element::Render();
 		}
 	private:
-		bool m_state = true;
-		bool m_lastState = true;
-		std::unique_ptr<Element> m_trueElement;
-		std::unique_ptr<Element> m_falseElement;
-		std::function<bool()> m_condition;
+		u8 m_state;
+		u8 m_lastState;
+		std::vector<std::unique_ptr<Element>> m_elements;
+		std::function<u8()> m_condition;
 	};
 }

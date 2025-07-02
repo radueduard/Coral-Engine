@@ -54,11 +54,22 @@ namespace Coral::Reef {
         }
 
         void reset() {
-            delete m_layer;
-            m_layer = nullptr;
+        	if (m_layer == nullptr) {
+        		return;
+        	}
+        	static_cast<Layer *>(m_layer)->OnGUIDetach();
+        	GlobalManager().RemoveLayer(m_layer);
+        	delete m_layer;
+        	m_layer = nullptr;
         }
 
+    	bool operator==(const nullptr_t) const {
+			return m_layer == nullptr;
+		}
 
+		bool operator!=(const nullptr_t) const {
+			return m_layer != nullptr;
+		}
     private:
         T* m_layer = nullptr;
     };

@@ -10,100 +10,56 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "imgui_impl_vulkan.h"
 #include "memory/image.h"
 #include "memory/imageView.h"
 #include "memory/sampler.h"
 
 namespace Coral::PBR
 {
-    class Usage
-    {
-    public:
-        enum class Values {
-            Albedo = 1 << 0,
-            Normal = 1 << 1,
-            Roughness = 1 << 2,
-            Metalic = 1 << 3,
-            AmbientOcclusion = 1 << 4,
-            Emissive = 1 << 5,
-            Height = 1 << 6,
-        };
-
-        Usage(const Values value) : m_value(value) {}
-        Usage(const std::string& value) {
-            if (value == "Albedo") m_value = Values::Albedo;
-            else if (value == "Normal") m_value = Values::Normal;
-            else if (value == "Roughness") m_value = Values::Roughness;
-            else if (value == "Metalic") m_value = Values::Metalic;
-            else if (value == "AmbientOcclusion") m_value = Values::AmbientOcclusion;
-            else if (value == "Emissive") m_value = Values::Emissive;
-            else if (value == "Height") m_value = Values::Height;
-        }
-
-        Usage(const aiTextureType value) {
-            switch (value) {
-                case aiTextureType_DIFFUSE:
-                case aiTextureType_BASE_COLOR:
-                    m_value = Values::Albedo; break;
-                case aiTextureType_NORMALS:
-                case aiTextureType_NORMAL_CAMERA:
-                    m_value = Values::Normal; break;
-                case aiTextureType_HEIGHT:
-                    m_value = Values::Height; break;
-                case aiTextureType_AMBIENT_OCCLUSION:
-                case aiTextureType_LIGHTMAP:
-                    m_value = Values::AmbientOcclusion; break;
-                case aiTextureType_EMISSIVE:
-                case aiTextureType_EMISSION_COLOR:
-                    m_value = Values::Emissive; break;
-                case aiTextureType_METALNESS:
-                case aiTextureType_SHININESS:
-                    m_value = Values::Metalic; break;
-                case aiTextureType_DIFFUSE_ROUGHNESS:
-                case aiTextureType_REFLECTION:
-                    m_value = Values::Roughness; break;
-
-                default: throw std::runtime_error("Unknown texture type");
-            }
-        }
-
-        [[nodiscard]] Values Value() const { return m_value; }
-
-        auto operator<=>(const Usage &other) const {
-            return m_value <=> other.m_value;
-        }
-
-        [[nodiscard]] bool operator==(const Usage &other) const { return m_value == other.m_value; }
-        [[nodiscard]] bool operator==(const Values &other) const { return m_value == other; }
-
-        Usage& operator |=(Values other) {
-            m_value = static_cast<Values>(static_cast<uint32_t>(m_value) | static_cast<uint32_t>(other));
-            return *this;
-        }
-        Usage& operator |=(const Usage &other) {
-            m_value = static_cast<Values>(static_cast<uint32_t>(m_value) | static_cast<uint32_t>(other.m_value));
-            return *this;
-        }
-        Usage& operator &=(Values other)
-        {
-            m_value = static_cast<Values>(static_cast<uint32_t>(m_value) & static_cast<uint32_t>(other));
-            return *this;
-        }
-        Usage& operator &=(const Usage &other)
-        {
-            m_value = static_cast<Values>(static_cast<uint32_t>(m_value) & static_cast<uint32_t>(other.m_value));
-            return *this;
-        }
-
-        uint32_t operator &(const Usage &other) const {
-            return static_cast<uint32_t>(m_value) & static_cast<uint32_t>(other.m_value);
-        }
-
-        [[nodiscard]] bool Is(Values value) const { return (*this & value) != 0; }
-
-    private:
-        Values m_value;
+    enum class Usage : uint32_t {
+    	None = 0,
+        Albedo = 1 << 0,
+        Normal = 1 << 1,
+        Roughness = 1 << 2,
+        Metalic = 1 << 3,
+        AmbientOcclusion = 1 << 4,
+        Emissive = 1 << 5,
+        Height = 1 << 6,
+    	MetallicRoughness = Metalic | Roughness,
     };
+
+	inline Usage operator|(Usage lhs, Usage rhs) {
+		return static_cast<Usage>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+	}
+
+	inline Usage operator|=(Usage lhs, Usage rhs) {
+		return static_cast<Usage>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+	}
+
+	inline Usage operator&(Usage lhs, Usage rhs) {
+		return static_cast<Usage>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+	}
+
+	inline Usage operator&=(Usage lhs, Usage rhs) {
+		return static_cast<Usage>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+	}
+
+	inline Usage FromAiTextureType(const aiTextureType type) {
+		switch (type) {
+			case aiTextureType_NONE: return Usage::None;
+			case aiTextureType_BASE_COLOR: return Usage::Albedo;
+			case aiTextureType_DIFFUSE: return Usage::Albedo;
+			case aiTextureType_NORMALS: return Usage::Normal;
+			case aiTextureType_METALNESS: return Usage::Metalic;
+			case aiTextureType_DIFFUSE_ROUGHNESS: return Usage::Roughness;
+			case aiTextureType_AMBIENT_OCCLUSION: return Usage::AmbientOcclusion;
+			case aiTextureType_EMISSIVE: return Usage::Emissive;
+			case aiTextureType_HEIGHT: return Usage::Height;
+			case aiTextureType_LIGHTMAP: return Usage::AmbientOcclusion;
+			default: return Usage::None;
+		}
+	}
 }
 
 namespace Coral::Graphics {
@@ -112,7 +68,7 @@ namespace Coral::Graphics {
         class Builder {
             friend class Texture;
         public:
-            Builder(boost::uuids::uuid uuid = boost::uuids::nil_uuid()) : m_uuid(uuid) {}
+			explicit Builder(const boost::uuids::uuid uuid = boost::uuids::nil_uuid()) : m_uuid(uuid) {}
 
             Builder& Name(const std::string& name) {
                 m_name = name;
@@ -146,11 +102,7 @@ namespace Coral::Graphics {
             }
 
             Builder& Usage(const PBR::Usage usage) {
-                if (m_usage.has_value()) {
-                    m_usage.value() |= usage;
-                } else {
-                    m_usage = usage;
-                }
+                m_usage |= usage;
                 return *this;
             }
 
@@ -170,12 +122,14 @@ namespace Coral::Graphics {
             u8* m_data = nullptr;
             u32 m_width = 1;
             u32 m_height = 1;
-            std::optional<PBR::Usage> m_usage = std::nullopt;
+            PBR::Usage m_usage = PBR::Usage::None;
             bool m_createMipmaps = false;
         };
 
         explicit Texture(const Builder& builder);
-        ~Texture() = default;
+        ~Texture() {
+	        ImGui_ImplVulkan_RemoveTexture(static_cast<VkDescriptorSet>(m_imId));
+        }
 
         Texture(const Texture&) = delete;
         Texture& operator=(const Texture&) = delete;
@@ -183,7 +137,7 @@ namespace Coral::Graphics {
         [[nodiscard]] const boost::uuids::uuid& UUID() const { return m_uuid; }
         [[nodiscard]] const std::string& Name() const { return m_name; }
         [[nodiscard]] vk::DescriptorImageInfo DescriptorInfo() const { return m_descriptorInfo; }
-        [[nodiscard]] Math::Vector3<u32> Extent() const { return m_image->Extent(); }
+        [[nodiscard]] const Math::Vector3<u32>& Extent() const { return m_image->Extent(); }
 
         [[nodiscard]] const Memory::Image& Image() const { return *m_image; }
         [[nodiscard]] const Memory::ImageView& ImageView(
@@ -212,40 +166,20 @@ namespace Coral::Graphics {
 
         }
         [[nodiscard]] const Memory::Sampler& Sampler() const { return *m_sampler; }
+    	[[nodiscard]] ImTextureID ImId() const { return m_imId; }
+
+		[[nodiscard]] std::optional<PBR::Usage> Usage() const { return m_usage; }
+
+		void UpdateDescriptorInfo();
     private:
         boost::uuids::uuid m_uuid;
         std::string m_name;
         vk::DescriptorImageInfo m_descriptorInfo;
         std::optional<PBR::Usage> m_usage = std::nullopt;
+    	ImTextureID m_imId = nullptr;
 
         std::unique_ptr<Memory::Image> m_image;
         std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;
         std::unique_ptr<Memory::Sampler> m_sampler;
     };
-}
-
-namespace std {
-    template<>
-    struct hash<Coral::PBR::Usage> {
-        size_t operator()(const Coral::PBR::Usage& usage) const noexcept {
-            return hash<uint32_t>()(static_cast<uint32_t>(usage.Value()));
-        }
-    };
-
-    inline string to_string(const Coral::PBR::Usage::Values& usage) {
-        switch (usage) {
-            case Coral::PBR::Usage::Values::Albedo: return "Albedo";
-            case Coral::PBR::Usage::Values::Normal: return "Normal";
-            case Coral::PBR::Usage::Values::Roughness: return "Roughness";
-            case Coral::PBR::Usage::Values::Metalic: return "Metalic";
-            case Coral::PBR::Usage::Values::AmbientOcclusion: return "AmbientOcclusion";
-            case Coral::PBR::Usage::Values::Emissive: return "Emissive";
-            case Coral::PBR::Usage::Values::Height: return "Height";
-            default: throw std::runtime_error("Unknown texture usage");
-        }
-    }
-
-    inline string to_string(const Coral::PBR::Usage& usage) {
-        return to_string(usage.Value());
-    }
 }

@@ -13,22 +13,36 @@
 #include "gui/templates/inspector.h"
 
 namespace Coral::Shader {
-    class Manager : public Reef::Layer {
+    class Manager {
     public:
         explicit Manager(std::filesystem::path defaultSearchPath);
-        ~Manager() override = default;
+        ~Manager() = default;
 
-        void OnGUIAttach() override;
+    	void Update();
+    	Core::Shader* Shader(const std::filesystem::path& path) {
+			if (m_shaders.contains(path)) {
+				return m_shaders[path].get();
+			}
 
-        Core::Shader* Get(const std::filesystem::path& path);
+			auto shader = std::make_unique<Core::Shader>(path, vk::ShaderStageFlagBits::eVertex);
+			m_shaders[path] = std::move(shader);
+			return m_shaders[path].get();
+		}
+
+    	static Manager& Get() {
+			if (s_instance == nullptr) {
+				throw std::runtime_error("Shader Manager is not initialized");
+			}
+			return *s_instance;
+		}
+
+    	std::filesystem::path Path() { return m_currentPath; }
 
     private:
+		inline static Manager* s_instance = nullptr;
+
         std::filesystem::path m_defaultSearchPath;
-
         std::filesystem::path m_currentPath;
-
-        // std::unique_ptr<GUI::FileButton> m_fileButtonTemplate;
-        // std::unique_ptr<GUI::ShaderInspector> m_shaderInspectorTemplate;
 
         Core::Shader* m_selectedShader = nullptr;
         std::unordered_map<std::filesystem::path, std::unique_ptr<Core::Shader>> m_shaders;

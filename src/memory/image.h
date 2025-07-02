@@ -39,8 +39,8 @@ namespace Coral::Memory {
             }
 
             Builder& Extent(const Math::Vector3<u32>& extent) {
-                m_extent = extent;
-                return *this;
+	            m_extent = extent;
+            	return *this;
             }
 
             Builder& UsageFlags(const vk::ImageUsageFlagBits usageFlags) {

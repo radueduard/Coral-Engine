@@ -21,8 +21,10 @@
 #include <spirv_cross/spirv_glsl.hpp>
 
 #include "ecs/Entity.h"
-#include "graphics/pipeline.h"
 #include "graphics/objects/mesh.h"
+#include "graphics/pipeline.h"
+#include "gui/elements/popup.h"
+#include "manager.h"
 
 static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage) {
     switch (stage) {
@@ -49,46 +51,13 @@ static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage
 
 namespace Coral::Core {
     Shader::Shader(const std::filesystem::path &path, const vk::ShaderStageFlagBits &stage)
-        : m_path(path), m_stage(stage) {
-        auto extension = path.extension().string();
-
-        const auto glslExtensions = std::unordered_map<std::string, vk::ShaderStageFlagBits> {
-            {".vert", vk::ShaderStageFlagBits::eVertex},
-            {".tesc", vk::ShaderStageFlagBits::eTessellationControl},
-            {".tese", vk::ShaderStageFlagBits::eTessellationEvaluation},
-            {".geom", vk::ShaderStageFlagBits::eGeometry},
-            {".frag", vk::ShaderStageFlagBits::eFragment},
-            {".comp", vk::ShaderStageFlagBits::eCompute},
-            {".task", vk::ShaderStageFlagBits::eTaskEXT},
-            {".mesh", vk::ShaderStageFlagBits::eMeshEXT},
-        };
-
-        if (extension == "spv") {
-            const auto pathWithoutExtension = path.string().substr(0, path.string().find_last_of('.'));
-            extension = pathWithoutExtension.substr(pathWithoutExtension.find_last_of('.') + 1);
-            if (!glslExtensions.contains(extension)) {
-                throw std::runtime_error("Unsupported shader extension: " + extension);
-            }
-            m_stage = glslExtensions.at(extension);
-            const auto code = Utils::ReadBinaryFile(path);
-            m_spirVCode.resize(code.size() / sizeof(uint32_t));
-            std::memcpy(m_spirVCode.data(), code.data(), code.size());
-            m_handle = LoadSpirVShader(m_spirVCode);
-        } else if (glslExtensions.contains(extension)) {
-            m_stage = glslExtensions.at(extension);
-            const auto code = Utils::ReadTextFile(path);
-            m_analysis = AnalyzeShader();
-            m_spirVCode = CompileGLSLToSpirV(code, m_stage);
-            m_handle = LoadSpirVShader(m_spirVCode);
-        } else {
-            throw std::runtime_error("Unsupported shader extension: " + extension);
-        }
-
-        LoadResourceInfo();
+        : m_stage(static_cast<Core::Stage>(stage)) {
+    	m_path = Coral::Shader::Manager::Get().Path() / path;
+        Reload();
     }
 
     Shader::~Shader() {
-        Core::GlobalDevice()->destroyShaderModule(m_handle);
+        GlobalDevice()->destroyShaderModule(m_handle);
     }
 
 
@@ -156,34 +125,82 @@ namespace Coral::Core {
     }
 
     nlohmann::json Shader::AnalyzeShader() const {
-        auto code = Utils::ReadTextFile(m_path);
-        auto analysis = nlohmann::json::object();
-        analysis["name"] = m_path.filename().string();
-        analysis["path"] = m_path.generic_string();
-        analysis["stage"] = std::to_string(m_stage);
-        analysis["inputs"] = nlohmann::json::array();
+		auto code = Utils::ReadTextFile(m_path);
+		auto analysis = nlohmann::json::object();
+		analysis["name"] = m_path.filename().string();
+		analysis["path"] = m_path.generic_string();
+		analysis["stage"] = magic_enum::enum_name<Core::Stage>(m_stage);
+		analysis["inputs"] = nlohmann::json::array();
 
-        auto codeCopy = code;
-        std::regex pragmaRegex(R"(#pragma\s+([a-zA-Z_]\w*)\s*layout\s*\(\s*location\s*=\s*(\d+)\s*\)\s*in\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*;)");
-        for (std::smatch match; std::regex_search(codeCopy, match, pragmaRegex); codeCopy = codeCopy.substr(match.position() + match.length())) {
+		auto codeCopy = code;
+		std::regex pragmaRegex(
+			R"(#pragma\s+([a-zA-Z_]\w*)\s*layout\s*\(\s*location\s*=\s*(\d+)\s*\)\s*in\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*;)");
+		for (std::smatch match; std::regex_search(codeCopy, match, pragmaRegex);
+			 codeCopy = codeCopy.substr(match.position() + match.length())) {
 			auto attributeValues = magic_enum::enum_values<Graphics::Vertex::Attribute>();
-        	bool isInput = std::ranges::any_of(attributeValues, [&match](const Graphics::Vertex::Attribute &attribute) {
-                return String(magic_enum::enum_name(attribute)) == match[1].str();
-            });
-            if (isInput) {
-                auto input = nlohmann::json::object();
-                input["attribute"] = match[1].str();
-                input["location"] = std::stoi(match[2].str());
-                input["type"] = match[3].str();
-                input["name"] = match[4].str();
-                analysis["inputs"].push_back(input);
-            }
-        }
+			bool isInput = std::ranges::any_of(attributeValues, [&match](const Graphics::Vertex::Attribute& attribute) {
+				return String(magic_enum::enum_name(attribute)) == match[1].str();
+			});
+			if (isInput) {
+				auto input = nlohmann::json::object();
+				input["attribute"] = match[1].str();
+				input["location"] = std::stoi(match[2].str());
+				input["type"] = match[3].str();
+				input["name"] = match[4].str();
+				analysis["inputs"].push_back(input);
+			}
+		}
 
-        return analysis;
+		return analysis;
+	}
+
+	void Shader::Reload() {
+    	auto extension = m_path.extension().string();
+    	m_lastWriteTime = last_write_time(m_path);
+
+    	const auto glslExtensions = std::unordered_map<std::string, vk::ShaderStageFlagBits> {
+	            {".vert", vk::ShaderStageFlagBits::eVertex},
+				{".tesc", vk::ShaderStageFlagBits::eTessellationControl},
+				{".tese", vk::ShaderStageFlagBits::eTessellationEvaluation},
+				{".geom", vk::ShaderStageFlagBits::eGeometry},
+				{".frag", vk::ShaderStageFlagBits::eFragment},
+				{".comp", vk::ShaderStageFlagBits::eCompute},
+				{".task", vk::ShaderStageFlagBits::eTaskEXT},
+				{".mesh", vk::ShaderStageFlagBits::eMeshEXT},
+			};
+
+    	if (extension == "spv") {
+    		const auto pathWithoutExtension = m_path.string().substr(0, m_path.string().find_last_of('.'));
+    		extension = pathWithoutExtension.substr(pathWithoutExtension.find_last_of('.') + 1);
+    		if (!glslExtensions.contains(extension)) {
+    			throw std::runtime_error("Unsupported shader extension: " + extension);
+    		}
+    		m_stage = static_cast<Core::Stage>(glslExtensions.at(extension));
+    		const auto code = Utils::ReadBinaryFile(m_path);
+    		m_spirVCode.resize(code.size() / sizeof(uint32_t));
+    		std::memcpy(m_spirVCode.data(), code.data(), code.size());
+    		m_handle = LoadSpirVShader(m_spirVCode);
+    	} else if (glslExtensions.contains(extension)) {
+    		m_stage = static_cast<Core::Stage>(glslExtensions.at(extension));
+    		const auto code = Utils::ReadTextFile(m_path);
+    		m_analysis = AnalyzeShader();
+    		try {
+    			m_spirVCode = CompileGLSLToSpirV(code, static_cast<vk::ShaderStageFlagBits>(m_stage));
+				m_handle = LoadSpirVShader(m_spirVCode);
+    			m_valid = true;
+			} catch (const std::exception &e) {
+				std::cerr << "Failed to compile shader: " << e.what() << std::endl;
+				m_valid = false;
+			}
+    	} else {
+    		throw std::runtime_error("Unsupported shader extension: " + extension);
+    	}
+
+    	LoadResourceInfo();
+    	m_changed = true;
     }
 
-    vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) {
+	vk::ShaderModule Shader::LoadSpirVShader(const std::vector<uint32_t> &buffer) {
         const auto createInfo = vk::ShaderModuleCreateInfo()
             .setCode(buffer);
         return GlobalDevice()->createShaderModule(createInfo);

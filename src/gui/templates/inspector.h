@@ -6,10 +6,12 @@
 
 #include "ecs/entity.h"
 
-#include "template.h"
 #include "CameraTemplate.h"
+#include "LightTemplate.h"
 #include "RenderTargetTemplate.h"
 #include "TransformTemplate.h"
+#include "ecs/components/light.h"
+#include "template.h"
 
 #include "gui/reef.h"
 
@@ -20,6 +22,7 @@ namespace Coral::Reef {
 			m_transformTemplate = std::make_unique<TransformTemplate>();
 			m_cameraTemplate = std::make_unique<CameraTemplate>();
 			m_renderTargetTemplate = std::make_unique<RenderTargetTemplate>();
+			m_lightTemplate = std::make_unique<LightTemplate>();
 		}
 
 		Element *Build(ECS::Entity &data) override {
@@ -58,10 +61,14 @@ namespace Coral::Reef {
 				children.emplace_back(m_renderTargetTemplate->Build(data.Get<ECS::RenderTarget>()));
 			}
 
+			if (data.Has<ECS::Light>()) {
+				children.emplace_back(m_lightTemplate->Build(data.Get<ECS::Light>()));
+			}
+
 			return new Element(
 				{
 					.spacing = 10.f,
-					.direction = Vertical,
+					.direction = Axis::Vertical,
 				},
 				children
 			);
@@ -70,6 +77,7 @@ namespace Coral::Reef {
 		std::unique_ptr<TransformTemplate> m_transformTemplate;
 		std::unique_ptr<CameraTemplate> m_cameraTemplate;
 		std::unique_ptr<RenderTargetTemplate> m_renderTargetTemplate;
+		std::unique_ptr<LightTemplate> m_lightTemplate;
     };
 
 	// class ShaderInspector final : public ReadWriteTemplate<Core::Shader> {
