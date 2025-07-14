@@ -11,20 +11,23 @@ namespace Coral::Scripting {
 	class Input {
 	public:
 		static MonoObject* GetMousePosition() {
-			auto& mousePosition = Coral::Input::GetMousePosition();
-			const auto* remoteInstance = mousePosition.RemoteInstance();
-			return **remoteInstance;
+			// auto& mousePosition = Coral::Input::GetMousePosition();
+			// const auto* remoteInstance = mousePosition.RemoteInstance();
+			// return **remoteInstance;
+			return nullptr;
 		}
 
 		static MonoObject* GetMousePositionDelta() {
-			auto& mousePositionDelta = Coral::Input::GetMousePositionDelta();
-			const auto* remoteInstance = mousePositionDelta.RemoteInstance();
-			return **remoteInstance;
+			// auto& mousePositionDelta = Coral::Input::GetMousePositionDelta();
+			// const auto* remoteInstance = mousePositionDelta.RemoteInstance();
+			// return **remoteInstance;
+			return nullptr;
 		}
 		static MonoObject* GetMouseScrollDelta() {
-			auto& mouseScrollDelta = Coral::Input::GetMouseScrollDelta();
-			const auto* remoteInstance = mouseScrollDelta.RemoteInstance();
-			return **remoteInstance;
+			// auto& mouseScrollDelta = Coral::Input::GetMouseScrollDelta();
+			// const auto* remoteInstance = mouseScrollDelta.RemoteInstance();
+			// return **remoteInstance;
+			return nullptr;
 		}
 	};
 }

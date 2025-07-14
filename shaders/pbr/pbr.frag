@@ -1,5 +1,7 @@
 #version 460 core
 
+#extension GL_EXT_vulkan_glsl: enable
+
 layout(location = 0) in PerVertex {
     vec3 position;
     vec3 normal;

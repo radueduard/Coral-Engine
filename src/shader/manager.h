@@ -24,7 +24,7 @@ namespace Coral::Shader {
 				return m_shaders[path].get();
 			}
 
-			auto shader = std::make_unique<Core::Shader>(path, vk::ShaderStageFlagBits::eVertex);
+			auto shader = std::make_unique<Core::Shader>(path);
 			m_shaders[path] = std::move(shader);
 			return m_shaders[path].get();
 		}

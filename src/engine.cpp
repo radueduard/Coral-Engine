@@ -26,10 +26,10 @@
 
 namespace Coral {
     Engine::Engine() {
-    	Scripting::Domain::CreateRoot();
-    	Scripting::Assembly::Load("assets/assemblies/Coral.dll");
-    	Scripting::LinkClassesWithRemote();
-		Scripting::SetupInternalCalls();
+    	// Scripting::Domain::CreateRoot();
+    	// Scripting::Assembly::Load("assets/assemblies/Coral.dll");
+    	// Scripting::LinkClassesWithRemote();
+		// Scripting::SetupInternalCalls();
 
         const auto windowCreateInfo = Core::Window::CreateInfo {
             .title = "Coral",
@@ -80,6 +80,8 @@ namespace Coral {
         m_scheduler = std::make_unique<Core::Scheduler>(schedulerCreateInfo);
     	m_sceneManager = std::make_unique<ECS::SceneManager>();
     	m_assetManager = Reef::MakeContainer<Asset::Manager>();
+
+    	auto shader = Core::Shader("slang/hello-world.slang");
     }
 
     Engine::~Engine() {

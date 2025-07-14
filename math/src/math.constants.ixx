@@ -1,16 +1,18 @@
 //
-// Created by radue on 4/16/2025.
+// Created by radue on 14/07/2025.
 //
-#pragma once
 
-#define GLM_FORCE_RADIANS
+export module math.constants;
+import math.vector;
+
+import types;
+import std;
+
+import <glm/glm.hpp>;
 import <glm/ext/scalar_constants.hpp>;
 import <glm/gtc/constants.hpp>;
 
-#include "vector.h"
-
-
-namespace Coral::Math {
+export namespace Coral::Math {
     template<typename T> requires std::is_floating_point_v<T>
     constexpr T Pi() {
         return glm::pi<T>();
@@ -36,8 +38,8 @@ namespace Coral::Math {
         return Vector<T, N>(glm::degrees(reinterpret_cast<const glm::vec<N, T>&>(radians)));
     }
 
-	template<typename T> requires std::is_floating_point_v<T>
-	constexpr T Epsilon() {
-		return glm::epsilon<T>();
-	}
+    template<typename T> requires std::is_floating_point_v<T>
+    constexpr T Epsilon() {
+        return glm::epsilon<T>();
+    }
 }

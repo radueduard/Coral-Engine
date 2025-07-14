@@ -7,6 +7,8 @@
 #include "core/device.h"
 #include "memory/image.h"
 
+#include <memory>
+
 namespace Coral::Memory {
     ImageView::ImageView(const Builder &builder)
         : m_image(builder.m_image), m_viewType(builder.m_viewType),

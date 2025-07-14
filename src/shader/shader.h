@@ -58,6 +58,7 @@ namespace Coral::Core {
 
     class Shader final : public EngineWrapper<vk::ShaderModule> {
 		friend class Coral::Shader::Manager;
+		friend class Coral::Engine;
     public:
         struct Descriptor {
             uint32_t set;
@@ -78,7 +79,7 @@ namespace Coral::Core {
             uint32_t offset;
         };
 
-        explicit Shader(const std::filesystem::path &, const vk::ShaderStageFlagBits & = vk::ShaderStageFlagBits::eAllGraphics);
+        explicit Shader(const std::filesystem::path &);
         ~Shader() override;
 
         Shader(const Shader &) = delete;
@@ -117,8 +118,9 @@ namespace Coral::Core {
 
         nlohmann::json m_analysis;
 
-        [[nodiscard]] static vk::ShaderModule LoadSpirVShader(const std::vector<uint32_t> &);
-        static std::vector<uint32_t> CompileGLSLToSpirV(const std::string &, const vk::ShaderStageFlagBits &);
+        [[nodiscard]] static vk::ShaderModule LoadSpirVShader(const std::vector<uint32_t>&);
+		static std::vector<uint32_t> CompileSlangToSpirV();
+		static std::vector<uint32_t> CompileGLSLToSpirV(const std::string &, const vk::ShaderStageFlagBits &);
         void LoadResourceInfo();
     };
 }

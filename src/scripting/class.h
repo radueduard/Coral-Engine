@@ -6,7 +6,9 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 #include <unordered_map>
+
 #include <mono/metadata/class.h>
 #include <mono/metadata/object.h>
 
@@ -14,6 +16,7 @@
 
 namespace Coral::Scripting {
     class RemoteVoid;
+	class Class;
 
 	template<class T>
     class Remote;

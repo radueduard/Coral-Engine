@@ -20,6 +20,9 @@
 
 #include <spirv_cross/spirv_glsl.hpp>
 
+#include <slang/slang.h>
+#include <slang/slang-com-ptr.h>
+
 #include "ecs/Entity.h"
 #include "graphics/objects/mesh.h"
 #include "graphics/pipeline.h"
@@ -50,8 +53,7 @@ static EShLanguage ShaderStageToEShLanguage(const vk::ShaderStageFlagBits &stage
 }
 
 namespace Coral::Core {
-    Shader::Shader(const std::filesystem::path &path, const vk::ShaderStageFlagBits &stage)
-        : m_stage(static_cast<Core::Stage>(stage)) {
+    Shader::Shader(const std::filesystem::path &path) {
     	m_path = Coral::Shader::Manager::Get().Path() / path;
         Reload();
     }
@@ -64,6 +66,7 @@ namespace Coral::Core {
     void Shader::LoadResourceInfo() {
         const auto module = spirv_cross::Compiler(m_spirVCode);
         const auto resources = module.get_shader_resources();
+    	m_stage = static_cast<Core::Stage>(1 << static_cast<u32>(module.get_execution_model()));
 
         for (const auto &sampler : resources.separate_samplers) {
             const uint32_t set = module.get_decoration(sampler.id, spv::DecorationDescriptorSet);
@@ -169,7 +172,7 @@ namespace Coral::Core {
 				{".mesh", vk::ShaderStageFlagBits::eMeshEXT},
 			};
 
-    	if (extension == "spv") {
+    	if (extension == ".spv") {
     		const auto pathWithoutExtension = m_path.string().substr(0, m_path.string().find_last_of('.'));
     		extension = pathWithoutExtension.substr(pathWithoutExtension.find_last_of('.') + 1);
     		if (!glslExtensions.contains(extension)) {
@@ -180,12 +183,24 @@ namespace Coral::Core {
     		m_spirVCode.resize(code.size() / sizeof(uint32_t));
     		std::memcpy(m_spirVCode.data(), code.data(), code.size());
     		m_handle = LoadSpirVShader(m_spirVCode);
-    	} else if (glslExtensions.contains(extension)) {
+    	} else if (extension == ".slang") {
+			m_stage = Core::Stage::Compute; // Slang shaders are typically compute shaders
+			try {
+				m_spirVCode = CompileSlangToSpirV();
+    			LoadResourceInfo();
+				m_handle = LoadSpirVShader(m_spirVCode);
+			} catch (const std::exception &e) {
+				std::cerr << "Failed to compile Slang shader: " << e.what() << std::endl;
+				m_valid = false;
+				return;
+			}
+	    } else if (glslExtensions.contains(extension)) {
     		m_stage = static_cast<Core::Stage>(glslExtensions.at(extension));
     		const auto code = Utils::ReadTextFile(m_path);
     		m_analysis = AnalyzeShader();
     		try {
     			m_spirVCode = CompileGLSLToSpirV(code, static_cast<vk::ShaderStageFlagBits>(m_stage));
+    			LoadResourceInfo();
 				m_handle = LoadSpirVShader(m_spirVCode);
     			m_valid = true;
 			} catch (const std::exception &e) {
@@ -196,7 +211,6 @@ namespace Coral::Core {
     		throw std::runtime_error("Unsupported shader extension: " + extension);
     	}
 
-    	LoadResourceInfo();
     	m_changed = true;
     }
 
@@ -206,7 +220,92 @@ namespace Coral::Core {
         return GlobalDevice()->createShaderModule(createInfo);
     }
 
-    std::vector<uint32_t> Shader::CompileGLSLToSpirV(const std::string &source, const vk::ShaderStageFlagBits & stage) {
+	std::vector<uint32_t> Shader::CompileSlangToSpirV() {
+    	using namespace slang;
+
+    	Slang::ComPtr<IGlobalSession> globalSession;
+    	SlangGlobalSessionDesc desc = {};
+    	createGlobalSession(&desc, globalSession.writeRef());
+
+    	TargetDesc targetDesc;
+    	targetDesc.format = SLANG_SPIRV;
+    	targetDesc.profile = globalSession->findProfile("glsl_450");
+
+    	const char* searchPaths[] = { "shaders/slang" };
+
+    	PreprocessorMacroDesc fancyFlag = { "ENABLE_FANCY_FEATURE", "1" };
+
+    	SessionDesc sessionDesc;
+    	sessionDesc.targets = &targetDesc;
+    	sessionDesc.targetCount = 1;
+    	sessionDesc.searchPaths = searchPaths;
+    	sessionDesc.searchPathCount = 1;
+    	sessionDesc.preprocessorMacros = &fancyFlag;
+    	sessionDesc.preprocessorMacroCount = 1;
+
+    	Slang::ComPtr<ISession> session;
+    	globalSession->createSession(sessionDesc, session.writeRef());
+
+    	Slang::ComPtr<IBlob> diagnostics;
+    	const auto module = Slang::ComPtr(session->loadModule("hello_world", diagnostics.writeRef()));
+
+    	if (diagnostics) {
+			std::cerr << "Diagnostics: " << static_cast<const char*>(diagnostics->getBufferPointer()) << std::endl;
+			throw std::runtime_error("Failed to load Slang module");
+		}
+
+		std::vector<IComponentType*> components;
+    	components.emplace_back(module);
+
+		const auto entryPointCount = module->getDefinedEntryPointCount();
+		for (int i = 0; i < entryPointCount; ++i) {
+			IEntryPoint* entryPoint;
+			module->getDefinedEntryPoint(i, &entryPoint);
+			if (entryPoint) {
+				components.emplace_back(entryPoint);
+			} else {
+				std::cerr << "Failed to get entry point at index " << i << std::endl;
+			}
+		}
+
+    	Slang::ComPtr<IComponentType> program;
+    	session->createCompositeComponentType(components.data(), static_cast<i64>(components.size()), program.writeRef());
+
+    	ProgramLayout* layout = program->getLayout();
+		if (const auto l = layout->toJson(diagnostics.writeRef()); l == 0) {
+			std::cout << "Program layout: " << static_cast<const char*>(diagnostics->getBufferPointer()) << std::endl;
+		} else {
+			std::cerr << "Failed to create program layout" << std::endl;
+		}
+
+    	Slang::ComPtr<IComponentType> linkedProgram;
+    	Slang::ComPtr<ISlangBlob> diagnosticBlob;
+    	program->link(linkedProgram.writeRef(), diagnosticBlob.writeRef());
+    	if (diagnosticBlob) {
+			std::cerr << "Linking diagnostics: " << static_cast<const char*>(diagnosticBlob->getBufferPointer()) << std::endl;
+			throw std::runtime_error("Failed to link Slang program");
+		}
+
+    	int entryPointIndex = 0; // only one entry point
+    	int targetIndex = 0; // only one target
+    	Slang::ComPtr<IBlob> kernelBlob;
+    	linkedProgram->getEntryPointCode(
+			entryPointIndex,
+			targetIndex,
+			kernelBlob.writeRef(),
+			diagnostics.writeRef());
+
+    	if (diagnostics) {
+    		std::cerr << "Kernel diagnostics: " << static_cast<const char*>(diagnostics->getBufferPointer()) << std::endl;
+    	}
+
+    	return {
+			static_cast<const uint32_t*>(kernelBlob->getBufferPointer()),
+			static_cast<const uint32_t*>(kernelBlob->getBufferPointer()) + kernelBlob->getBufferSize() / sizeof(uint32_t)
+		};
+	}
+
+	std::vector<uint32_t> Shader::CompileGLSLToSpirV(const std::string &source, const vk::ShaderStageFlagBits & stage) {
         glslang::InitializeProcess();
 
         const auto eShStage = ShaderStageToEShLanguage(stage);

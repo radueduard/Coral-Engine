@@ -41,5 +41,8 @@
   }, {
     "name" : "glm",
     "version>=" : "1.0.1#3"
+  }, {
+    "name" : "shader-slang",
+    "version>=" : "2025.5"
   } ]
 }

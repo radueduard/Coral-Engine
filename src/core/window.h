@@ -12,6 +12,7 @@
 
 #include "math/vector.h"
 
+
 namespace Coral::Core {
     /**
      * @brief Window class

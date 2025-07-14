@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <vector>
 
 #include "scripting/assembly.h"
 #include "scripting/domain.h"

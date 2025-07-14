@@ -9,53 +9,53 @@
 #include "math/vector.h"
 #include "scripting/object.h"
 
-namespace Coral::Scripting {
-	class Vector3 {
-	public:
-		static float get_x(MonoObject* instance) {
-			return Math::Vector3<f32>::LocalInstance(instance)->x;
-		}
-
-		static float get_y(MonoObject* instance) {
-			return Math::Vector3<f32>::LocalInstance(instance)->y;
-		}
-
-		static float get_z(MonoObject* instance) {
-			return Math::Vector3<f32>::LocalInstance(instance)->z;
-		}
-
-		static void set_x(MonoObject* instance, const float value) {
-			Math::Vector3<f32>::LocalInstance(instance)->x = value;
-		}
-
-		static void set_y(MonoObject* instance, const float value) {
-			Math::Vector3<f32>::LocalInstance(instance)->y = value;
-		}
-
-		static void set_z(MonoObject* instance, const float value) {
-			Math::Vector3<f32>::LocalInstance(instance)->z = value;
-		}
-
-		static void ctor_no_args(MonoObject* obj) {
-			auto* vec = new Math::Vector3<f32>();
-			vec->AddRemoteInstance(obj);
-		}
-
-		static void ctor_scalar(MonoObject* obj, const f32 scalar) {
-			auto* local = new Math::Vector3(scalar);
-			local->AddRemoteInstance(obj);
-		}
-
-		static void ctor_elements(MonoObject* obj, const f32 x, const f32 y, const f32 z) {
-			const auto local = new Math::Vector3 { x, y, z };
-			local->AddRemoteInstance(obj);
-		}
-
-		static MonoObject* op_addition(MonoObject* obj, MonoObject* other) {
-			const auto& objLocal = *static_cast<Math::Vector3<f32>*>(Math::Vector3<f32>::LocalInstance(obj));
-			const auto& otherLocal = *static_cast<Math::Vector3<f32>*>(Math::Vector3<f32>::LocalInstance(other));
-			return **(new Math::Vector3(objLocal + otherLocal))->RemoteInstance();
-		}
+// namespace Coral::Scripting {
+// 	class Vector3 {
+// 	public:
+// 		static float get_x(MonoObject* instance) {
+// 			return Math::Vector3<f32>::LocalInstance(instance)->x;
+// 		}
+//
+// 		static float get_y(MonoObject* instance) {
+// 			return Math::Vector3<f32>::LocalInstance(instance)->y;
+// 		}
+//
+// 		static float get_z(MonoObject* instance) {
+// 			return Math::Vector3<f32>::LocalInstance(instance)->z;
+// 		}
+//
+// 		static void set_x(MonoObject* instance, const float value) {
+// 			Math::Vector3<f32>::LocalInstance(instance)->x = value;
+// 		}
+//
+// 		static void set_y(MonoObject* instance, const float value) {
+// 			Math::Vector3<f32>::LocalInstance(instance)->y = value;
+// 		}
+//
+// 		static void set_z(MonoObject* instance, const float value) {
+// 			Math::Vector3<f32>::LocalInstance(instance)->z = value;
+// 		}
+//
+// 		static void ctor_no_args(MonoObject* obj) {
+// 			auto* vec = new Math::Vector3<f32>();
+// 			vec->AddRemoteInstance(obj);
+// 		}
+//
+// 		static void ctor_scalar(MonoObject* obj, const f32 scalar) {
+// 			auto* local = new Math::Vector3(scalar);
+// 			local->AddRemoteInstance(obj);
+// 		}
+//
+// 		static void ctor_elements(MonoObject* obj, const f32 x, const f32 y, const f32 z) {
+// 			const auto local = new Math::Vector3 { x, y, z };
+// 			local->AddRemoteInstance(obj);
+// 		}
+//
+// 		static MonoObject* op_addition(MonoObject* obj, MonoObject* other) {
+// 			const auto& objLocal = *static_cast<Math::Vector3<f32>*>(Math::Vector3<f32>::LocalInstance(obj));
+// 			const auto& otherLocal = *static_cast<Math::Vector3<f32>*>(Math::Vector3<f32>::LocalInstance(other));
+// 			return **(new Math::Vector3(objLocal + otherLocal))->RemoteInstance();
+// 		}
 
 		// static MonoObject* op_subtraction(MonoObject* obj, MonoObject* other) {
 		// 	const auto& local = *Math::Vector3<float>::LocalInstance(obj);
@@ -145,5 +145,5 @@ namespace Coral::Scripting {
 		// 	const auto& otherLocal = *Math::Vector3<float>::LocalInstance(other);
 		// 	return **(new Math::Vector3(Math::Vector3<float>::Lerp(local, otherLocal, t)))->RemoteInstance();
 		// }
-	};
-}
+	// };
+// }

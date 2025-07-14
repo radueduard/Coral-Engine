@@ -12,6 +12,7 @@
 #include "physicalDevice.h"
 #include "runtime.h"
 
+
 inline static std::thread::id mainThreadId = std::this_thread::get_id();
 
 namespace Coral::Core {
@@ -186,7 +187,7 @@ namespace Coral::Core {
     void Device::RunSingleTimeCommand(const std::function<void(const Core::CommandBuffer&)> &command, const vk::QueueFlags requiredFlags,
         const vk::Fence fence, vk::Semaphore waitSemaphore, vk::Semaphore signalSemaphore, bool wait) {
         const auto threadId = std::this_thread::get_id();
-        uint32_t thread = threadId._Get_underlying_id();
+        uint32_t thread = std::hash<std::thread::id>()(threadId);
         if (threadId == mainThreadId) {
             thread = 0;
         }

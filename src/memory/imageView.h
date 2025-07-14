@@ -3,6 +3,9 @@
 //
 
 #pragma once
+#include <memory>
+
+
 #include "utils/globalWrapper.h"
 #include "vulkan/vulkan.hpp"
 

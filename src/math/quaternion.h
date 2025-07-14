@@ -24,9 +24,9 @@ namespace Coral::Math {
     	f32 x, y, z, w;
 #endif
 
-        constexpr Quaternion() : w(1.0f), x(0.0f), y(0.0f), z(0.0f) {}
+        constexpr Quaternion() : x(0.0f), y(0.0f), z(0.0f), w(1.0f) {}
         constexpr Quaternion(const f32 w, const f32 x, const f32 y, const f32 z)
-			: w(w), x(x), y(y), z(z) {}
+			: x(x), y(y), z(z), w(w) {}
 		constexpr Quaternion(const f32 w, const Vector3<f32>& v)
 			:w(w), x(v.x), y(v.y), z(v.z) {}
 

@@ -82,9 +82,9 @@ namespace Coral::Core {
         glfwSetScrollCallback(m_window, Input::Callbacks::scrollCallback);
         glfwSetFramebufferSizeCallback(m_window, FramebufferResize);
 
-    	mono_add_internal_call("Coral.Time::get_elapsedTime", get_elapsed);
-    	mono_add_internal_call("Coral.Time::get_deltaTime", get_deltaTime);
-    	mono_add_internal_call("Coral.Time::get_fixedDeltaTime", get_fixedDeltaTime);
+    	// mono_add_internal_call("Coral.Time::get_elapsedTime", (const void*)get_elapsed);
+    	// mono_add_internal_call("Coral.Time::get_deltaTime", (const void*)get_deltaTime);
+    	// mono_add_internal_call("Coral.Time::get_fixedDeltaTime", (const void*)get_fixedDeltaTime);
     }
 
     Window::~Window() {

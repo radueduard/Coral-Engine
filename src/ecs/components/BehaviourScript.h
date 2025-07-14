@@ -9,9 +9,7 @@
 #include "component.h"
 #include "utils/file.h"
 
-namespace std::filesystem {
-	class path;
-}
+
 namespace Coral::ECS {
 	class BehaviourScript final : public Component {
 	public:

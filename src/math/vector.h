@@ -62,7 +62,7 @@ namespace Coral::Math {
 
 
 	template <typename T, u32 N> requires std::is_arithmetic_v<T> && (N > 0)
-	struct Vector : Data<T, N>, Scripting::Remote<Vector<T, N>> {
+	struct Vector : Data<T, N> {
 		constexpr explicit Vector() : Data<T, N>() {}
 
 		constexpr explicit Vector(const T& scalar) {

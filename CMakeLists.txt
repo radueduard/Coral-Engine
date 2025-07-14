@@ -16,6 +16,7 @@ message(STATUS "Vulkan_LIBRARIES: ${Vulkan_LIBRARIES}")
 message(STATUS "Vulkan_VERSION: ${Vulkan_VERSION}")
 
 find_package(glslang REQUIRED)
+#find_package(slang REQUIRED)
 
 find_package(spirv_cross_core CONFIG REQUIRED)
 find_package(spirv_cross_glsl CONFIG REQUIRED)
@@ -32,6 +33,9 @@ find_package(Boost COMPONENTS unordered uuid REQUIRED)
 
 set(MONO_INCLUDE_DIRS "C:/Program Files/Mono/include/mono-2.0")
 set(MONO_LIB_DIR "C:/Program Files/Mono/lib")
+
+set(SLANG_INCLUDE_DIRS "C:/slang-2025.12-windows-x86_64/lib")
+set(SLANG_LIB_DIR "C:/slang-2025.12-windows-x86_64/lib")
 
 # Add the source files
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.cc")
@@ -53,6 +57,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         glslang::SPVRemapper)
 target_link_libraries(${PROJECT_NAME} PRIVATE spirv-cross-cpp)
 
+
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
 target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)
@@ -64,9 +69,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt)
 
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${MONO_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${SLANG_INCLUDE_DIRS})
 
 target_link_directories(${PROJECT_NAME}  PRIVATE ${MONO_LIB_DIR})
 target_link_libraries(${PROJECT_NAME}  PRIVATE mono-2.0-sgen)
+
+target_link_directories(${PROJECT_NAME}  PRIVATE ${SLANG_LIB_DIR})
+target_link_libraries(${PROJECT_NAME}  PRIVATE slang)
 
 # Dear ImGui
 set(IMGUI_DIR external/imgui)
@@ -74,6 +83,11 @@ add_subdirectory(${IMGUI_DIR} imgui)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE imgui)
 target_include_directories(${PROJECT_NAME} PRIVATE ${IMGUI_DIR}/Include)
+
+# Math module
+set(MATH_DIR math)
+add_subdirectory(${MATH_DIR} math)
+target_link_libraries(${PROJECT_NAME} PRIVATE math)
 
 ## imgui-node-editor
 #set(IMGUI_NODE_EDITOR_DIR external/imgui-node-editor)
