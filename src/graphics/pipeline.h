@@ -5,17 +5,25 @@
 #pragma once
 
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include <vulkan/vulkan.hpp>
 
-#include "../shader/shader.h"
+#include "shader/shader.h"
 #include "memory/descriptor/set.h"
 #include "objects/mesh.h"
 
+namespace Coral::Shader {
+	class Shader;
+	enum class Stage : uint32_t;
+}
 namespace Coral::Memory::Descriptor {
     class SetLayout;
+}
+
+
+namespace Coral::Reef {
+	class RenderPipelineTemplate;
 }
 
 namespace Coral::Graphics {
@@ -26,7 +34,8 @@ namespace Coral::Graphics {
     public:
         class Builder {
             friend class Pipeline;
-        	friend class RenderPass;
+            friend class RenderPass;
+            friend class Reef::RenderPipelineTemplate;
         public:
             Builder(RenderPass&);
             ~Builder() = default;
@@ -34,7 +43,7 @@ namespace Coral::Graphics {
             Builder(const Builder &) = delete;
             Builder &operator=(const Builder &) = delete;
 
-            Builder &AddShader(const Core::Shader* shader);
+            Builder &AddShader(const Shader::Shader* shader);
             Builder &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
             Builder &Viewport(const vk::Viewport &);
             Builder &Scissor(const vk::Rect2D &);
@@ -46,14 +55,23 @@ namespace Coral::Graphics {
 
             Builder &Subpass(uint32_t);
 
-        	Builder &BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)> &function);
+            Builder &BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)> &function);
+
+            bool ShouldRebuild() {
+                if (m_shouldRebuild) {
+                    m_shouldRebuild = false;
+                    return true;
+                }
+                return false;
+            }
 
             std::unique_ptr<Pipeline> Build();
         private:
 			RenderPass &m_renderPass;
+            bool m_shouldRebuild = true;
 
             std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
-            std::unordered_map<Core::Stage, const Core::Shader*> m_shaders;
+            std::unordered_map<Shader::Stage, const Shader::Shader*> m_shaders;
             std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
 
             vk::PipelineVertexInputStateCreateInfo m_vertexInputInfo;
@@ -103,11 +121,11 @@ namespace Coral::Graphics {
 
         [[nodiscard]] const vk::PipelineLayout &Layout() const { return m_pipelineLayout; }
 
-        const std::unordered_map<Core::Stage, const Core::Shader*>& Shaders() { return m_shaders; }
+        const std::unordered_map<Shader::Stage, const Shader::Shader*>& Shaders() { return m_shaders; }
     private:
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
         std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
-        std::unordered_map<Core::Stage, const Core::Shader*> m_shaders;
+        std::unordered_map<Shader::Stage, const Shader::Shader*> m_shaders;
     };
 }

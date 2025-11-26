@@ -43,8 +43,8 @@ namespace Coral::Reef {
                 ImGui::EndDragDropTarget();
             }
 
-            ImGui::SetCursorScreenPos(ImVec2(m_position + Math::Vector2 { m_padding.left, m_padding.top }));
-        	const auto childSize = m_currentSize - Math::Vector2 { m_padding.left + m_padding.right, m_padding.top + m_padding.bottom };
+            ImGui::SetCursorScreenPos(ImVec2(m_position + Math::Vector2f { m_style.padding.left, m_style.padding.top }));
+        	const auto childSize = m_currentSize - Math::Vector2f { m_style.padding.left + m_style.padding.right, m_style.padding.top + m_style.padding.bottom };
             ImGui::BeginChild(
             	typeid(T).name(),
                 ImVec2(childSize),

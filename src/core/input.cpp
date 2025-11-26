@@ -4,16 +4,7 @@
 
 #include "input.h"
 
-#include <iostream>
 #include <magic_enum/magic_enum.hpp>
-#include <mono/metadata/class.h>
-#include <mono/metadata/object.h>
-
-
-// MonoObject* GetMousePositionScripting() {
-// 	auto mousePosition = Coral::Input::GetMousePosition();
-// 	std::cout << "MousePosition: " << Coral::Input::GetMousePosition() << std::endl;
-// }
 
 namespace Coral {
     void Input::Setup() {
@@ -107,7 +98,7 @@ namespace Coral {
     }
 
 	void Input::Callbacks::mouseMoveCallback(GLFWwindow *, const double x, const double y) {
-    	const Math::Vector2 pos { static_cast<i32>(x), static_cast<i32>(y) };
+    	const Math::Vector2i pos { static_cast<i32>(x), static_cast<i32>(y) };
     	m_mouseDelta = pos - m_mousePosition;
     	m_mousePosition = pos;
 

@@ -52,12 +52,12 @@ namespace Coral::ECS {
     	yaw /= static_cast<f32>(m_viewportSize.x);
     	pitch /= static_cast<f32>(m_viewportSize.y);
 
-    	const auto rotate = Math::Quaternion::Cross(
-			Math::Quaternion::FromAxisAngle(-pitch, right),
-			Math::Quaternion::FromAxisAngle(-yaw, UP)).Normalized();
+    	const auto rotate = Math::Quaternion<>::Cross(
+			Math::Quaternion<>::FromAxisAngle(-pitch, right),
+			Math::Quaternion<>::FromAxisAngle(-yaw, UP)).Normalized();
     	forward = Math::Rotate(rotate, forward).Normalized();
 
-    	transform.rotation = Math::Degrees(Math::Quaternion::ToEulerAngles(Math::LookAt(forward, UP)));
+    	transform.rotation = Math::Degrees(Math::Quaternion<>::ToEulerAngles(Math::LookAt(forward, UP)));
 
     	m_moved = true;
     }

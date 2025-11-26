@@ -35,11 +35,11 @@ namespace Coral::Math {
         return Quaternion(eulerAngles).ToMatrix();
     }
 
-    inline Matrix4<f32> Rotate(const Quaternion& rotation) {
+    inline Matrix4<f32> Rotate(const Quaternion<f32>& rotation) {
         return rotation.ToMatrix();
     }
 
-    inline Vector3<f32> Rotate(const Quaternion& rotation, const Vector3<f32>& direction) {
+    inline Vector3<f32> Rotate(const Quaternion<f32>& rotation, const Vector3<f32>& direction) {
         return Vector3(glm::rotate(
 			reinterpret_cast<const glm::quat&>(rotation),
 			reinterpret_cast<const glm::vec3&>(direction)));
@@ -84,14 +84,14 @@ namespace Coral::Math {
             reinterpret_cast<const glm::vec3&>(up)));
     }
 
-    inline Quaternion LookAt(const Vector3<f32>& direction, const Vector3<f32>& up) {
+    inline Quaternion<f32> LookAt(const Vector3<f32>& direction, const Vector3<f32>& up) {
         return Quaternion(glm::quatLookAt(
             reinterpret_cast<const glm::vec3&>(direction),
             reinterpret_cast<const glm::vec3&>(up)));
     }
 
-	inline Vector3<f32> Direction(const Vector3<f32>& eulerAngles) {
-    	return Vector3 {
+	inline Vector3f Direction(const Vector3<f32>& eulerAngles) {
+    	return Vector3f {
     		glm::cos(eulerAngles.y) * glm::cos(eulerAngles.x),
 			glm::sin(eulerAngles.x),
 			glm::sin(eulerAngles.y) * glm::cos(eulerAngles.x)

@@ -14,9 +14,9 @@
 #include "memory/descriptor/set.h"
 
 namespace Coral::Compute {
-    Pipeline::Pipeline(Core::Shader* shader, std::string kernelName) : m_shader(shader), m_kernelName(std::move(kernelName)) {
+    Pipeline::Pipeline(Shader::Shader* shader, std::string kernelName) : m_shader(shader), m_kernelName(std::move(kernelName)) {
         std::vector<Memory::Descriptor::SetLayout::Builder> setLayoutBuilders;
-        for (const auto &[set, binding, type, count] : m_shader->Descriptors()) {
+        for (const auto &[set, binding, name, type, count] : m_shader->Descriptors()) {
             if (setLayoutBuilders.size() <= set) {
                 setLayoutBuilders.resize(set + 1);
             }
@@ -33,7 +33,7 @@ namespace Coral::Compute {
             | std::ranges::to<std::vector<vk::DescriptorSetLayout>>();
 
         std::vector<vk::PushConstantRange> pushConstantRanges;
-        for (const auto &[size, offset] : m_shader->PushConstantRanges()) {
+        for (const auto &[size, offset, name] : m_shader->PushConstantRanges()) {
             pushConstantRanges.emplace_back(vk::PushConstantRange()
                 .setOffset(offset)
                 .setSize(size)
@@ -44,7 +44,7 @@ namespace Coral::Compute {
             .setSetLayouts(layouts)
             .setPushConstantRanges(pushConstantRanges);
 
-        m_pipelineLayout = Core::GlobalDevice()->createPipelineLayout(pipelineLayoutCreateInfo);
+        m_pipelineLayout = Context::Device()->createPipelineLayout(pipelineLayoutCreateInfo);
 
         const auto shaderStage = vk::PipelineShaderStageCreateInfo()
             .setStage(vk::ShaderStageFlagBits::eCompute)
@@ -55,7 +55,7 @@ namespace Coral::Compute {
             .setLayout(m_pipelineLayout)
             .setStage(shaderStage);
 
-        const auto pipeline = Core::GlobalDevice()->createComputePipeline(nullptr, createInfo);
+        const auto pipeline = Context::Device()->createComputePipeline(nullptr, createInfo);
         if (pipeline.result != vk::Result::eSuccess) {
             std::cerr << "Failed to create compute pipeline" << std::endl;
         }
@@ -63,9 +63,9 @@ namespace Coral::Compute {
     }
 
     Pipeline::~Pipeline() {
-        Core::GlobalDevice()->waitIdle();
-        Core::GlobalDevice()->destroyPipeline(m_pipeline);
-        Core::GlobalDevice()->destroyPipelineLayout(m_pipelineLayout);
+        Context::Device()->waitIdle();
+        Context::Device()->destroyPipeline(m_pipeline);
+        Context::Device()->destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer commandBuffer) const {

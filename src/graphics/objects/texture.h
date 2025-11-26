@@ -80,6 +80,11 @@ namespace Coral::Graphics {
                 return *this;
             }
 
+        	Builder& Data(const Math::Vector4<u8>* data) {
+				m_data = reinterpret_cast<u8*>(const_cast<Math::Vector4<u8>*>(data));
+				return *this;
+			}
+
             Builder& Size(const uint32_t size) {
                 m_width = size;
                 m_height = size;

@@ -16,57 +16,43 @@
 #include "matrix.h"
 
 namespace Coral::Math {
+    template <typename T = f32> requires std::is_floating_point_v<T>
     struct Quaternion {
+        T x, y, z, w;
 
-#ifdef GLM_FORCE_QUAT_DATA_WXYZ
-		f32 w, x, y, z;
-#else
-    	f32 x, y, z, w;
-#endif
+        constexpr Quaternion() : x(0), y(0), z(0), w(1) {}
+        constexpr Quaternion(const T w, const T x, const T y, const T z) : x(x), y(y), z(z), w(w) {}
+        constexpr Quaternion(const T w, const Vector3<T>& v) : x(v.x), y(v.y), z(v.z), w(w) {}
 
-        constexpr Quaternion() : x(0.0f), y(0.0f), z(0.0f), w(1.0f) {}
-        constexpr Quaternion(const f32 w, const f32 x, const f32 y, const f32 z)
-			: x(x), y(y), z(z), w(w) {}
-		constexpr Quaternion(const f32 w, const Vector3<f32>& v)
-			:w(w), x(v.x), y(v.y), z(v.z) {}
-
-		/**
-		 *
-		 * @param eulerAngles Euler angles in radians (x, y, z)
-		 */
-		constexpr explicit Quaternion(const Vector3<f32>& eulerAngles) {
-            *this = Quaternion(glm::quat(glm::vec3(eulerAngles)));
+        [[nodiscard]]
+        static constexpr Quaternion Identity() {
+            return { static_cast<T>(1), static_cast<T>(0), static_cast<T>(0), static_cast<T>(0) };
         }
 
-        constexpr explicit Quaternion(const glm::quat q)
-			: w(q.w), x(q.x), y(q.y), z(q.z) {}
-
-        Quaternion(const Vector3<f32>& axis, const f32 angle) {
-            *this = FromAxisAngle(angle, axis);
-        }
-
-        constexpr static Quaternion Identity() {
-            return { 1.0f, 0.0f, 0.0f, 0.0f };
-        }
+        /**
+         *
+         * @param eulerAngles Euler angles in radians (pitch, yaw, roll)
+         */
+        constexpr explicit Quaternion(const Vector3<T>& eulerAngles) : Quaternion(glm::qua<T>(glm::vec<3, T>(eulerAngles))) {}
 
         [[nodiscard]] Quaternion Cross(const Quaternion& other) const {
             return Cross(*this, other);
         }
 
     	static Quaternion Cross(const Quaternion& lhs, const Quaternion& rhs) {
-        	return Quaternion(glm::cross(reinterpret_cast<const glm::quat&>(lhs), reinterpret_cast<const glm::quat&>(rhs)));
+        	return Quaternion(glm::cross(reinterpret_cast<const glm::qua<T>&>(lhs), reinterpret_cast<const glm::qua<T>&>(rhs)));
         }
 
         [[nodiscard]] Quaternion Normalized() const {
-            return Quaternion(glm::normalize(reinterpret_cast<const glm::quat&>(*this)));
+            return Quaternion(glm::normalize(reinterpret_cast<const glm::qua<T>&>(*this)));
         }
 
         void Normalize() {
             *this = Normalized();
         }
 
-    	Vector3<f32> operator*(const Vector3<f32>& v) const {
-			return Vector3(reinterpret_cast<const glm::quat&>(*this) * reinterpret_cast<const glm::vec3&>(v));
+    	Vector3<T> operator*(const Vector3<T>& v) const {
+			return Vector3(reinterpret_cast<const glm::qua<T>&>(*this) * reinterpret_cast<const glm::vec<3, T>&>(v));
 		}
 
 		Quaternion operator*(const Quaternion& other) const {
@@ -78,13 +64,13 @@ namespace Coral::Math {
 			return *this;
 		}
 
-        [[nodiscard]] Vector3<f32> ToEulerAngles() const {
+        [[nodiscard]] Vector3<T> ToEulerAngles() const {
             return ToEulerAngles(*this);
         }
 
         // Converts a quaternion to Euler angles (in radians)
         static Vector3<f32> ToEulerAngles(const Quaternion& q) {
-            return Vector3(glm::eulerAngles(reinterpret_cast<const glm::quat&>(q)));
+            return Vector3(glm::eulerAngles(reinterpret_cast<const glm::qua<T>&>(q)));
         }
 
 		/**
@@ -92,12 +78,12 @@ namespace Coral::Math {
 		 * @param eulerAngles euler angles in radians (x, y, z)
 		 * @return Quaternion representing the rotation
 		 */
-		static Quaternion FromEulerAngles(const Vector3<f32>& eulerAngles) {
+		static Quaternion FromEulerAngles(const Vector3<T>& eulerAngles) {
             return Quaternion(eulerAngles);
         }
 
-        static Quaternion FromAxisAngle(const f32 angle, const Vector3<f32>& axis) {
-            return Quaternion(glm::angleAxis(angle, reinterpret_cast<const glm::vec3&>(axis)));
+        static Quaternion FromAxisAngle(const T angle, const Vector3<T>& axis) {
+            return Quaternion(glm::angleAxis(angle, reinterpret_cast<const glm::vec<3, T>&>(axis)));
         }
 
         /*
@@ -108,20 +94,23 @@ namespace Coral::Math {
          * @return A quaternion representing the axis and angle. (x, y, z are the axis, w is the angle)
          */
         static Quaternion ToAxisAngle(const Quaternion& q) {
-            const auto angle = glm::angle(reinterpret_cast<const glm::quat&>(q));
-			const auto axis = glm::axis(reinterpret_cast<const glm::quat&>(q));
-			return Quaternion(angle, Vector3 { axis.x, axis.y, axis.z });
+            const auto angle = glm::angle(reinterpret_cast<const glm::qua<T>&>(q));
+			const auto axis = glm::axis(reinterpret_cast<const glm::qua<T>&>(q));
+			return Quaternion(angle, Vector3(axis));
         }
 
-        operator glm::quat() const { return reinterpret_cast<const glm::quat&>(*this); }
+        // Conversion operators and constructors
 
-        operator Matrix4<f32>() const {
-            glm::mat4 m = glm::toMat4(reinterpret_cast<const glm::quat&>(*this));
-            return reinterpret_cast<Matrix4<f32>&>(m);
+        constexpr explicit Quaternion(const glm::qua<T> q) : x(q.x), y(q.y), z(q.z), w(q.w) {}
+        explicit constexpr operator glm::qua<T>() const { return reinterpret_cast<const glm::qua<T>&>(*this); }
+
+        operator Matrix4<T>() const {
+            glm::mat<4, 4, T> m = glm::toMat4(reinterpret_cast<const glm::qua<T>&>(*this));
+            return reinterpret_cast<Matrix4<T>&>(m);
         }
 
-        Matrix4<f32> ToMatrix() const {
-            return static_cast<Matrix4<f32>>(*this);
+        Matrix4<T> ToMatrix() const {
+            return static_cast<Matrix4<T>>(*this);
         }
     };
 }

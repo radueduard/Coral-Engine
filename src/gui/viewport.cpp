@@ -4,12 +4,13 @@
 
 #include "viewport.h"
 
+#include "context.h"
 #include "core/scheduler.h"
 #include "ecs/components/camera.h"
-#include "ecs/sceneManager.h"
 #include "ecs/entity.h"
-#include "project/renderGraph.h"
+#include "ecs/sceneManager.h"
 #include "gui/elements/popup.h"
+#include "project/renderGraph.h"
 
 namespace Coral::Reef {
 	Viewport::Viewport(Graphics::RenderPass& renderPass): m_renderPass(renderPass) {
@@ -39,7 +40,7 @@ namespace Coral::Reef {
 		}
 
 		m_image = new Image(m_viewportTextures[0]);
-		AddDockable("viewport", new Reef::Dockable (
+		AddDockable("viewport", new Reef::Window (
             "Main Viewport",
             {
 	            .padding = { 10.f, 10.f, 10.f, 10.f },
@@ -50,7 +51,7 @@ namespace Coral::Reef {
 	            m_image,
             },
             [this] (const Math::Vector2<f32>& newSize) {
-	            Core::GlobalScheduler().RenderGraph().Resize(newSize, true);
+	            Context::Scheduler().RenderGraph().Resize(newSize, true);
             	if (ECS::SceneManager::Get().IsSceneLoaded()) {
             		auto& scene = ECS::SceneManager::Get().GetLoadedScene();
 					scene.MainCamera().Resize(newSize);
@@ -68,7 +69,7 @@ namespace Coral::Reef {
 							*framebuffer.ImageView(outputAttachmentIndex),
 							static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal)));
 					}
-					m_image->SetTexture(m_viewportTextures[Core::GlobalScheduler().CurrentFrame().ImageIndex()]);
+					m_image->SetTexture(m_viewportTextures[Context::Scheduler().CurrentFrame().ImageIndex()]);
 				}
             }
         ));
@@ -81,6 +82,6 @@ namespace Coral::Reef {
 	}
 
 	void Viewport::OnGUIUpdate() {
-		m_image->SetTexture(m_viewportTextures[Core::GlobalScheduler().CurrentFrame().ImageIndex()]);
+		m_image->SetTexture(m_viewportTextures[Context::Scheduler().CurrentFrame().ImageIndex()]);
 	}
 }

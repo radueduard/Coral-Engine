@@ -4,17 +4,18 @@
 
 #pragma once
 #include "element.h"
+#include "gui/manager.h"
 
 namespace Coral::Reef {
 	class Popup final : public Element {
 	public:
-		Popup(const String& name, const std::vector<Element*>& children, const Style& style = Style { .direction = Axis::Vertical })
+		Popup(const String& name, const std::initializer_list<Element*>& children, const Style& style = Style { .direction = Axis::Vertical })
 			: Element(style, children), m_name(name) {
-			GlobalManager().RegisterPopup(name, this);
+			Context::GUIManager().RegisterPopup(name, this);
 		}
 
 		~Popup() override {
-			GlobalManager().UnregisterPopup(m_name);
+			Context::GUIManager().UnregisterPopup(m_name);
 		}
 
 		bool Render() override {
@@ -25,7 +26,7 @@ namespace Coral::Reef {
 			ImGui::OpenPopup(m_name.c_str());
 			ImGui::SetNextWindowSize(ImVec2(m_currentSize));
 
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, m_cornerRadius);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, m_style.cornerRadius);
 			if (ImGui::BeginPopupModal(m_name.c_str(), nullptr,
 				ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
 			{

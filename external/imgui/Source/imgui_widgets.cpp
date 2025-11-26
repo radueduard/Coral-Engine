@@ -2747,7 +2747,7 @@ bool ImGui::DragScalarN(const char* label, ImGuiDataType data_type, void* p_data
 
 bool ImGui::DragFloat(const char* label, float* v, float v_speed, float v_min, float v_max, const char* format, ImGuiSliderFlags flags)
 {
-    return DragScalar(ImGuiDataType_Float, v, v_speed, &v_min, &v_max, format, flags, ImLabel(label));
+    return DragScalar(ImGuiDataType_Float, v, v_speed, &v_min, &v_max, format, flags, ImLabel { label });
 }
 
 bool ImGui::DragFloat2(const char* label, float v[2], float v_speed, float v_min, float v_max, const char* format, ImGuiSliderFlags flags)
@@ -2780,14 +2780,14 @@ bool ImGui::DragFloatRange2(const char* label, float* v_current_min, float* v_cu
     float min_min = (v_min >= v_max) ? -FLT_MAX : v_min;
     float min_max = (v_min >= v_max) ? *v_current_max : ImMin(v_max, *v_current_max);
     ImGuiSliderFlags min_flags = flags | ((min_min == min_max) ? ImGuiSliderFlags_ReadOnly : 0);
-    bool value_changed = DragScalar(ImGuiDataType_Float, v_current_min, v_speed, &min_min, &min_max, format, min_flags, ImLabel("##min"));
+    bool value_changed = DragScalar(ImGuiDataType_Float, v_current_min, v_speed, &min_min, &min_max, format, min_flags, ImLabel { "##min" });
     PopItemWidth();
     SameLine(0, g.Style.ItemInnerSpacing.x);
 
     float max_min = (v_min >= v_max) ? *v_current_min : ImMax(v_min, *v_current_min);
     float max_max = (v_min >= v_max) ? FLT_MAX : v_max;
     ImGuiSliderFlags max_flags = flags | ((max_min == max_max) ? ImGuiSliderFlags_ReadOnly : 0);
-    value_changed |= DragScalar(ImGuiDataType_Float, v_current_max, v_speed, &max_min, &max_max, format_max ? format_max : format, max_flags, ImLabel("##max"));
+    value_changed |= DragScalar(ImGuiDataType_Float, v_current_max, v_speed, &max_min, &max_max, format_max ? format_max : format, max_flags, ImLabel { "##max" });
     PopItemWidth();
     SameLine(0, g.Style.ItemInnerSpacing.x);
 
@@ -2801,7 +2801,7 @@ bool ImGui::DragFloatRange2(const char* label, float* v_current_min, float* v_cu
 // NB: v_speed is float to allow adjusting the drag speed with more precision
 bool ImGui::DragInt(const char* label, int* v, float v_speed, int v_min, int v_max, const char* format, ImGuiSliderFlags flags)
 {
-    return DragScalar(ImGuiDataType_S32, v, v_speed, &v_min, &v_max, format, flags, ImLabel(label));
+    return DragScalar(ImGuiDataType_S32, v, v_speed, &v_min, &v_max, format, flags, ImLabel { label });
 }
 
 bool ImGui::DragInt2(const char* label, int v[2], float v_speed, int v_min, int v_max, const char* format, ImGuiSliderFlags flags)

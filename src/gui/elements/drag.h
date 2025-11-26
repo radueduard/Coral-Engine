@@ -23,11 +23,12 @@ namespace Coral::Reef {
 			}
 
 			ImGui::BeginChild(m_name.c_str(), {m_currentSize.width, m_currentSize.height }, false, ImGuiWindowFlags_NoDecoration);
-			ImGui::PushItemWidth(m_currentSize.width - m_padding.left - m_padding.right);
+			ImGui::PushItemWidth(m_currentSize.width);
 			const bool changed = ImGui::DragScalarN("", GetImGuiDataType<T>(), m_value, N, m_speed, &m_min, &m_max, 0, 0, m_labels.has_value() ? m_labels->data() : nullptr);
 			ImGui::PopItemWidth();
 			ImGui::EndChild();
-			*m_changed |= changed;
+			if (m_changed != nullptr)
+				*m_changed |= changed;
 			return changed;
 		}
 

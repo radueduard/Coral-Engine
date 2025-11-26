@@ -1,39 +1,32 @@
 //
-// Created by radue on 4/17/2025.
+// Created by radue on 13/07/2025.
 //
 #pragma once
 
-#include <glm/matrix.hpp>
-#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/glm.hpp>
 
-#include <utils/types.h>
 #include "vector.h"
+#include "utils/types.h"
 
 namespace Coral::Math {
-    template<typename T, u32 N, u32 M> requires std::is_arithmetic_v<T> && (N > 0) && (M > 0)
+    template<typename T, u32 N, u32 M> requires std::is_arithmetic_v<T> && (N > 1) && (M > 1)
     struct Matrix {
-        using ValueType = T;
-        using Column = Vector<T, M>;
-        using Row = Vector<T, N>;
-        using Type = Matrix<T, N, M>;
-        using TransposeType = Matrix<T, M, N>;
+        constexpr Matrix() = default;
 
-        Matrix() = default;
-
-        template<typename = std::enable_if_t<(N == M)>>
         constexpr explicit Matrix(T scalar) {
-            for (int i = 0; i < N; ++i) {
+            for (int i = 0; i < std::min(N, M); ++i) {
                 data[i][i] = scalar;
             }
         }
 
-        constexpr explicit Matrix(const glm::mat<N, M, T>& matrix) {
-            memcpy(data, &matrix, sizeof(matrix));
+        constexpr Matrix(const std::array<Vector<T, M>, N>& columns) {
+            std::copy(columns.begin(), columns.end(), data);
         }
 
-        constexpr Matrix(const std::initializer_list<ValueType>& values) {
+        template<typename... Args> requires (sizeof...(Args) <= N * M) && (std::is_same_v<T, Args> && ...)
+        explicit constexpr Matrix(Args... values) {
             int i = 0, j = 0;
-            for (const auto& value : values) {
+            for (const auto& value : { values... }) {
                 data[i][j] = value;
                 ++i;
                 if (i == N) {
@@ -44,38 +37,33 @@ namespace Coral::Math {
             }
         }
 
-        constexpr Matrix(const std::initializer_list<Column>& columns) {
-            std::copy(columns.begin(), columns.end(), data);
+        constexpr Vector<T, M>& operator[](int index) {
+            return data[index];
         }
 
-        template<typename = std::enable_if_t<(N != M)>>
-        constexpr Matrix(const std::initializer_list<Row>& rows) {
-            int r = 0;
-            for (const auto& row : rows) {
-                for (int c = 0; c < N; ++c) {
-                    data[c][r] = row[c];
+        constexpr const Vector<T, M>& operator[](int index) const {
+            return data[index];
+        }
+
+        // Equality and comparison operators
+
+        constexpr bool operator==(const Matrix& other) const {
+            for (int i = 0; i < N; ++i) {
+                if (data[i] != other[i]) {
+                    return false;
                 }
-                ++r;
-                if (r == M) break;
             }
+            return true;
         }
 
-        constexpr Column& operator[](int index) {
-            if (index < 0 || index >= N) {
-                throw std::out_of_range("Index out of range");
-            }
-            return data[index];
+        constexpr bool operator!=(const Matrix& other) const {
+            return !(*this == other);
         }
 
-        constexpr const Column& operator[](int index) const {
-            if (index < 0 || index >= N) {
-                throw std::out_of_range("Index out of range");
-            }
-            return data[index];
-        }
+        // Arithmetic operations
 
-        constexpr TransposeType Transpose() const {
-            TransposeType result;
+        constexpr Matrix<T, M, N> Transpose() const {
+            Matrix<T, M, N> result;
             for (int i = 0; i < N; ++i) {
                 for (int j = 0; j < M; ++j) {
                     result[j][i] = data[i][j];
@@ -84,14 +72,11 @@ namespace Coral::Math {
             return result;
         }
 
-        template<typename = std::enable_if_t<(N == M)>>
-        constexpr T Determinant() const {
+        constexpr T Determinant() const requires (N == M) {
             return glm::determinant(*reinterpret_cast<const glm::mat<N, M, T>*>(this));
         }
 
-
-        template<typename = std::enable_if_t<(N == M)>>
-        constexpr Matrix Inverse() const {
+        constexpr Matrix Inverse() const requires (N == M) {
             glm::mat<N, M, T> glmInverse = glm::inverse(*reinterpret_cast<const glm::mat<N, M, T>*>(this));
             return *reinterpret_cast<Matrix*>(&glmInverse);
         }
@@ -104,14 +89,14 @@ namespace Coral::Math {
             return result;
         }
 
-        constexpr Matrix operator+(const Type& other) const {
+        constexpr Matrix operator+(const Matrix& other) const {
             Matrix result;
             for (int i = 0; i < N; ++i) {
                 result[i] = data[i] + other[i];
             }
             return result;
         }
-        constexpr Matrix operator+(ValueType scalar) const {
+        constexpr Matrix operator+(T scalar) const {
             Matrix result;
             for (int i = 0; i < N; ++i) {
                 result[i] = data[i] + scalar;
@@ -125,7 +110,8 @@ namespace Coral::Math {
             }
             return *this;
         }
-        constexpr Matrix& operator+=(ValueType scalar) {
+
+        constexpr Matrix& operator+=(T scalar) {
             for (int i = 0; i < N; ++i) {
                 data[i] += scalar;
             }
@@ -139,7 +125,8 @@ namespace Coral::Math {
             }
             return result;
         }
-        constexpr Matrix operator-(ValueType scalar) const {
+
+        constexpr Matrix operator-(T scalar) const {
             Matrix result;
             for (int i = 0; i < N; ++i) {
                 result[i] = data[i] - scalar;
@@ -153,14 +140,15 @@ namespace Coral::Math {
             }
             return *this;
         }
-        constexpr Matrix& operator-=(ValueType scalar) {
+
+        constexpr Matrix& operator-=(T scalar) {
             for (int i = 0; i < N; ++i) {
                 data[i] -= scalar;
             }
             return *this;
         }
 
-        template<int P, int Q, typename = std::enable_if_t<(M == P)>, typename = std::enable_if_t<(Q > 0)>>
+        template<int P, int Q> requires (M == P) && (Q > 0)
         constexpr Matrix operator*(const Matrix<T, P, Q>& other) const {
             Matrix<T, N, Q> result;
             for (int i = 0; i < N; ++i) {
@@ -174,7 +162,7 @@ namespace Coral::Math {
             return result;
         }
 
-        template<int P, typename = std::enable_if_t<(M == P)>>
+        template<int P> requires (M == P)
         constexpr Vector<T, P> operator*(const Vector<T, P>& vector) const {
             Vector<T, P> result;
             for (int i = 0; i < N; ++i) {
@@ -186,7 +174,7 @@ namespace Coral::Math {
             return result;
         }
 
-        constexpr Matrix operator*(ValueType scalar) const {
+        constexpr Matrix operator*(T scalar) const {
             Matrix result;
             for (int i = 0; i < N; ++i) {
                 result[i] = data[i] * scalar;
@@ -199,17 +187,18 @@ namespace Coral::Math {
             return *this;
         }
 
-        constexpr Matrix& operator*=(ValueType scalar) {
+        constexpr Matrix& operator*=(T scalar) {
             for (int i = 0; i < N; ++i) {
                 data[i] *= scalar;
             }
             return *this;
         }
 
-
-        constexpr operator glm::mat<N, M, T>() const {
-            glm::mat<N, M, T> result;
-            std::copy(data, &data[N], &result[0]);
+        constexpr Matrix operator-() {
+            Matrix result;
+            for (int i = 0; i < N; ++i) {
+                result[i] = -data[i];
+            }
             return result;
         }
 
@@ -220,41 +209,61 @@ namespace Coral::Math {
 
         template <u32 O = N, u32 P = M> requires (O == P)
         constexpr static Matrix Identity() {
-            Matrix result;
-            for (int i = 0; i < N; ++i) {
-                result[i][i] = 1;
-            }
+            return Matrix(1.0f);
+        }
+
+        // Conversion operators and constructors
+
+        constexpr explicit Matrix(const glm::mat<N, M, T>& matrix) {
+            std::copy(&matrix[0][0], &matrix[0][0] + N * M, &data[0][0]);
+        }
+
+        explicit constexpr operator glm::mat<N, M, T>() const {
+            glm::mat<N, M, T> result;
+            std::copy(data, &data[N], &result[0]);
             return result;
         }
 
     private:
-        Column data[N];
+        std::array<Vector<T, M>, N> data {};
     };
 
-    template <typename T, u32 N, u32 M> requires std::is_arithmetic_v<T> && (N > 0) && (M > 0)
-    std::ostream& operator<<(std::ostream& os, const Matrix<T, N, M>& mat) {
-        os << "(";
-        for (int j = 0; j < M; ++j) {
-            os << "(";
-            for (int i = 0; i < N; ++i) {
-                os << mat[i][j];
-                if (i < N - 1) {
-                    os << ", ";
-                }
-            }
-            os << ")";
-            if (j < M - 1) {
-                os << ",\n ";
-            }
-        }
-        os << ")";
-        return os;
-    }
 
     template <typename T> requires std::is_arithmetic_v<T>
     using Matrix2 = Matrix<T, 2, 2>;
+
     template <typename T> requires std::is_arithmetic_v<T>
     using Matrix3 = Matrix<T, 3, 3>;
+
     template <typename T> requires std::is_arithmetic_v<T>
     using Matrix4 = Matrix<T, 4, 4>;
+
+    using Matrix2f = Matrix<f32, 2, 2>;
+    using Matrix3f = Matrix<f32, 3, 3>;
+    using Matrix4f = Matrix<f32, 4, 4>;
 }
+
+template<typename T, Coral::u8 N, Coral::u8 M>
+struct std::formatter<Coral::Math::Matrix<T, N, M>> : std::formatter<T> {
+    template<typename FormatContext>
+    auto format(const Coral::Math::Matrix<T, N, M>& matrix, FormatContext& ctx) const {
+        auto out = ctx.out();
+
+        out = std::format_to(out, "[");
+        for (Coral::u8 i = 0; i < M; ++i) {
+            if (i > 0) {
+                out = std::format_to(out, ", ");
+            }
+            out = std::format_to(out, "[");
+            for (Coral::u8 j = 0; j < N; ++j) {
+                if (j > 0) {
+                    out = std::format_to(out, ", ");
+                }
+                out = std::formatter<T>::format(matrix[j][i], ctx);
+            }
+            out = std::format_to(out, "]");
+        }
+        out = std::format_to(out, "]");
+        return out;
+    }
+};

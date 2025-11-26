@@ -8,8 +8,8 @@
 #include <functional>
 #include <ranges>
 
-#include "elements/dockable.h"
 #include "elements/element.h"
+#include "elements/window.h"
 
 namespace Coral::Reef {
     class Layer {
@@ -34,8 +34,8 @@ namespace Coral::Reef {
             return m_dockables[name].get();
         }
 
-        void AddDockable(const std::string& name, Reef::Dockable* dockable) {
-            m_dockables[name] = std::unique_ptr<Reef::Dockable>(dockable);
+        void AddDockable(const std::string& name, Reef::Window* dockable) {
+            m_dockables[name] = std::unique_ptr<Reef::Window>(dockable);
         }
 
         void RemoveDockable(const std::string& name) {
@@ -49,6 +49,6 @@ namespace Coral::Reef {
             }
         }
 
-        std::unordered_map<std::string, std::unique_ptr<Reef::Dockable>> m_dockables {};
+        std::unordered_map<std::string, std::unique_ptr<Reef::Window>> m_dockables {};
     };
 }

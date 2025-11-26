@@ -18,11 +18,6 @@ namespace Coral::Core {
 }
 
 namespace Coral::Core {
-    class Device;
-
-    inline Device* g_device = nullptr;
-    inline Device& GlobalDevice() { return *g_device; }
-
     class Queue final : public EngineWrapper<vk::Queue> {
     public:
         class Family
@@ -59,16 +54,17 @@ namespace Coral::Core {
 
     class CommandBuffer final : public EngineWrapper<vk::CommandBuffer> {
     public:
-        CommandBuffer(uint32_t familyIndex, vk::CommandBuffer commandBuffer, const vk::CommandPool& parentCommandPool);
+        CommandBuffer(const Core::Queue& queue, vk::CommandBuffer commandBuffer, const vk::CommandPool& parentCommandPool);
         ~CommandBuffer() override;
+		void Run(const std::function<void(const Core::CommandBuffer&)>& command, vk::Semaphore waitSemaphore = nullptr) const;
 
-        [[nodiscard]] const vk::CommandPool& ParentPool() const { return m_parentPool; }
+		[[nodiscard]] const vk::CommandPool& ParentPool() const { return m_parentPool; }
         [[nodiscard]] const vk::Semaphore& SignalSemaphore() const { return m_signalSemaphore; }
         [[nodiscard]] const vk::Fence& Fence() const { return m_fence; }
-        [[nodiscard]] uint32_t FamilyIndex() const { return m_familyIndex; }
+    	[[nodiscard]] const Core::Queue& Queue() const { return m_queue; }
 
     private:
-        uint32_t m_familyIndex;
+    	const Core::Queue& m_queue;
         const vk::CommandPool& m_parentPool;
 
         vk::Semaphore m_signalSemaphore;
@@ -89,7 +85,7 @@ namespace Coral::Core {
         void CreateCommandPools(uint32_t threadId);
         void FreeCommandPools(uint32_t threadId);
 
-        [[nodiscard]] std::unique_ptr<CommandBuffer> RequestCommandBuffer(uint32_t familyIndex, uint32_t thread = 0) const;
+        [[nodiscard]] std::unique_ptr<CommandBuffer> RequestCommandBuffer(const Core::Queue& queue, uint32_t thread = 0) const;
         void FreeCommandBuffer(const CommandBuffer &commandBuffer) const;
 
         [[nodiscard]] const PhysicalDevice& QuerySurfaceCapabilities() const;

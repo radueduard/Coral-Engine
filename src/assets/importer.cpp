@@ -14,10 +14,11 @@
 #include <stack>
 #include <stb_image.h>
 
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 #include <assimp/GltfMaterial.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
 #include <glm/gtc/quaternion.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "../ecs/components/RenderTarget.h"
 #include "../ecs/scene.h"
@@ -342,17 +343,17 @@ namespace Coral::Asset {
                 auto tangent = mesh->mTangents[j];
                 auto bitangent = mesh->mBitangents[j];
 
-                Math::Vector2 texCoord0 = { 0.0f, 0.0f };
+                Math::Vector2f texCoord0 = { 0.0f, 0.0f };
                 if (mesh->mTextureCoords[0] != nullptr) {
                     texCoord0 = {mesh->mTextureCoords[0][j].x, mesh->mTextureCoords[0][j].y};
                 }
-                Math::Vector2 texCoord1 = { 0.0f, 0.0f };
+                Math::Vector2f texCoord1 = { 0.0f, 0.0f };
                 if (mesh->mTextureCoords[1] != nullptr) {
                     texCoord1 = {mesh->mTextureCoords[1][j].x, mesh->mTextureCoords[1][j].y};
                 } else {
 	                texCoord1 = texCoord0;
                 }
-                Color color = { 1.0f, 1.0f, 1.0f, 1.0f };
+                Color color = Colors::white;
                 if (mesh->mColors[0] != nullptr) {
                     color = {mesh->mColors[0][j].r, mesh->mColors[0][j].g, mesh->mColors[0][j].b, mesh->mColors[0][j].a};
                 }

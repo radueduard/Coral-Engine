@@ -55,11 +55,11 @@ namespace Coral::Memory::Descriptor {
         for (auto &write: builder.m_writes) {
             write.setDstSet(m_handle);
         }
-        Core::GlobalDevice()->updateDescriptorSets(builder.m_writes, {});
+        Context::Device()->updateDescriptorSets(builder.m_writes, {});
     }
 
     Set::~Set() {
-        Core::GlobalDevice()->waitIdle();
+        Context::Device()->waitIdle();
         m_pool.Free(m_handle);
     }
 }

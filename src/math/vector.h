@@ -1,467 +1,400 @@
 //
-// Created by radue on 4/15/2025.
+// Created by radue on 13/07/2025.
 //
+
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <assimp/vector2.h>
 #include <assimp/vector3.h>
+#include <stdexcept>
+#include <type_traits>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-#include <imgui.h>
-#include <vulkan/vulkan.hpp>
-
-#include "scripting/remote.h"
+#include "data.h"
 #include "utils/types.h"
 
+#include <glm/glm.hpp>
+#include <vulkan/vulkan.hpp>
+
 namespace Coral::Math {
-	template<typename T, u32 N> requires std::is_arithmetic_v<T> && (N > 0)
-	struct Data {
-		T data[N];
-	};
+    template<typename T, u8 N> requires (N > 1) && std::is_arithmetic_v<T>
+    struct Vector : Data<T, N> {
+        constexpr Vector() : Data<T, N>() {}
 
-	template<typename T>
-	struct Data<T, 1> {
-		union {
-			T data[1];
-			struct { T x; };
-			struct { T r; };
-		};
-	};
+        explicit constexpr Vector(T v) : Data<T, N>(v) {}
 
-	template<typename T>
-	struct Data<T, 2> {
-		union {
-			T data[2];
-			struct { T x, y; };
-			struct { T r, g; };
-			struct { T u, v; };
-			struct { T width, height; };
-		};
-	};
+        template<typename... Args> requires (sizeof...(Args) == N) && (std::is_same_v<T, Args> && ...)
+        constexpr Vector(Args... args) : Data<T, N>({static_cast<T>(args)...}) {}
 
-	template<typename T>
-	struct Data<T, 3> {
-		union {
-			T data[3];
-			struct { T x, y, z; };
-			struct { T r, g, b; };
-			struct { T u, v, w; };
-			struct { T width, height, depth; };
-		};
-	};
+        template<typename... Args> requires (sizeof...(Args) < N) && (std::is_same_v<T, Args> && ...)
+        constexpr Vector(Args... args) : Data<T, N>({static_cast<T>(args)..., static_cast<T>(0)}) {}
 
-	template<typename T>
-	struct Data<T, 4> {
-		union {
-			T data[4];
-			struct { T x, y, z, w; };
-			struct { T r, g, b, a; };
-		};
-	};
+        template<u8 M> requires (M >= N)
+        explicit constexpr Vector(const Vector<T, M>& other) {
+            std::copy(other.data.begin(), other.data.begin() + N, this->data.data());
+        }
 
+        template<u8 M, typename... Args> requires (M < N) && (std::is_same_v<T, Args> && ...) && (sizeof...(Args) <= N - M)
+        explicit constexpr Vector(const Vector<T, M>& other, Args... args) {
+            std::copy(other.data.begin(), other.data.begin() + M, this->data.data());
+            std::array<T, N - M> rest = { args... };
+            std::copy(rest.begin(), rest.end(), this->data.begin() + M);
+        }
 
-	template <typename T, u32 N> requires std::is_arithmetic_v<T> && (N > 0)
-	struct Vector : Data<T, N> {
-		constexpr explicit Vector() : Data<T, N>() {}
-
-		constexpr explicit Vector(const T& scalar) {
-			std::fill(this->data, this->data + N, scalar);
-		}
-
-		constexpr Vector(std::initializer_list<T> args) {
-			auto offsetData = this->data;
-			for (const T& arg : args) {
-				*offsetData = arg;
-				++offsetData;
+    	template <typename Q> requires std::is_arithmetic_v<Q> && (!std::is_same_v<Q, T>)
+		constexpr Vector(const Vector<Q, N>& other) {
+        	for (u8 i = 0; i < N; ++i) {
+				this->data[i] = static_cast<T>(other.data[i]);
 			}
-		}
+        }
 
-		template <u32 M, typename... Args> requires (M > 0) && (M < N) && (sizeof...(Args) == (N - M))
-		constexpr explicit Vector(const Vector<T, M>& other, Args... args) {
-			constexpr auto vectorSize = std::min(N, M);
-			std::copy(other.data, other.data + vectorSize, this->data);
-			if constexpr (vectorSize >= N) return;
-			auto offsetData = this->data + M;
-			for (const T& arg : { static_cast<T>(args)... }) {
-				*offsetData = arg;
-				++offsetData;
-			}
-			for (; offsetData < this->data + N; ++offsetData) {
-				*offsetData = static_cast<T>(0);
-			}
-		}
+        constexpr static Vector Zero() { return Vector(0); }
 
-		template<u32 M> requires (M > N)
-		constexpr Vector(const Vector<T, M>& other) {
-			std::copy(other.data, other.data + N, this->data);
-		}
+        // Equality and comparison operators
 
-		constexpr Vector(const Vector& other) = default;
-		constexpr Vector(Vector&& other) = default;
+        constexpr bool operator==(const Vector& other) const {
+            for (u8 i = 0; i < N; ++i) {
+                if (this->data[i] != other.data[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-		constexpr Vector& operator=(const Vector& other) = default;
-		constexpr Vector& operator=(Vector&& other) = default;
+        constexpr bool operator!=(const Vector& other) const {
+            return !(*this == other);
+        }
 
-		constexpr T& operator[](int index) {
-			if (index < 0 || index >= N) {
-				throw std::out_of_range("Index out of range");
-			}
-			return this->data[index];
-		}
+        // Arithmetic operations
 
-		constexpr const T& operator[](int index) const {
-			if (index < 0 || index >= N) {
-				throw std::out_of_range("Index out of range");
-			}
-			return this->data[index];
-		}
+        constexpr Vector operator+(const Vector& other) const {
+            Vector result;
+            for (u8 i = 0; i < N; ++i) {
+                result.data[i] = this->data[i] + other.data[i];
+            }
+            return result;
+        }
 
-		Vector operator+(const Vector& other) const {
+    	constexpr Vector operator+(T scalar) const {
+        	Vector result;
+        	for (u8 i = 0; i < N; ++i) {
+        		result.data[i] = this->data[i] + scalar;
+        	}
+        	return result;
+        }
+
+        constexpr Vector operator-(const Vector& other) const {
+            Vector result;
+            for (u8 i = 0; i < N; ++i) {
+                result.data[i] = this->data[i] - other.data[i];
+            }
+            return result;
+        }
+
+    	constexpr Vector operator-(T scalar) const {
 			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = this->data[i] + other.data[i];
-			}
-			return result;
-		}
-
-		Vector operator-(const Vector& other) const {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = this->data[i] - other.data[i];
-			}
-			return result;
-		}
-
-		Vector operator-() const {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = -this->data[i];
-			}
-			return result;
-		}
-
-		Vector operator*(const Vector& other) const {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = this->data[i] * other.data[i];
-			}
-			return result;
-		}
-
-		Vector operator/(const Vector& other) const {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				if (other.data[i] == 0) {
-					throw std::runtime_error("Division by zero");
-				}
-				result.data[i] = this->data[i] / other.data[i];
-			}
-			return result;
-		}
-
-		Vector operator+(const T& scalar) const {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = this->data[i] + scalar;
-			}
-			return result;
-		}
-
-		Vector operator-(const T& scalar) const {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
+			for (u8 i = 0; i < N; ++i) {
 				result.data[i] = this->data[i] - scalar;
 			}
 			return result;
 		}
 
-		Vector operator*(const T& scalar) const {
+        constexpr Vector operator*(const Vector& other) const {
+            Vector result;
+            for (u8 i = 0; i < N; ++i) {
+                result.data[i] = this->data[i] * other.data[i];
+            }
+            return result;
+        }
+
+    	constexpr Vector operator*(T scalar) const {
 			Vector result;
-			for (int i = 0; i < N; ++i) {
+			for (u8 i = 0; i < N; ++i) {
 				result.data[i] = this->data[i] * scalar;
 			}
 			return result;
 		}
 
-		Vector operator/(const T& scalar) const {
+        constexpr Vector operator/(const Vector& other) const {
+            Vector result;
+            for (u8 i = 0; i < N; ++i) {
+                if (other.data[i] == 0) {
+                    throw std::runtime_error("Division by zero");
+                }
+                result.data[i] = this->data[i] / other.data[i];
+            }
+            return result;
+        }
+
+    	constexpr Vector operator/(T scalar) const {
 			if (scalar == 0) {
 				throw std::runtime_error("Division by zero");
 			}
 			Vector result;
-			for (int i = 0; i < N; ++i) {
+			for (u8 i = 0; i < N; ++i) {
 				result.data[i] = this->data[i] / scalar;
 			}
 			return result;
 		}
 
-		Vector& operator+=(const Vector& other) {
-			for (int i = 0; i < N; ++i) {
-				this->data[i] += other.data[i];
-			}
-			return *this;
-		}
+        constexpr Vector& operator+=(const Vector& other) {
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] += other.data[i];
+            }
+            return *this;
+        }
 
-		Vector& operator-=(const Vector& other) {
-			for (int i = 0; i < N; ++i) {
-				this->data[i] -= other.data[i];
-			}
-			return *this;
-		}
+        constexpr Vector& operator+=(T scalar) {
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] += scalar;
+            }
+            return *this;
+        }
 
-		Vector& operator*=(const Vector& other) {
-			for (int i = 0; i < N; ++i) {
-				this->data[i] *= other.data[i];
-			}
-			return *this;
-		}
+        constexpr Vector& operator-=(const Vector& other) {
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] -= other.data[i];
+            }
+            return *this;
+        }
 
-		Vector& operator/=(const Vector& other) {
-			for (int i = 0; i < N; ++i) {
-				if (other.data[i] == 0) {
-					throw std::runtime_error("Division by zero");
-				}
-				this->data[i] /= other.data[i];
-			}
-			return *this;
-		}
+        constexpr Vector& operator-=(T scalar) {
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] -= scalar;
+            }
+            return *this;
+        }
 
-		constexpr bool operator==(const Vector& other) const {
-			for (int i = 0; i < N; ++i) {
-				if (this->data[i] != other.data[i]) {
-					return false;
-				}
-			}
-			return true;
-		}
+        constexpr Vector& operator*=(const Vector& other) {
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] *= other.data[i];
+            }
+            return *this;
+        }
 
-		constexpr bool operator!=(const Vector& other) const {
-			return !(*this == other);
-		}
+        constexpr Vector& operator*=(T scalar) {
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] *= scalar;
+            }
+            return *this;
+        }
 
-		template <typename U> requires std::is_arithmetic_v<U>
-		operator Vector<U, N>() const {
-			Vector<U, N> result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = static_cast<U>(this->data[i]);
-			}
-			return result;
-		}
+        constexpr Vector& operator/=(const Vector& other) {
+            for (u8 i = 0; i < N; ++i) {
+                if (other.data[i] == 0) {
+                    throw std::runtime_error("Division by zero");
+                }
+                this->data[i] /= other.data[i];
+            }
+            return *this;
+        }
 
-		constexpr T Length() const {
-			return glm::length(glm::vec<N, T>(*this));
-		}
+        constexpr Vector& operator/=(T scalar) {
+            if (scalar == 0) {
+                throw std::runtime_error("Division by zero");
+            }
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] /= scalar;
+            }
+            return *this;
+        }
 
-		constexpr T Dot(const Vector& other) const {
-			return glm::dot(glm::vec<N, T>(*this), glm::vec<N, T>(other));
-		}
+        constexpr Vector operator-() const {
+            Vector result;
+            for (u8 i = 0; i < N; ++i) {
+                result.data[i] = -this->data[i];
+            }
+            return result;
+        }
 
-		constexpr Vector Normalized() const {
-			return Vector(glm::normalize(glm::vec<N, T>(*this)));
-		}
+        constexpr T Length() const {
+            return glm::length(glm::vec<N, T>(*this));
+        }
 
-		constexpr static T Dot(const Vector& a, const Vector& b) {
-			return a.Dot(b);
-		}
+        constexpr T Dot(const Vector& other) const {
+            T sum = 0;
+            for (u8 i = 0; i < N; ++i) {
+                sum += this->data[i] * other.data[i];
+            }
+            return sum;
+        }
 
-		constexpr Vector<T, 3> Cross(const Vector<T, 3>& other) const {
-			static_assert(N == 3, "Cross product is only defined for 3D vectors");
-			return Vector(glm::cross(glm::vec3(*this), glm::vec3(other)));
-		}
+        constexpr static T Dot(const Vector& a, const Vector& b) {
+            return a.Dot(b);
+        }
 
-		constexpr static Vector Cross(const Vector<T, 3>& a, const Vector<T, 3>& b) {
-			return a.Cross(b);
-		}
+        constexpr Vector& Normalize() {
+            T len = this->Length();
+            if (len == 0) {
+                throw std::runtime_error("Cannot normalize a zero vector");
+            }
+            for (u8 i = 0; i < N; ++i) {
+                this->data[i] /= len;
+            }
+            return *this;
+        }
 
-		constexpr T SquaredNorm() const {
-			T squaredNorm = 0;
-			for (int i = 0; i < N; ++i) {
-				squaredNorm += this->data[i] * this->data[i];
-			}
-			return squaredNorm;
-		}
+        constexpr Vector Normalized() const {
+            Vector result = *this;
+            result.Normalize();
+            return result;
+        }
 
-		constexpr static Vector Lerp(const Vector& a, const Vector& b, const T& t) {
-			return a * (1 - t) + b * t;
-		}
+        constexpr Vector<T, 3> Cross(const Vector<T, 3>& other) const requires (N == 3) {
+            return Vector(glm::cross(glm::vec3(*this), glm::vec3(other)));
+        }
 
-		constexpr static Vector Min(const Vector& a, const Vector& b) {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = std::min(a.data[i], b.data[i]);
-			}
-			return result;
-		}
+        constexpr static Vector Cross(const Vector<T, 3>& a, const Vector<T, 3>& b) requires (N == 3) {
+            return a.Cross(b);
+        }
 
-		constexpr static Vector Max(const Vector& a, const Vector& b) {
-			Vector result;
-			for (int i = 0; i < N; ++i) {
-				result.data[i] = std::max(a.data[i], b.data[i]);
-			}
-			return result;
-		}
+        constexpr static Vector Min(const Vector& lhs, const Vector& rhs) {
+            Vector result;
+            for (u8 i = 0; i < N; ++i) {
+                result.data[i] = std::min(lhs.data[i], rhs.data[i]);
+            }
+            return result;
+        }
 
-		constexpr explicit operator std::array<T, N>() const {
-			std::array<T, N> result;
-			std::copy(this->data, this->data + N, result.data());
-			return result;
-		}
+        constexpr static Vector Max(const Vector& lhs, const Vector& rhs) {
+            Vector result;
+            for (u8 i = 0; i < N; ++i) {
+                result.data[i] = std::max(lhs.data[i], rhs.data[i]);
+            }
+            return result;
+        }
 
-		constexpr explicit Vector(const std::array<T, N>& other) {
-			std::copy(other.data(), other.data() + N, this->data);
-		}
+        // Conversion operators and constructors
 
-		constexpr explicit Vector(const glm::vec<N, T>& other) {
-			static_assert(N > 0, "Vector size must be greater than 0");
-			for (int i = 0; i < N; ++i) {
-				this->data[i] = other[i];
-			}
-		}
+        constexpr explicit Vector(const glm::vec<N, T>& other) {
+            for (int i = 0; i < N; ++i) {
+                this->data[i] = other[i];
+            }
+        }
 
-		constexpr explicit operator glm::vec<N, T>() const {
-			glm::vec<N, T> result;
-			std::copy(this->data, &this->data[N], &result[0]);
-			return result;
-		}
+        constexpr explicit operator glm::vec<N, T>() const {
+            glm::vec<N, T> result;
+            std::copy(this->data.begin(), this->data.end(), &result[0]);
+            return result;
+        }
 
-		constexpr explicit Vector(const ImVec2& other) {
-			static_assert(N == 2, "Vector must be of size 2");
-			static_assert(std::is_same_v<T, f32>, "Vector must be of type f32");
-
-			this->data[0] = other.x;
-			this->data[1] = other.y;
-		}
-
-		constexpr explicit operator ImVec2() const {
-			static_assert(N == 2, "Vector must be of size 2");
-			static_assert(std::is_same_v<T, f32>, "Vector must be of type f32");
-
+    	constexpr explicit operator ImVec2() const requires (N == 2) && std::is_same_v<T, f32> {
 			return ImVec2(this->data[0], this->data[1]);
 		}
 
-		constexpr explicit operator vk::Extent2D() {
-			static_assert(N == 2, "Vector must be of size 2");
-			static_assert(std::is_same_v<T, u32>, "Vector must be of type u32");
-
-			return reinterpret_cast<vk::Extent2D&>(this->data);
+    	constexpr explicit Vector(ImVec2 vec) requires (N == 2) && std::is_same_v<T, f32> {
+			this->data[0] = vec.x;
+			this->data[1] = vec.y;
 		}
 
-		constexpr explicit Vector(const vk::Extent2D& other) {
-			static_assert(N == 2, "Vector must be of size 2");
-			static_assert(std::is_same_v<T, u32>, "Vector must be of type u32");
-
-			this->data[0] = static_cast<T>(other.width);
-			this->data[1] = static_cast<T>(other.height);
+		constexpr explicit operator ImVec4() const requires (N == 4) && std::is_same_v<T, f32> {
+			return ImVec4(this->data[0], this->data[1], this->data[2], this->data[3]);
 		}
 
-		constexpr explicit operator vk::Extent3D() const {
-			static_assert(N == 3, "Vector must be of size 3");
+    	constexpr explicit Vector(ImVec4 vec) requires (N == 4) && std::is_same_v<T, f32> {
+        	this->data[0] = vec.x;
+        	this->data[1] = vec.y;
+        	this->data[2] = vec.z;
+        	this->data[3] = vec.w;
+        }
 
-			return { static_cast<u32>(this->data[0]), static_cast<u32>(this->data[1]), static_cast<u32>(this->data[2]) };
+    	constexpr explicit operator vk::Extent2D() const requires (N == 2) && std::is_same_v<T, u32> {
+        	return vk::Extent2D(this->data[0], this->data[1]);
+        }
+
+    	constexpr explicit Vector(vk::Extent2D extent) requires (N == 2) && std::is_same_v<T, u32> {
+			this->data[0] = extent.width;
+			this->data[1] = extent.height;
 		}
 
-		constexpr explicit Vector(const vk::Extent3D& other) {
-			static_assert(N == 3, "Vector must be of size 3");
-
-			this->data[0] = static_cast<T>(other.width);
-			this->data[1] = static_cast<T>(other.height);
-			this->data[2] = static_cast<T>(other.depth);
+    	constexpr explicit operator vk::Offset2D() const requires (N == 2) && std::is_same_v<T, i32> {
+			return vk::Offset2D(this->data[0], this->data[1]);
 		}
 
-		constexpr explicit Vector(const ImVec4& other) {
-			static_assert(N == 4, "Vector must be of size 4");
-			static_assert(std::is_same_v<T, f32>, "Vector must be of type f32");
+		constexpr explicit Vector(vk::Offset2D offset) requires (N == 2) && std::is_same_v<T, i32> {
+        	this->data[0] = offset.x;
+        	this->data[1] = offset.y;
+        }
 
-			this->data[0] = other.x;
-			this->data[1] = other.y;
-			this->data[2] = other.z;
-			this->data[3] = other.w;
+    	constexpr explicit operator vk::Offset3D() const requires (N == 3) && std::is_same_v<T, i32> {
+	        return vk::Offset3D(this->data[0], this->data[1], this->data[2]);
+        }
+
+    	constexpr explicit Vector(vk::Offset3D offset) requires (N == 3) && std::is_same_v<T, i32> {
+			this->data[0] = offset.x;
+			this->data[1] = offset.y;
+			this->data[2] = offset.z;
 		}
 
-		constexpr explicit Vector(aiVector2D other) {
-			static_assert(N == 2, "Vector must be of size 2");
-			static_assert(std::is_same_v<T, f32>, "Vector must be of type f32");
+    	constexpr explicit operator vk::Extent3D() const requires (N == 3) && std::is_same_v<T, u32> {
+        	return vk::Extent3D(this->data[0], this->data[1], this->data[2]);
+        }
 
-			this->data[0] = other.x;
-			this->data[1] = other.y;
-		}
+    	constexpr explicit Vector(vk::Extent3D extent) requires (N == 3) && std::is_same_v<T, u32> {
+        	this->data[0] = extent.width;
+        	this->data[1] = extent.height;
+        	this->data[2] = extent.depth;
+        }
 
-		constexpr explicit Vector(aiVector3D other) {
-			static_assert(N == 3, "Vector must be of size 3");
-			static_assert(std::is_same_v<T, f32>, "Vector must be of type f32");
+    	constexpr explicit Vector(aiVector2D other) {
+        	static_assert(N == 2, "Vector must be of size 2");
+        	static_assert(std::is_same_v<T, f32>, "Vector must be of type f32");
 
-			this->data[0] = other.x;
-			this->data[1] = other.y;
-			this->data[2] = other.z;
-		}
+        	this->data[0] = other.x;
+        	this->data[1] = other.y;
+        }
 
-		constexpr static Vector Zero() { return Vector(0); }
-		constexpr static Vector One() { return Vector(1); }
+    	constexpr explicit Vector(aiVector3D other) {
+        	static_assert(N == 3, "Vector must be of size 3");
+        	static_assert(std::is_same_v<T, f32>, "Vector must be of type f32");
 
-		template <int M = N> requires (M == 3)
-		constexpr static Vector Forward = { 0, 0, -1 };
+        	this->data[0] = other.x;
+        	this->data[1] = other.y;
+        	this->data[2] = other.z;
+        }
+    };
 
-		template <int M = N> requires (M == 3)
-		constexpr static Vector Backward = { 0, 0, 1 };
+    template <typename T> requires std::is_arithmetic_v<T>
+    using Vector2 = Vector<T, 2>;
 
-		template <int M = N> requires (M == 3)
-		constexpr static Vector Up = { 0, 1, 0 };
+    template <typename T> requires std::is_arithmetic_v<T>
+    using Vector3 = Vector<T, 3>;
 
-		template <int M = N> requires (M == 3)
-		constexpr static Vector Down = { 0, -1, 0 };
+    template <typename T> requires std::is_arithmetic_v<T>
+    using Vector4 = Vector<T, 4>;
 
-		template <int M = N> requires (M == 3)
-		constexpr static Vector Left = { -1, 0, 0 };
 
-		template <int M = N> requires (M == 3)
-		constexpr static Vector Right = { 1, 0, 0 };
-	};
+    using Vector2f = Vector<f32, 2>;
+    using Vector3f = Vector<f32, 3>;
+    using Vector4f = Vector<f32, 4>;
 
-	template <typename T, u32 N> requires std::is_arithmetic_v<T> && (N > 0)
-	std::ostream& operator<<(std::ostream& os, const Vector<T, N>& vec) {
-		os << "(";
-		for (int i = 0; i < N; ++i) {
-			os << vec[i];
-			if (i < N - 1) {
-				os << ", ";
-			}
-		}
-		os << ")";
-		return os;
-	}
+    using Vector2i = Vector<i32, 2>;
+    using Vector3i = Vector<i32, 3>;
+    using Vector4i = Vector<i32, 4>;
 
-	template <typename T> requires std::is_arithmetic_v<T>
-	using Vector2 = Vector<T, 2>;
+    using Vector2u = Vector<u32, 2>;
+    using Vector3u = Vector<u32, 3>;
+    using Vector4u = Vector<u32, 4>;
 
-	template <typename T> requires std::is_arithmetic_v<T>
-	using Vector3 = Vector<T, 3>;
-
-	template <typename T> requires std::is_arithmetic_v<T>
-	using Vector4 = Vector<T, 4>;
+    using Vector2d = Vector<f64, 2>;
+    using Vector3d = Vector<f64, 3>;
+    using Vector4d = Vector<f64, 4>;
 }
 
-namespace Coral {
-	using Color = Math::Vector4<f32>;
-	namespace Colors {
-		inline Color White { 1.f, 1.f, 1.f, 1.f };
-		inline Color Black { 0.f, 0.f, 0.f, 1.f };
-		inline Color Red { 1.f, 0.f, 0.f, 1.f };
-		inline Color Green { 0.f, 1.f, 0.f, 1.f };
-		inline Color Blue { 0.f, 0.f, 1.f, 1.f };
-		inline Color Yellow { 1.f, 1.f, 0.f, 1.f };
-		inline Color Cyan { 0.f, 1.f, 1.f, 1.f };
-		inline Color Magenta { 1.f, 0.f, 1.f, 1.f };
-		inline Color Transparent { 0.f, 0.f, 0.f, 0.f };
-		inline Color Gray { 0.5f, 0.5f, 0.5f, 1.f };
-		inline Color DarkGray { 0.2f, 0.2f, 0.2f, 1.f };
-		inline Color LightGray { 0.8f, 0.8f, 0.8f, 1.f };
-		inline Color Orange { 1.f, 0.5f, 0.f, 1.f };
-		inline Color Purple { 0.5f, 0.f, 0.5f, 1.f };
-		inline Color Brown { 0.6f, 0.4f, 0.2f, 1.f };
-		inline Color Pink { 1.f, 0.75f, 0.8f, 1.f };
-		inline Color LightBlue { 0.68f, 0.85f, 0.9f, 1.f };
-		inline Color DarkRed { 0.5f, 0.f, 0.f, 1.f };
-		inline Color DarkGreen { 0.f, 0.5f, 0.f, 1.f };
-		inline Color DarkBlue { 0.f, 0.f, 0.5f, 1.f };
-	}
-}
+template<typename T, Coral::u8 N>
+struct std::formatter<Coral::Math::Vector<T, N>> : std::formatter<T> {
+    template<typename FormatContext>
+    auto format(const Coral::Math::Vector<T, N>& vec, FormatContext& ctx) const {
+        auto out = ctx.out();
+        out = std::format_to(out, "[");
+        for (Coral::u8 i = 0; i < N; ++i) {
+            out = std::formatter<T>::format(vec[i], ctx);
+            if (i < N - 1) {
+                out = std::format_to(out, ", ");
+            }
+        }
+        out = std::format_to(out, "]");
+        return out;
+    }
+};

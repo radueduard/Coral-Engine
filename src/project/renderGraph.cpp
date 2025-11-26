@@ -15,6 +15,7 @@
 #include "gui/viewport.h"
 #include "shader/manager.h"
 #include "graphics/renderPass.h"
+#include "gui/templates/renderPipelineTemplate.h"
 
 
 namespace Coral::Project {
@@ -22,8 +23,10 @@ namespace Coral::Project {
 		: m_guiEnabled(createInfo.guiEnabled), m_frameCount(createInfo.frameCount) {
 		m_generator = boost::uuids::random_generator_mt19937();
 
+		m_pipelineTemplate = std::make_unique<Reef::RenderPipelineTemplate>();
+
 		auto windowSize = Core::Window::Get().Extent();
-		Math::Vector3 extent = { static_cast<u32>(windowSize.width), static_cast<u32>(windowSize.height), 1u };
+		Math::Vector3u extent = { static_cast<u32>(windowSize.width), static_cast<u32>(windowSize.height), 1u };
 
 		auto idGui = boost::uuids::nil_uuid();
 		if (m_guiEnabled) {
@@ -234,7 +237,7 @@ namespace Coral::Project {
 				.Build();
 		}
 
-		m_queues[vk::QueueFlagBits::eGraphics] = Core::GlobalDevice().RequestQueue(vk::QueueFlagBits::eGraphics);
+		m_queues[vk::QueueFlagBits::eGraphics] = Context::Device().RequestQueue(vk::QueueFlagBits::eGraphics);
 
 		m_runNodes.emplace_back(std::make_unique<RunNode>(std::vector<std::string> { "depth" }));
 		m_runNodes.emplace_back(std::make_unique<RunNode>(std::vector<std::string> { "color" }));
@@ -243,26 +246,39 @@ namespace Coral::Project {
 		for (auto& node : m_runNodes) {
 			auto&[passes, commandBuffers] = *node;
             for (uint32_t i = 0; i < m_frameCount; i++) {
-                commandBuffers.emplace_back(Core::GlobalDevice().RequestCommandBuffer(queue.Family().Index()));
+                commandBuffers.emplace_back(Context::Device().RequestCommandBuffer(queue));
             }
         }
 
 		// TODO: Delete this:
 
 
-		auto* vertexShader = Shader::Manager::Get().Shader("pbr/pbr.vert");
-		auto* fragmentShader = Shader::Manager::Get().Shader("pbr/pbr.frag");
+		auto* vertexShader = Shader::Manager::Get().GetShader("wireframe", "vertexMain");
+		auto* hullShader = Shader::Manager::Get().GetShader("wireframe", "hullMain");
+		auto* domainShader = Shader::Manager::Get().GetShader("wireframe", "domainMain");
+		auto* fragmentShader = Shader::Manager::Get().GetShader("wireframe", "fragmentMain");
 
 		// const auto vertexShader = Core::Shader("wireframe/wireframe.vert");
 		// const auto fragmentShader = Core::Shader("wireframe/wireframe.frag");
 
 		auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
-		pipelineBuilder->AddShader(vertexShader).AddShader(fragmentShader)
+		(*pipelineBuilder)
+			.AddShader(vertexShader)
+			.AddShader(hullShader)
+			.AddShader(domainShader)
+			.AddShader(fragmentShader)
 			.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
-				.setPolygonMode(vk::PolygonMode::eFill)
-				.setCullMode(vk::CullModeFlagBits::eBack)
+				.setPolygonMode(vk::PolygonMode::eLine)
+				.setCullMode(vk::CullModeFlagBits::eNone)
 				.setFrontFace(vk::FrontFace::eClockwise)
-				.setLineWidth(1.0f));
+				.setLineWidth(1.0f))
+			.InputAssemblyState(vk::PipelineInputAssemblyStateCreateInfo()
+				.setTopology(vk::PrimitiveTopology::ePatchList)
+				.setPrimitiveRestartEnable(vk::False))
+			.Tessellation(vk::PipelineTessellationStateCreateInfo()
+				.setPatchControlPoints(3));
+
+		m_pipelineBuilder = pipelineBuilder.get();
 		m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
 
 		// ------------------
@@ -277,10 +293,9 @@ namespace Coral::Project {
 			};
 
 			m_guiManager = std::make_unique<Reef::Manager>(guiCreateInfo);
-			Reef::g_manager = m_guiManager.get();
 
 			for (uint32_t i = 0; i < m_frameCount; i++) {
-				m_guiCommandBuffers.emplace_back(Core::GlobalDevice().RequestCommandBuffer(queue.Family().Index()));
+				m_guiCommandBuffers.emplace_back(Context::Device().RequestCommandBuffer(queue));
 			}
 
 			auto& finalRenderPass = *m_renderPasses.at("color").get();
@@ -290,7 +305,6 @@ namespace Coral::Project {
 
 	RenderGraph::~RenderGraph() {
 		m_viewport.reset();
-		Reef::g_manager = nullptr;
 	}
 
 	void RenderGraph::Update(const float deltaTime) const
@@ -332,10 +346,18 @@ namespace Coral::Project {
 			constexpr auto destMask = vk::PipelineStageFlags()
 				| vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
+			std::vector signalSemaphores = {
+				commandBuffer.SignalSemaphore()
+			};
+
+			if (!m_guiEnabled && i == m_runNodes.size() - 1) {
+				signalSemaphores.emplace_back(frame.ReadyToPresent());
+			}
+
 			const auto submitInfo = vk::SubmitInfo()
 				.setCommandBuffers(commandBuffers)
 				.setWaitSemaphores(waitSemaphores)
-				.setSignalSemaphores(commandBuffer.SignalSemaphore())
+				.setSignalSemaphores(signalSemaphores)
 				.setWaitDstStageMask(destMask);
 
 			try {
@@ -360,10 +382,12 @@ namespace Coral::Project {
 			constexpr auto destMask = vk::PipelineStageFlags()
 				| vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
+			std::vector signalSemaphores = { frame.ReadyToPresent() };
+
             const auto guiSubmitInfo = vk::SubmitInfo()
                 .setCommandBuffers(guiCommandBuffers)
                 .setWaitSemaphores(m_runNodes.back()->commandBuffers[frame.ImageIndex()]->SignalSemaphore())
-                .setSignalSemaphores(m_guiCommandBuffers[frame.ImageIndex()]->SignalSemaphore())
+                .setSignalSemaphores(signalSemaphores)
                 .setWaitDstStageMask(destMask);
 
             try {
@@ -399,5 +423,19 @@ namespace Coral::Project {
 		return m_runNodes.back()->commandBuffers[frameIndex]->SignalSemaphore();
 	}
 
-	void RenderGraph::OnGUIAttach() {}
+	void RenderGraph::OnGUIAttach() {
+		AddDockable("Graphics Pipeline",
+			new Reef::Window(ICON_FA_PAINTBRUSH "   Graphics Pipeline",
+				Reef::Style{
+				   .size = {300.f, 0.f},
+				   .padding = {10.f, 10.f, 10.f, 10.f},
+				   .spacing = 10.f,
+				   .backgroundColor = {0.0f, 0.0f, 0.0f, 1.f},
+				},
+				{
+					m_pipelineTemplate->Build(*m_pipelineBuilder),
+				}
+			)
+		);
+	}
 }

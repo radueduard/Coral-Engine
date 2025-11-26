@@ -5,6 +5,7 @@
 #include "scene.h"
 #include <queue>
 #include "IconsFontAwesome6.h"
+#include "context.h"
 
 #include "components/camera.h"
 #include "gui/reef.h"
@@ -26,7 +27,7 @@ namespace Coral::ECS {
 
     void Scene::OnGUIAttach() {
 		AddDockable("Scene View",
-			new Reef::Dockable(ICON_FA_LIST "   Scene View",
+			new Reef::Window(ICON_FA_LIST "   Scene View",
 				Reef::Style{
 				   .size = {300.f, 0.f},
 				   .padding = {10.f, 10.f, 10.f, 10.f},
@@ -40,7 +41,7 @@ namespace Coral::ECS {
 							m_selectedObject = object.Id();
 							AddDockable(
 								"Object Inspector",
-								new Reef::Dockable(
+								new Reef::Window(
 									ICON_FA_INFO "   Object Inspector",
 									Reef::Style{
 										.size = {300.f, Reef::Grow},
@@ -81,7 +82,7 @@ namespace Coral::ECS {
     	auto firstCamera = std::make_unique<Entity>("Camera");
     	auto firstCameraCreateInfo = Camera::CreateInfo {
     		.projectionData = Camera::ProjectionData(Camera::Type::Perspective),
-			.size = { 800, 600 }
+			.size = { 800u, 600u }
     	};
     	firstCamera->Add<Camera>(firstCameraCreateInfo);
     	firstCamera->Get<Transform>().position.z = 3.0f;
@@ -91,11 +92,7 @@ namespace Coral::ECS {
     	m_root->AddChild(std::move(firstCamera));
 
     	m_setLayout = Memory::Descriptor::SetLayout::Builder()
-			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-    		.AddBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
-			.AddBinding(2, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
-			.AddBinding(3, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
-			.AddBinding(4, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)
+			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eTessellationEvaluation)
 			.Build();
 
 		m_cameraBuffer = Memory::Buffer::Builder()
@@ -106,54 +103,16 @@ namespace Coral::ECS {
     		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
     		.Build();
 
-    	m_lightCountsBuffer = Memory::Buffer::Builder()
-			.InstanceCount(1)
-			.InstanceSize(sizeof(Math::Vector3<u32>))
-			.UsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-			.Build();
-
-    	m_pointLightBuffer = Memory::Buffer::Builder()
-    		.InstanceCount(32)
-    		.InstanceSize(sizeof(GPU::Light::Point))
-    		.UsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
-    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-    		.Build();
-
-    	m_directionalLightBuffer = Memory::Buffer::Builder()
-    		.InstanceCount(32)
-			.InstanceSize(sizeof(GPU::Light::Directional))
-			.UsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-			.Build();
-
-    	m_spotLightBuffer = Memory::Buffer::Builder()
-			.InstanceCount(32)
-    		.InstanceSize(sizeof(GPU::Light::Spot))
-			.UsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
-    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-			.Build();
-
-    	m_set = Memory::Descriptor::Set::Builder(Core::GlobalScheduler().DescriptorPool(), *m_setLayout)
+    	m_set = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_setLayout)
 			.WriteBuffer(0, m_cameraBuffer->DescriptorInfo())
-			.WriteBuffer(1 , m_lightCountsBuffer->DescriptorInfo())
-			.WriteBuffer(2, m_pointLightBuffer->DescriptorInfo())
-			.WriteBuffer(3, m_directionalLightBuffer->DescriptorInfo())
-			.WriteBuffer(4, m_spotLightBuffer->DescriptorInfo())
 			.Build();
     }
 
 	void Scene::Update(const float deltaTime) {
 		auto& mainCamera = MainCamera();
-    	auto& registry = SceneManager::Get().Registry();
-
 
 		if (Input::IsMouseButtonHeld(MouseButton::MouseButtonRight)) {
-			Math::Vector3 displacement { 0.0f, 0.0f, 0.0f };
+			Math::Vector3f displacement { 0.0f, 0.0f, 0.0f };
 			if (Input::IsKeyHeld(Key::W)) {
 				displacement.z += 1.0f;
 			}
@@ -193,75 +152,6 @@ namespace Coral::ECS {
 			m_cameraBuffer->Flush();
 			m_cameraBuffer->Unmap();
 		}
-
-    	u32 pointLightCount = 0;
-    	u32 directionalLightCount = 0;
-    	u32 spotLightCount = 0;
-
-    	bool changed = false;
-		for (const auto& entity : registry.view<Light>()) {
-			const auto& light = registry.get<Light>(entity);
-			const auto& transform = registry.get<Transform>(entity);
-			if (light.m_changed || transform.Changed()) {
-				changed = true;
-				registry.get<Light>(entity).m_changed = false;
-			}
-			if (light.m_type == Light::Type::Point) {
-				pointLightCount++;
-			} else if (light.m_type == Light::Type::Directional) {
-				directionalLightCount++;
-			} else if (light.m_type == Light::Type::Spot) {
-				spotLightCount++;
-			}
-		}
-
-    	if (changed) {
-    		auto pointLights = m_pointLightBuffer->Map<GPU::Light::Point>();
-    		auto directionalLights = m_directionalLightBuffer->Map<GPU::Light::Directional>();
-    		auto spotLights = m_spotLightBuffer->Map<GPU::Light::Spot>();
-
-    		u32 pointIndex = 0, directionalIndex = 0, spotIndex = 0;
-    		for (const auto& entity : registry.view<Light>()) {
-    			const auto& transform = registry.get<Transform>(entity);
-				const auto& light = registry.get<Light>(entity);
-				if (light.m_type == Light::Type::Point) {
-					pointLights[pointIndex++] = GPU::Light::Point {
-						.position = transform.position,
-						.color = light.m_data.point.color,
-						.attenuation = light.m_data.point.attenuation,
-						.radius = light.m_data.point.range,
-					};
-				} else if (light.m_type == Light::Type::Directional) {
-					directionalLights[directionalIndex++] = GPU::Light::Directional {
-						.direction = Math::Direction(Math::Radians(transform.rotation)),
-						.color = light.m_data.directional.color,
-						.intensity = light.m_data.directional.intensity,
-					};
-				} else if (light.m_type == Light::Type::Spot) {
-					spotLights[spotIndex++] = GPU::Light::Spot {
-						.position = transform.position,
-						.direction = Math::Direction(Math::Radians(transform.rotation)),
-						.color = light.m_data.spot.color,
-						.innerAngle = Math::Radians(light.m_data.spot.innerAngle),
-						.outerAngle = Math::Radians(light.m_data.spot.outerAngle),
-						.intensity = light.m_data.spot.intensity,
-						.range = light.m_data.spot.range,
-					};
-				}
-    		}
-    		m_pointLightBuffer->Flush();
-    		m_directionalLightBuffer->Flush();
-    		m_spotLightBuffer->Flush();
-    		m_pointLightBuffer->Unmap();
-    		m_directionalLightBuffer->Unmap();
-    		m_spotLightBuffer->Unmap();
-    	}
-
-    	m_lightCountsBuffer->Map<Math::Vector3<u32>>();
-    	auto currentValues = m_lightCountsBuffer->ReadAt<Math::Vector3<u32>>(0);
-    	m_lightCountsBuffer->WriteAt(0, Math::Vector3 { pointLightCount, directionalLightCount, spotLightCount });
-    	m_lightCountsBuffer->Flush();
-    	m_lightCountsBuffer->Unmap();
     }
 
     Camera& Scene::MainCamera() {

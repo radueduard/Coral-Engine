@@ -54,13 +54,13 @@ namespace Coral::Graphics {
     {
         m_extent = Math::Vector2<uint32_t>(1);
 
-        Core::GlobalDevice()->waitIdle();
-        m_presentQueue = Core::GlobalDevice().RequestPresentQueue();
+        Context::Device()->waitIdle();
+        m_presentQueue = Context::Device().RequestPresentQueue();
         CreateSwapChain();
     }
 
     void SwapChain::CreateSwapChain() {
-        const auto& physicalDevice = Core::GlobalDevice().QuerySurfaceCapabilities();
+        const auto& physicalDevice =Context::Device().QuerySurfaceCapabilities();
         m_surfaceFormat = ChooseSurfaceFormat(physicalDevice.SurfaceFormats());
         m_presentMode = ChoosePresentMode(physicalDevice.SurfacePresentModes());
         m_extent = ChooseExtent(physicalDevice.SurfaceCapabilities(), m_extent);
@@ -83,13 +83,13 @@ namespace Coral::Graphics {
             .setPresentMode(m_presentMode)
             .setOldSwapchain(oldSwapChain)
             .setClipped(true);
-        m_handle = Core::GlobalDevice()->createSwapchainKHR(createInfo);
+        m_handle = Context::Device()->createSwapchainKHR(createInfo);
 
         if (oldSwapChain) {
-            Core::GlobalDevice()->destroySwapchainKHR(oldSwapChain);
+            Context::Device()->destroySwapchainKHR(oldSwapChain);
         }
 
-        const auto swapChainImageHandles = Core::GlobalDevice()->getSwapchainImagesKHR(m_handle);
+        const auto swapChainImageHandles = Context::Device()->getSwapchainImagesKHR(m_handle);
         m_swapChainImages.clear();
         m_swapChainImages.reserve(swapChainImageHandles.size());
         for (const auto &image : swapChainImageHandles) {
@@ -106,9 +106,9 @@ namespace Coral::Graphics {
     }
 
     SwapChain::~SwapChain() {
-        Core::GlobalDevice()->waitIdle();
+        Context::Device()->waitIdle();
         if (m_handle) {
-            Core::GlobalDevice()->destroySwapchainKHR(m_handle);
+            Context::Device()->destroySwapchainKHR(m_handle);
         }
     }
 
@@ -120,13 +120,13 @@ namespace Coral::Graphics {
 
     void SwapChain::Resize(const Math::Vector2<f32>& newSize) {
         m_extent = newSize;
-        Core::GlobalDevice()->waitIdle();
+        Context::Device()->waitIdle();
         CreateSwapChain();
     }
 
     vk::Result SwapChain::Acquire(const Core::Frame &frame) {
         try {
-            const auto result = Core::GlobalDevice()->acquireNextImageKHR(
+            const auto result = Context::Device()->acquireNextImageKHR(
                 m_handle,
                 UINT64_MAX,
                 frame.ImageAvailable());
@@ -139,7 +139,7 @@ namespace Coral::Graphics {
 
     vk::Result SwapChain::Present(const Core::Frame &frame) {
         std::array waitSemaphores = {
-            frame.ReadyToPresent()
+        	frame.FinalImageTransferCommandBuffer().SignalSemaphore()
         };
 
         std::array swapChains = {
@@ -152,7 +152,7 @@ namespace Coral::Graphics {
             .setImageIndices(m_imageIndex);
 
         try {
-            return (*m_presentQueue)->presentKHR(presentInfo);
+        	return frame.Queue()->presentKHR(presentInfo);
         } catch (const vk::OutOfDateKHRError &) {
             return vk::Result::eErrorOutOfDateKHR;
         }

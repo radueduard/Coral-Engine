@@ -20,7 +20,7 @@ namespace Coral::Reef {
 			const Text::Style labelStyle {
 				.color = { 0.8f, 0.8f, 0.8f, 1.f },
 				.fontSize = 15.f,
-				.fontType = FontType::Bold,
+				.fontStyle = FontType::Bold,
 			};
 
 			return new Element(
@@ -33,22 +33,22 @@ namespace Coral::Reef {
 				},
 				{
 					new LabeledRow(
-						new Text(Text::Piece("Name:", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Name:", labelStyle, { .size = { Shrink, Grow } }),
 						new InputField("name", &data.m_name, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("InstanceSize", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("InstanceSize", labelStyle, { .size = { Shrink, Grow } }),
 						new Drag<u32, 1>("instance size", &data.m_instanceSize, 1, 1, 256, &m_changed, std::nullopt, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("InstanceCount", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("InstanceCount", labelStyle, { .size = { Shrink, Grow } }),
 						new Drag<u32, 1>("instance count", &data.m_instanceCount, 1, 1, 256, &m_changed, std::nullopt, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Usage Flags", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Usage Flags", labelStyle, { .size = { Shrink, Grow } }),
 						new SetSelection(&data.m_usageFlagSet, {
 							.size = { 250.f, Grow },
 							.padding = { 10.f, 10.f, 10.f, 10.f },
@@ -59,7 +59,7 @@ namespace Coral::Reef {
 						{ .size = { Grow, Shrink }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Memory Property Flags", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Memory Property Flags", labelStyle, { .size = { Shrink, Grow } }),
 						new SetSelection(&data.m_memoryPropertyFlagSet, {
 							.size = { 250.f, Grow },
 							.padding = { 10.f, 10.f, 10.f, 10.f },

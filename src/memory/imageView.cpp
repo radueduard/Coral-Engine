@@ -9,6 +9,8 @@
 
 #include <memory>
 
+#include "context.h"
+
 namespace Coral::Memory {
     ImageView::ImageView(const Builder &builder)
         : m_image(builder.m_image), m_viewType(builder.m_viewType),
@@ -35,11 +37,11 @@ namespace Coral::Memory {
                 .setBaseArrayLayer(builder.m_baseArrayLayer)
                 .setLayerCount(builder.m_layerCount));
 
-        m_handle = Core::GlobalDevice()->createImageView(viewInfo);
+        m_handle = Context::Device()->createImageView(viewInfo);
     }
 
     ImageView::~ImageView() {
-        Core::GlobalDevice()->destroyImageView(m_handle);
+        Context::Device()->destroyImageView(m_handle);
     }
 
     bool ImageView::Has(

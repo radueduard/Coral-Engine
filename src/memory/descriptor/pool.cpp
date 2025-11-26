@@ -37,11 +37,11 @@ namespace Coral::Memory::Descriptor {
             .setMaxSets(m_maxSets)
             .setFlags(m_flags);
 
-        m_pool = Core::GlobalDevice()->createDescriptorPool(poolCreateInfo);
+        m_pool = Context::Device()->createDescriptorPool(poolCreateInfo);
     }
 
     Pool::~Pool() {
-        Core::GlobalDevice()->destroyDescriptorPool(m_pool);
+        Context::Device()->destroyDescriptorPool(m_pool);
     }
 
     vk::DescriptorSet Pool::Allocate(const SetLayout &layout) const {
@@ -49,7 +49,7 @@ namespace Coral::Memory::Descriptor {
         const auto allocateInfo = vk::DescriptorSetAllocateInfo()
             .setDescriptorPool(m_pool)
             .setSetLayouts({layoutHandle});
-        return Core::GlobalDevice()->allocateDescriptorSets(allocateInfo).front();
+        return Context::Device()->allocateDescriptorSets(allocateInfo).front();
     }
 
     std::vector<vk::DescriptorSet> Pool::Allocate(const std::vector<SetLayout> &layouts) const {
@@ -62,15 +62,15 @@ namespace Coral::Memory::Descriptor {
             .setDescriptorPool(m_pool)
             .setSetLayouts(layoutHandles);
 
-        return Core::GlobalDevice()->allocateDescriptorSets(allocateInfo);
+        return Context::Device()->allocateDescriptorSets(allocateInfo);
     }
 
     void Pool::Free(const vk::DescriptorSet &descriptorSet) const {
-        Core::GlobalDevice()->freeDescriptorSets(m_pool, descriptorSet);
+        Context::Device()->freeDescriptorSets(m_pool, descriptorSet);
     }
 
     void Pool::Free(const std::vector<vk::DescriptorSet> &descriptorSets) const {
-        Core::GlobalDevice()->freeDescriptorSets(m_pool, descriptorSets);
+        Context::Device()->freeDescriptorSets(m_pool, descriptorSets);
     }
 
 }

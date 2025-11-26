@@ -19,6 +19,7 @@
 #include "gui/templates/meshList.h"
 
 #include "graphics/objects/baseMeshes.h"
+#include "gui/elements/contextMenu.h"
 #include "gui/templates/createBufferPopup.h"
 
 namespace Coral::Asset {
@@ -117,27 +118,44 @@ namespace Coral::Asset {
     	textures.clear();
     	prefabs.clear();
 
-    	u8 black[] = { 0, 0, 0, 255 };
-    	u8 white[] = { 255, 255, 255, 255 };
-    	u8 normal[] = { 127, 127, 255, 255 };
+    	std::array black {
+    		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
+    		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
+    		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
+    		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
+    	};
+
+    	std::array white {
+			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
+			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
+			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
+			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
+		};
+
+    	std::array normal {
+			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
+			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
+			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
+			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
+    	};
 
     	auto stringGenerator = boost::uuids::string_generator();
     	auto builder = Graphics::Texture::Builder(stringGenerator("00000000-0000-0000-0000-000000000001"))
 			.Name("black")
-			.Size(1)
-			.Data(black);
+			.Size(2)
+			.Data(black.data());
     	AddTexture(builder.Build());
 
     	builder = Graphics::Texture::Builder(stringGenerator("00000000-0000-0000-0000-000000000002"))
 			.Name("white")
-			.Size(1)
-			.Data(white);
+			.Size(2)
+			.Data(white.data());
     	AddTexture(builder.Build());
 
     	builder = Graphics::Texture::Builder(stringGenerator("00000000-0000-0000-0000-000000000003"))
 			.Name("baseNormal")
-			.Size(1)
-			.Data(normal);
+			.Size(2)
+			.Data(normal.data());
     	AddTexture(builder.Build());
 
     	AddMesh(Graphics::Cube());
@@ -163,7 +181,7 @@ namespace Coral::Asset {
 	void Manager::CreateUI() {
 		RemoveDockable("assetManager");
 
-    	auto* dockable = new Reef::Dockable(
+    	auto* dockable = new Reef::Window(
 				ICON_FA_CUBE "   Asset Manager",
 				{.padding = {10.f, 10.f, 10.f, 10.f}, .backgroundColor = {0.f, 0.f, 0.f, 1.f}},
 				{
@@ -184,17 +202,17 @@ namespace Coral::Asset {
 				Reef::ContextMenu::Builder()
 					.AddItem("Create Image",
 							 [&]() -> bool {
-								 Reef::GlobalManager().GetPopup("##CreateImage")->Open();
+								 Context::GUIManager().GetPopup("##CreateImage")->Open();
 								 return true;
 							 })
 					.AddItem("Create Buffer",
 							 [&]() -> bool {
-								 Reef::GlobalManager().GetPopup("##CreateBuffer")->Open();
+								 Context::GUIManager().GetPopup("##CreateBuffer")->Open();
 								 return true;
 							 })
 					.AddItem("Import",
 							 [&]() -> bool {
-								 Reef::GlobalManager().GetPopup("##Import")->Open();
+								 Context::GUIManager().GetPopup("##Import")->Open();
 								 return true;
 							 })
 					.Build());

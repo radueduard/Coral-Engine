@@ -74,7 +74,7 @@ namespace Coral::ECS {
 
         struct CreateInfo {
             ProjectionData projectionData = {};
-            Math::Vector2<u32> size = { 800, 600 };
+            Math::Vector2u size = { 800u, 600u };
         };
 
         explicit Camera(const CreateInfo &createInfo);
@@ -109,7 +109,7 @@ namespace Coral::ECS {
         Math::Matrix4<f32> m_inverseView { 1.0f };
 
         ProjectionData m_projectionData {};
-        Math::Vector2<u32> m_viewportSize { 0, 0 };
+        Math::Vector2<u32> m_viewportSize { 0u, 0u };
 
         bool m_primary = true;
         bool m_moved = true;

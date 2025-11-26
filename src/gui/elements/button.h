@@ -39,7 +39,7 @@ namespace Coral::Reef {
             }
 
             ImGui::RenderNavHighlight(outerBounds, ImGui::GetID(id));
-            ImGui::RenderFrame(outerBounds.Min, outerBounds.Max, col, true, m_cornerRadius);
+            ImGui::RenderFrame(outerBounds.Min, outerBounds.Max, col, true, m_style.cornerRadius);
             ImGui::PopID();
 
             if (clicked) {

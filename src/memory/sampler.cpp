@@ -4,6 +4,7 @@
 
 #include "sampler.h"
 
+#include "context.h"
 #include "core/device.h"
 
 namespace Coral::Memory {
@@ -26,10 +27,10 @@ namespace Coral::Memory {
             .setMinLod(0.0f)
             .setMaxLod(vk::LodClampNone);
 
-        m_handle = Core::GlobalDevice()->createSampler(samplerInfo);
+        m_handle = Context::Device()->createSampler(samplerInfo);
     }
 
     Sampler::~Sampler() {
-        Core::GlobalDevice()->destroySampler(m_handle);
+        Context::Device()->destroySampler(m_handle);
     }
 }

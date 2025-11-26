@@ -7,10 +7,10 @@
 #include <iostream>
 #include <ranges>
 
-#include "renderPass.h"
 #include "shader/shader.h"
 #include "memory/descriptor/set.h"
 #include "objects/mesh.h"
+#include "renderPass.h"
 #include "utils/functionals.h"
 
 namespace Coral::Graphics {
@@ -36,8 +36,8 @@ namespace Coral::Graphics {
             .setStencilTestEnable(vk::False);
     }
 
-    Pipeline::Builder &Pipeline::Builder::AddShader(const Core::Shader* shader) {
-        const auto stage = shader->Stage();
+    Pipeline::Builder &Pipeline::Builder::AddShader(const Shader::Shader* shader) {
+        const auto stage = shader->GetStage();
         m_shaders[stage] = shader;
         return *this;
     }
@@ -106,25 +106,25 @@ namespace Coral::Graphics {
                     layoutBuilders.resize(descriptor.set + 1);
                 }
                 if (auto& currentLayout = layoutBuilders[descriptor.set]; currentLayout.HasBinding(descriptor.binding)) {
-                    currentLayout.Binding(descriptor.binding).stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage()));
+                    currentLayout.Binding(descriptor.binding).stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage()));
                 } else {
-                    currentLayout.AddBinding(descriptor.binding, descriptor.type, vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage())), std::max(descriptor.count, 1u));
+                    currentLayout.AddBinding(descriptor.binding, descriptor.type, vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage())), std::max(descriptor.count, 1u));
                 }
             }
-            for (const auto&[size, offset] : shader->PushConstantRanges()) {
+            for (const auto&[size, offset, name] : shader->PushConstantRanges()) {
                 auto foundRange = Utils::FindIf(pushConstantRanges,
                 [size, offset] (const auto& range) -> bool {
                     return range.offset == offset && range.size == size;
                 });
 
                 if (foundRange.has_value()) {
-                    foundRange->stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage()));
+                    foundRange->stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage()));
                 } else {
                     pushConstantRanges.emplace_back(
                         vk::PushConstantRange()
                             .setOffset(offset)
                             .setSize(size)
-                            .setStageFlags(vk::ShaderStageFlags(static_cast<uint32_t>(shader->Stage()))));
+                            .setStageFlags(vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage()))));
                 }
             }
         }
@@ -141,14 +141,15 @@ namespace Coral::Graphics {
             .setSetLayouts(descriptorHandles)
             .setPushConstantRanges(pushConstantRanges);
 
-        m_pipelineLayout = Core::GlobalDevice()->createPipelineLayout(pipelineLayoutInfo);
+        m_pipelineLayout = Context::Device()->createPipelineLayout(pipelineLayoutInfo);
 
         std::vector<vk::VertexInputBindingDescription> bindingDescriptions = {};
         std::vector<vk::VertexInputAttributeDescription> attributeDescriptions = {};
-        if (const auto& vertexShader = Utils::FindIf(m_shaders | std::views::values, [](const auto* shader) { return shader->Stage() == Core::Stage::Vertex; }); vertexShader.has_value()) {
-            const auto& inputAnalysis = vertexShader.value()->Analysis().at("inputs");
+        if (const auto& vertexShader = Utils::FindIf(m_shaders | std::views::values, [](const auto* shader) { return shader->GetStage() == Shader::Stage::Vertex; });
+        	vertexShader.has_value())
+        {
             bindingDescriptions = Vertex::BindingDescriptions();
-            attributeDescriptions = Vertex::AttributeDescriptions(inputAnalysis);
+            attributeDescriptions = Vertex::AttributeDescriptions((*vertexShader)->Inputs());
         }
 
         m_vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
@@ -158,7 +159,7 @@ namespace Coral::Graphics {
         m_stages.clear();
         for (const auto& shader : m_shaders | std::views::values) {
             m_stages.emplace_back(vk::PipelineShaderStageCreateInfo()
-                .setStage(static_cast<vk::ShaderStageFlagBits>(shader->Stage()))
+                .setStage(static_cast<vk::ShaderStageFlagBits>(shader->GetStage()))
                 .setModule(**shader)
                 .setPName("main"));
         }
@@ -220,7 +221,7 @@ namespace Coral::Graphics {
             .setSubpass(builder.m_subpass);
 
         try {
-            const auto pipeline = Core::GlobalDevice()->createGraphicsPipeline(nullptr, m_createInfo);
+            const auto pipeline = Context::Device()->createGraphicsPipeline(nullptr, m_createInfo);
             if (pipeline.result != vk::Result::eSuccess) {
                 std::cerr << "Failed to create graphics pipeline: " << vk::to_string(pipeline.result) << std::endl;
             }
@@ -232,9 +233,9 @@ namespace Coral::Graphics {
 
     Pipeline::~Pipeline()
     {
-        Core::GlobalDevice()->waitIdle();
-        Core::GlobalDevice()->destroyPipeline(m_pipeline);
-        Core::GlobalDevice()->destroyPipelineLayout(m_pipelineLayout);
+        Context::Device()->waitIdle();
+        Context::Device()->destroyPipeline(m_pipeline);
+        Context::Device()->destroyPipelineLayout(m_pipelineLayout);
     }
 
     void Pipeline::Bind(const vk::CommandBuffer& commandBuffer) const {

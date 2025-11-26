@@ -76,26 +76,26 @@ namespace Coral::Graphics {
             for (int j = 0; j <= density; j++) {
                 const float phi = static_cast<float>(j) * 2.0f * glm::pi<float>() / static_cast<float>(density);
 
-            	Math::Vector3 position = {
+            	Math::Vector3f position = {
             		sin(theta) * cos(phi),
             		cos(theta),
             		sin(theta) * sin(phi)
             	};
-            	Math::Vector3<f32> normal = position.Normalized();
+            	Math::Vector3f normal = position.Normalized();
 
             	f32 r = position.Length();
             	f32 tangentTheta = std::acos(position.z / r);
             	f32 tangentPhi = std::atan2(position.y, position.x);
 
-                Math::Vector3<f32> tangent =Math::Vector3 {
+                Math::Vector3f tangent =Math::Vector3f{
 					-sin(tangentTheta) * cos(tangentPhi),
 					sin(tangentTheta) * sin(tangentPhi),
 					cos(tangentTheta)
 				}.Normalized();
 
-                Math::Vector3<f32> bitangent = normal.Cross(tangent).Normalized();
-                Math::Vector2 texCoord = {static_cast<float>(j) / static_cast<float>(density), static_cast<float>(i) / static_cast<float>(density)};
-                Math::Vector4<f32> tangent4 = Math::Vector4(tangent, normal.Cross(tangent).Dot(bitangent) < 0.0f ? -1.0f : 1.0f);
+                Math::Vector3f bitangent = normal.Cross(tangent).Normalized();
+                Math::Vector2f texCoord = {static_cast<float>(j) / static_cast<float>(density), static_cast<float>(i) / static_cast<float>(density)};
+                Math::Vector4f tangent4 = Math::Vector4(tangent, normal.Cross(tangent).Dot(bitangent) < 0.0f ? -1.0f : 1.0f);
                 sphere.AddVertex({position, normal, tangent4, texCoord});
             }
         }
@@ -124,17 +124,17 @@ namespace Coral::Graphics {
         float farHeight = tanHalfFov * far;
         float farWidth = farHeight * aspect;
 
-        Math::Vector3 nearCenter = { 0.0f, 0.0f, -near };
-        Math::Vector3 farCenter = { 0.0f, 0.0f, -far };
+        Math::Vector3f nearCenter = { 0.0f, 0.0f, -near };
+        Math::Vector3f farCenter = { 0.0f, 0.0f, -far };
 
-        Math::Vector3<f32> nearTopLeft = nearCenter + Math::Vector3 { -nearWidth, nearHeight,  0.0f };
-        Math::Vector3<f32> nearTopRight = nearCenter + Math::Vector3 { nearWidth, nearHeight, 0.0f };
-        Math::Vector3<f32> nearBottomLeft = nearCenter + Math::Vector3 { -nearWidth, -nearHeight, 0.0f };
-        Math::Vector3<f32> nearBottomRight = nearCenter + Math::Vector3 { nearWidth, -nearHeight, 0.0f	};
-        Math::Vector3<f32> farTopLeft = farCenter + Math::Vector3 { -farWidth, farHeight, 0.0f };
-        Math::Vector3<f32> farTopRight = farCenter + Math::Vector3 { farWidth, farHeight, 0.0f };
-        Math::Vector3<f32> farBottomLeft = farCenter + Math::Vector3 { -farWidth, -farHeight, 0.0f };
-        Math::Vector3<f32> farBottomRight = farCenter + Math::Vector3 { farWidth, -farHeight, 0.0f };
+        Math::Vector3<f32> nearTopLeft = nearCenter + Math::Vector3f { -nearWidth, nearHeight,  0.0f };
+        Math::Vector3<f32> nearTopRight = nearCenter + Math::Vector3f { nearWidth, nearHeight, 0.0f };
+        Math::Vector3<f32> nearBottomLeft = nearCenter + Math::Vector3f { -nearWidth, -nearHeight, 0.0f };
+        Math::Vector3<f32> nearBottomRight = nearCenter + Math::Vector3f { nearWidth, -nearHeight, 0.0f	};
+        Math::Vector3<f32> farTopLeft = farCenter + Math::Vector3f { -farWidth, farHeight, 0.0f };
+        Math::Vector3<f32> farTopRight = farCenter + Math::Vector3f { farWidth, farHeight, 0.0f };
+        Math::Vector3<f32> farBottomLeft = farCenter + Math::Vector3f { -farWidth, -farHeight, 0.0f };
+        Math::Vector3<f32> farBottomRight = farCenter + Math::Vector3f { farWidth, -farHeight, 0.0f };
 
         return Mesh::Builder(boost::uuids::random_generator()())
             .Name("Frustum Volume")

@@ -23,7 +23,7 @@ namespace Coral::Reef {
 			}
 
 			ImGui::BeginChild(m_name.c_str(), ImVec2(m_currentSize), false, ImGuiWindowFlags_NoDecoration);
-			ImGui::PushItemWidth(m_currentSize.width - m_padding.left - m_padding.right);
+			ImGui::PushItemWidth(m_currentSize.width - m_style.padding.left - m_style.padding.right);
 			ImGui::SliderScalarN("", GetImGuiDataType<T>(), m_value, N, &m_min, &m_max);
 			ImGui::PopItemWidth();
 			ImGui::EndChild();

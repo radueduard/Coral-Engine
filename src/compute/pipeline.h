@@ -18,7 +18,7 @@ namespace Coral::Memory::Descriptor {
 namespace Coral::Compute {
     class Pipeline {
     public:
-        explicit Pipeline(Core::Shader*, std::string  kernelName = "main");
+        explicit Pipeline(Shader::Shader*, std::string kernelName = "main");
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
@@ -39,7 +39,7 @@ namespace Coral::Compute {
         void BindDescriptorSets(uint32_t, vk::CommandBuffer, const std::vector<Memory::Descriptor::Set> &) const;
 
     private:
-        Core::Shader* m_shader;
+        Shader::Shader* m_shader;
         std::string m_kernelName;
 
         vk::Pipeline m_pipeline;

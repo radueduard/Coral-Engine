@@ -9,6 +9,13 @@
 
 #include <entt/entt.hpp>
 
+namespace Coral::Memory {
+	class Buffer;
+}
+namespace Coral::Memory::Descriptor {
+	class SetLayout;
+	class Set;
+}
 namespace Coral::Reef {
     class EntityInspector;
 }
@@ -42,11 +49,6 @@ namespace Coral::ECS {
 
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_setLayout;
     	std::unique_ptr<Memory::Descriptor::Set> m_set;
-
     	std::unique_ptr<Memory::Buffer> m_cameraBuffer;
-    	std::unique_ptr<Memory::Buffer> m_lightCountsBuffer;
-    	std::unique_ptr<Memory::Buffer> m_pointLightBuffer;
-    	std::unique_ptr<Memory::Buffer> m_directionalLightBuffer;
-    	std::unique_ptr<Memory::Buffer> m_spotLightBuffer;
     };
 }

@@ -18,22 +18,13 @@
 #include "gui/container.h"
 #include "shader/manager.h"
 
-#include "scripting/assembly.h"
-#include "scripting/class.h"
-#include "scripting/domain.h"
-#include "scripting/setup.h"
 #include "gui/elements/popup.h"
 
 namespace Coral {
     Engine::Engine() {
-    	// Scripting::Domain::CreateRoot();
-    	// Scripting::Assembly::Load("assets/assemblies/Coral.dll");
-    	// Scripting::LinkClassesWithRemote();
-		// Scripting::SetupInternalCalls();
-
         const auto windowCreateInfo = Core::Window::CreateInfo {
             .title = "Coral",
-            .extent = { 1920, 1080 },
+            .extent = { 1920u, 1080u },
             .resizable = true,
             .fullscreen = false
         };
@@ -45,6 +36,8 @@ namespace Coral {
 	            .setSamplerAnisotropy(true)
 	            .setFragmentStoresAndAtomics(true)
 	            .setFillModeNonSolid(true)
+        		.setTessellationShader(true)
+				.setGeometryShader(true)
 	            .setVertexPipelineStoresAndAtomics(true),
             .instanceLayers = {
                 "VK_LAYER_KHRONOS_validation",
@@ -68,7 +61,6 @@ namespace Coral {
 
         m_runtime = std::make_unique<Core::Runtime>(runtimeCreateInfo);
         m_device = std::make_unique<Core::Device>();
-        Core::g_device = m_device.get();
 
     	m_shaderManager = std::make_unique<Shader::Manager>(std::filesystem::path("shaders"));
         const auto schedulerCreateInfo = Core::Scheduler::CreateInfo {
@@ -80,13 +72,9 @@ namespace Coral {
         m_scheduler = std::make_unique<Core::Scheduler>(schedulerCreateInfo);
     	m_sceneManager = std::make_unique<ECS::SceneManager>();
     	m_assetManager = Reef::MakeContainer<Asset::Manager>();
-
-    	auto shader = Core::Shader("slang/hello-world.slang");
     }
 
     Engine::~Engine() {
-    	Scripting::Assembly::UnloadAll();
-        Scripting::Domain::DestroyRoot();
     }
 
     void Engine::Run() const {
@@ -96,6 +84,8 @@ namespace Coral {
 	        auto startTime = std::chrono::high_resolution_clock::now();
         	m_window->PollEvents();
         	m_window->UpdateDeltaTime();
+        	m_shaderManager->Update();
+        	m_sceneManager->Update(m_window->DeltaTime());
 
             if (!m_window->IsPaused()) {
             	if (ECS::SceneManager::Get().IsSceneLoaded())
@@ -103,8 +93,8 @@ namespace Coral {
                 m_scheduler->Update(m_window->DeltaTime());
                 m_scheduler->Draw();
             }
-        	m_sceneManager->Update(m_window->DeltaTime());
-        	m_shaderManager->Update();
+
+        	m_shaderManager->LateUpdate();
 
             Input::Update();
 
@@ -112,7 +102,7 @@ namespace Coral {
             const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - startTime).count();
             m_window->SetTitle("Coral - " + std::to_string(1000000.f / static_cast<float>(elapsed)) + "fps");
         }
-        Core::GlobalDevice()->waitIdle();
+        Context::Device()->waitIdle();
     }
 }
 

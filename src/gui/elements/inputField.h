@@ -27,8 +27,8 @@ namespace Coral::Reef {
 				m_value->data(),
 				static_cast<i32>(m_value->capacity()),
 				{
-					m_currentSize.width - m_padding.left - m_padding.right,
-					m_currentSize.height - m_padding.top - m_padding.bottom,
+					m_currentSize.width,
+					m_currentSize.height,
 				},
 				ImGuiInputTextFlags_None
 			);

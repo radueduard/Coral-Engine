@@ -7,6 +7,7 @@
 #include <boost/unordered_map.hpp>
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
+#include <memory>
 
 #include "graphics/renderPass.h"
 #include "gui/container.h"
@@ -60,6 +61,10 @@ namespace Coral::Project {
         std::vector<std::unique_ptr<Memory::Image>> m_imageStorage;
         std::unordered_map<std::string, std::unique_ptr<Graphics::RenderPass>> m_renderPasses;
         std::vector<std::unique_ptr<RunNode>> m_runNodes;
+
+    //  temp:
+        std::unique_ptr<Reef::RenderPipelineTemplate> m_pipelineTemplate = nullptr;
+        Coral::Graphics::Pipeline::Builder* m_pipelineBuilder = nullptr;
 
     };
 }

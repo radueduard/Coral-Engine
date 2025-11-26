@@ -2244,6 +2244,9 @@ void BeginNodeEditor()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1.f, 1.f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+
+        // ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 20.f);
+
         ImGui::PushStyleColor(ImGuiCol_ChildBg, GImNodes->Style.Colors[ImNodesCol_GridBackground]);
         ImGui::BeginChild(
             "scrolling_region",
@@ -2416,8 +2419,12 @@ void EndNodeEditor()
     // pop style
     ImGui::EndChild();      // end scrolling region
     ImGui::PopStyleColor(); // pop child window background color
+
+    // ImGui::PopStyleVar(); // pop child rounding
+
     ImGui::PopStyleVar();   // pop window padding
     ImGui::PopStyleVar();   // pop frame padding
+
     ImGui::EndGroup();
 }
 

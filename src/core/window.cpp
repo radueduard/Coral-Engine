@@ -6,7 +6,6 @@
 #include "input.h"
 
 #include <iostream>
-#include <mono/metadata/loader.h>
 #include <stb_image.h>
 
 auto get_elapsed() -> double {
@@ -32,8 +31,6 @@ namespace Coral::Core {
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, createInfo.resizable);
-        // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-        // glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
 
         const u32 width = createInfo.extent.width;
@@ -46,7 +43,7 @@ namespace Coral::Core {
             }
 
             m_videoMode = glfwGetVideoMode(m_monitor);
-            m_info.extent = Math::Vector2 {
+            m_info.extent = Math::Vector2u {
                 static_cast<u32>(m_videoMode->width),
                 static_cast<u32>(m_videoMode->height)
             };
@@ -82,9 +79,6 @@ namespace Coral::Core {
         glfwSetScrollCallback(m_window, Input::Callbacks::scrollCallback);
         glfwSetFramebufferSizeCallback(m_window, FramebufferResize);
 
-    	// mono_add_internal_call("Coral.Time::get_elapsedTime", (const void*)get_elapsed);
-    	// mono_add_internal_call("Coral.Time::get_deltaTime", (const void*)get_deltaTime);
-    	// mono_add_internal_call("Coral.Time::get_fixedDeltaTime", (const void*)get_fixedDeltaTime);
     }
 
     Window::~Window() {

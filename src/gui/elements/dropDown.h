@@ -19,7 +19,7 @@ namespace Coral::Reef {
 		bool Render() override {
 			const bool shouldReset = Element::Render();
 
-			ImGui::SetNextItemWidth(m_currentSize.width - m_padding.left - m_padding.right);
+			ImGui::SetNextItemWidth(m_currentSize.width - m_style.padding.left - m_style.padding.right);
 			if (ImGui::BeginCombo(("##" + m_name).c_str(), magic_enum::enum_name(*m_value).data(), ImGuiComboFlags_HeightLarge)) {
 				for (auto [value, name] : magic_enum::enum_entries<T>()) {
 					if (m_excluded.contains(value) || name.empty()) {

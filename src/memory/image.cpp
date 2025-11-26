@@ -7,6 +7,7 @@
 #include <iostream>
 #include <thread>
 
+#include "context.h"
 #include "core/device.h"
 #include "math/vector.h"
 
@@ -37,10 +38,10 @@ namespace Coral::Memory {
                 .setInitialLayout(vk::ImageLayout::eUndefined)
                 .setFlags(imageCreateFlags);
 
-            m_handle = Core::GlobalDevice()->createImage(imageCreateInfo);
+            m_handle = Context::Device()->createImage(imageCreateInfo);
 
-            const vk::MemoryRequirements memoryRequirements = Core::GlobalDevice()->getImageMemoryRequirements(m_handle);
-            const auto memoryTypeIndex = Core::GlobalDevice().FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+            const vk::MemoryRequirements memoryRequirements = Context::Device()->getImageMemoryRequirements(m_handle);
+            const auto memoryTypeIndex = Context::Device().FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
             if (!memoryTypeIndex.has_value()) {
                 std::cerr << "Image : Failed to find suitable memory type" << std::endl;
             }
@@ -49,8 +50,8 @@ namespace Coral::Memory {
                 .setAllocationSize(memoryRequirements.size)
                 .setMemoryTypeIndex(memoryTypeIndex.value());
 
-            m_imageMemory = Core::GlobalDevice()->allocateMemory(allocInfo);
-            Core::GlobalDevice()->bindImageMemory(m_handle, m_imageMemory, 0);
+            m_imageMemory = Context::Device()->allocateMemory(allocInfo);
+            Context::Device()->bindImageMemory(m_handle, m_imageMemory, 0);
         } else {
             m_handle = builder.m_image.value();
         }
@@ -62,8 +63,8 @@ namespace Coral::Memory {
 
     Image::~Image() {
         if (m_imageMemory) {
-            Core::GlobalDevice()->freeMemory(m_imageMemory);
-            Core::GlobalDevice()->destroyImage(m_handle);
+            Context::Device()->freeMemory(m_imageMemory);
+            Context::Device()->destroyImage(m_handle);
         }
     }
 
@@ -78,7 +79,7 @@ namespace Coral::Memory {
             throw std::runtime_error("Image : Layer out of range");
         }
 
-        Core::GlobalDevice().RunSingleTimeCommand([this, buffer, layer, mipLevel] (const Core::CommandBuffer& commandBuffer) {
+        Context::Device().RunSingleTimeCommand([this, buffer, layer, mipLevel] (const Core::CommandBuffer& commandBuffer) {
             auto extent = m_extent;
             for (uint32_t i = 0; i < mipLevel; i++) {
                 extent.width = std::max<uint32_t>(1u, extent.width / 2);
@@ -109,7 +110,7 @@ namespace Coral::Memory {
             return;
         }
 
-        Core::GlobalDevice().RunSingleTimeCommand([this, newLayout] (const Core::CommandBuffer &commandBuffer) {
+        Context::Device().RunSingleTimeCommand([this, newLayout] (const Core::CommandBuffer &commandBuffer) {
             auto barrier = vk::ImageMemoryBarrier()
                 .setOldLayout(m_layout)
                 .setNewLayout(newLayout)
@@ -269,8 +270,8 @@ namespace Coral::Memory {
         if (m_extent == extent || (extent.width == 0 || extent.height == 0 || extent.depth == 0))
             return;
 
-        Core::GlobalDevice()->freeMemory(m_imageMemory);
-        Core::GlobalDevice()->destroyImage(m_handle);
+        Context::Device()->freeMemory(m_imageMemory);
+        Context::Device()->destroyImage(m_handle);
 
         m_extent = extent;
         const auto imageCreateInfo = vk::ImageCreateInfo()
@@ -288,18 +289,18 @@ namespace Coral::Memory {
             .setSharingMode(vk::SharingMode::eExclusive)
             .setInitialLayout(vk::ImageLayout::eUndefined)
             .setFlags(m_layerCount == 6 ? vk::ImageCreateFlagBits::eCubeCompatible : vk::ImageCreateFlags());
-        m_handle = Core::GlobalDevice()->createImage(imageCreateInfo);
+        m_handle = Context::Device()->createImage(imageCreateInfo);
 
-        const vk::MemoryRequirements memoryRequirements = Core::GlobalDevice()->getImageMemoryRequirements(m_handle);
-        const auto memoryTypeIndex = Core::GlobalDevice().FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        const vk::MemoryRequirements memoryRequirements = Context::Device()->getImageMemoryRequirements(m_handle);
+        const auto memoryTypeIndex = Context::Device().FindMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
         if (!memoryTypeIndex.has_value()) {
             std::cerr << "Image : Failed to find suitable memory type" << std::endl;
         }
 
-        m_imageMemory = Core::GlobalDevice()->allocateMemory(vk::MemoryAllocateInfo()
+        m_imageMemory = Context::Device()->allocateMemory(vk::MemoryAllocateInfo()
             .setAllocationSize(memoryRequirements.size)
             .setMemoryTypeIndex(memoryTypeIndex.value()));
-        Core::GlobalDevice()->bindImageMemory(m_handle, m_imageMemory, 0);
+        Context::Device()->bindImageMemory(m_handle, m_imageMemory, 0);
 
         if (m_layout != vk::ImageLayout::eUndefined) {
             const auto layout = m_layout;
@@ -313,7 +314,7 @@ namespace Coral::Memory {
             return;
         }
 
-        Core::GlobalDevice().RunSingleTimeCommand([this] (const Core::CommandBuffer &commandBuffer) {
+        Context::Device().RunSingleTimeCommand([this] (const Core::CommandBuffer &commandBuffer) {
             auto mipWidth = static_cast<int32_t>(m_extent.width);
             auto mipHeight = static_cast<int32_t>(m_extent.height);
 

@@ -26,12 +26,10 @@ namespace Coral::Reef {
 							{},
 							{
 								new Reef::Element(),
-								new Reef::Text(Reef::Text::Piece("Import Asset",
-								   {
+								new Reef::Text("Import Asset", Text::Style {
 									   .fontSize = 20.f,
-									   .fontType = Reef::FontType::Black,
-								   }),
-								   {
+									   .fontStyle = Reef::FontType::Black,
+								   }, {
 									   .size = {Reef::Shrink, 20.f},
 								   }),
 								new Reef::Element(),
@@ -39,13 +37,14 @@ namespace Coral::Reef {
 						),
 						new Reef::Separator(),
 						new Reef::LabeledRow(
-							  new Reef::Text(Reef::Text::Piece("Path",
-								  {
-									  .fontSize = 16.f,
-									  .fontType = Reef::FontType::Regular,
-								  }),
-								  {.size = {Reef::Shrink, 20.f}}
-								),
+							new Reef::Text(
+								"Path",
+								{
+									.fontSize = 16.f,
+									.fontStyle = Reef::FontType::Regular,
+								},
+								{.size = {Reef::Shrink, 20.f}}
+							),
 							new Element(
 								{
 									.spacing = 10.f,
@@ -66,13 +65,15 @@ namespace Coral::Reef {
 											 .cornerRadius = 5.f,
 										 },
 										 []() -> bool {
-											 Reef::GlobalManager().GetPopup("##FileBrowser")->Open();
+											 Context::GUIManager().GetPopup("##FileBrowser")->Open();
 											 return true;
 										 },
 										 {
 											 new Reef::Text(
-											 	Reef::Text::Piece("Browse"),
-												{.size = {Reef::Shrink, Reef::Grow}}
+											 	"Browse", {},
+												{
+													.size = { Reef::Shrink, Reef::Grow }
+												}
 											)
 										 }
 									),
@@ -94,12 +95,15 @@ namespace Coral::Reef {
 										 .cornerRadius = 5.f,
 									 },
 									 []() -> bool {
-										 Reef::GlobalManager().GetPopup("##Import")->Close();
+										 Context::GUIManager().GetPopup("##Import")->Close();
 										 return true;
 									 },
 									 {
-										 new Reef::Text(Reef::Text::Piece("Cancel"),
-													 {.size = {Reef::Shrink, Reef::Grow}})
+									 	new Reef::Text("Cancel", {},
+											 {
+												.size = {Reef::Shrink, Reef::Grow}
+											 }
+										)
 									 }
 								),
 								new Reef::Button(
@@ -112,13 +116,15 @@ namespace Coral::Reef {
 										 Asset::Importer(m_assetPath).Import();
 										 m_assetPath.clear();
 										 m_assetPath.resize(256, '\0');
-										Reef::GlobalManager().GetPopup("##Import")->Close();
+										Context::GUIManager().GetPopup("##Import")->Close();
 										return true;
 									 },
 									 {
 										new Reef::Text(
-											Reef::Text::Piece("Import"),
-											{.size = {Reef::Shrink, Reef::Grow}}
+											"Import", {},
+											{
+												.size = {Reef::Shrink, Reef::Grow}
+											}
 										)
 									 }
 								),

@@ -5,6 +5,7 @@
 #include "prefab.h"
 
 #include <boost/unordered/unordered_map.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "ecs/components/RenderTarget.h"
 #include "ecs/components/camera.h"

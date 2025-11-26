@@ -21,15 +21,15 @@ namespace Coral::Reef {
         {
         	auto pairs = data.Targets();
         	std::vector<Element*> targets {
-        		Text::Builder({ .size = { 0.f, 20.f } })
-					.Add(
-						" " ICON_FA_CUBE "    Render Target",
-						Text::Style{
-							{ 0.8f, 0.8f, 0.8f, 1.f },
-							20.f,
-							FontType::Black
-						})
-					.Build(),
+        		new Text(
+					" " ICON_FA_CUBE "    Render Target",
+					Text::Style{
+						{ 0.8f, 0.8f, 0.8f, 1.f },
+						20.f,
+						FontType::Black
+					},
+        			{ .size = { 0.f, 20.f } }
+        		),
 				new Separator(),
         	};
         	for (const auto& [mesh, material] : pairs)
@@ -40,13 +40,13 @@ namespace Coral::Reef {
 					}, {
 						new Element({},
 							{
-								new Text(Text::Piece(mesh->Name(), Text::Style{ { 0.8f, 0.8f, 0.8f, 1.f } })),
+								new Text(mesh->Name(), Text::Style{ { 0.8f, 0.8f, 0.8f, 1.f } }),
 							}
 						),
 						new Element(),
 						new Element({},
 							{
-								new Text(Text::Piece(material->Name(), Text::Style{ { 0.8f, 0.8f, 0.8f, 1.f } })),
+								new Text(material->Name(), Text::Style{ { 0.8f, 0.8f, 0.8f, 1.f } }),
 							}
 						),
 					}

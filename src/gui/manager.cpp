@@ -60,6 +60,13 @@ namespace Coral::Reef {
         : m_queue(createInfo.queue), m_renderPass(createInfo.renderPass), m_frameCount(createInfo.frameCount),
           m_sampleCount(createInfo.sampleCount), m_imageFormat(createInfo.imageFormat)
     {
+		static bool firstTime = true;
+		if (!firstTime) {
+			throw std::runtime_error("GUI Manager already created!");
+		}
+		firstTime = false;
+		Context::m_guiManager = this;
+
         InitDescriptorPool();
 
         IMGUI_CHECKVERSION();
@@ -69,6 +76,7 @@ namespace Coral::Reef {
 
 
         AddFont("assets/fonts/Roboto-Regular.ttf", 13, io.Fonts->GetGlyphRangesDefault());
+        // AddFont("assets/fonts/Roboto-Regular.ttf", 32, io.Fonts->GetGlyphRangesDefault());
 
         // for (int baseFontSize = 8; baseFontSize <= 32; baseFontSize++) {
         //     const auto fontSize = static_cast<float>(baseFontSize);
@@ -97,7 +105,7 @@ namespace Coral::Reef {
         ImGui_ImplVulkan_InitInfo init_info = {
             .Instance = Core::Runtime::Get().Instance(),
             .PhysicalDevice = *Core::Runtime::Get().PhysicalDevice(),
-            .Device = *Core::GlobalDevice(),
+            .Device = *Context::Device(),
             .QueueFamily = m_queue.Family().Index(),
             .Queue = *m_queue,
             .DescriptorPool = m_descriptorPool->Handle(),
@@ -132,14 +140,6 @@ namespace Coral::Reef {
     }
 
     void Manager::Update(const float deltaTime) {
-        for (auto& [fontType, size] : m_fontRequests) {
-            AddFont(GetFontPath(fontType), size, ImGui::GetIO().Fonts->GetGlyphRangesDefault());
-        }
-        if (!m_fontRequests.empty()) {
-            ImGui::GetIO().Fonts->Build();
-            ImGui_ImplVulkan_CreateFontsTexture();
-            m_fontRequests.clear();
-        }
         for (auto* layer : m_layers) {
             layer->OnGUIUpdate();
         }
@@ -308,26 +308,15 @@ namespace Coral::Reef {
         config.GlyphMinAdvanceX = iconFontSize;
         static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
         ImGui::GetIO().Fonts->AddFontFromFileTTF(iconPath.c_str(), iconFontSize, &config, icons_ranges);
-
-
     }
 
-    void Manager::RequestFont(FontType type, float size) {
-    	if (m_frameStarted) {
-    		m_fontRequests.emplace_back(type, size);
-    	} else {
-    		AddFont(GetFontPath(type), size, ImGui::GetIO().Fonts->GetGlyphRangesDefault());
-    	}
-    }
-
-    ImFont* Manager::GetFont(const FontType type, const float size) {
-        const std::string fontName = std::string(magic_enum::enum_name(type).data()) + "_" + std::to_string(size);
-        for (const auto font : ImGui::GetIO().Fonts->Fonts) {
-            if (strcmp(font->ConfigData->Name, fontName.c_str()) == 0) {
-                return font;
-            }
-        }
-        RequestFont(type, size);
-        return ImGui::GetIO().Fonts->Fonts.back();
-    }
+	ImFont* Manager::GetFont(const FontType type, const float size) {
+		const std::string fontName = std::string(magic_enum::enum_name(type).data()) + "_" + std::to_string(size);
+		for (const auto font : ImGui::GetIO().Fonts->Fonts) {
+			if (strcmp(font->ConfigData->Name, fontName.c_str()) == 0) {
+				return font;
+			}
+		}
+		return ImGui::GetIO().Fonts->Fonts.back();
+	}
 }

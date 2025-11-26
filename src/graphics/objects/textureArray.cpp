@@ -64,7 +64,7 @@ namespace Coral::Graphics {
         const auto mipLevels = builder.m_createMipmaps ? static_cast<uint32_t>(std::ceil(std::log2(std::max(builder.m_width, builder.m_height)))) + 1 : 1;
         m_image = Memory::Image::Builder()
             .Format(builder.m_format)
-            .Extent({ builder.m_width, builder.m_height, 1 })
+            .Extent({ builder.m_width, builder.m_height, 1u })
             .LayersCount(static_cast<uint32_t>(builder.m_images.size() + builder.m_data.size()))
             .MipLevels(mipLevels)
             .SampleCount(vk::SampleCountFlagBits::e1)

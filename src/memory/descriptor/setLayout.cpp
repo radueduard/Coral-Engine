@@ -7,6 +7,8 @@
 #include <iostream>
 #include <ranges>
 
+#include "context.h"
+
 namespace Coral::Memory::Descriptor {
     SetLayout::Builder & SetLayout::Builder::AddBinding(
         const uint32_t binding,
@@ -48,11 +50,11 @@ namespace Coral::Memory::Descriptor {
         const auto layoutCreateInfo = vk::DescriptorSetLayoutCreateInfo()
             .setBindings(bindings);
 
-        m_handle = Core::GlobalDevice()->createDescriptorSetLayout(layoutCreateInfo);
+        m_handle = Context::Device()->createDescriptorSetLayout(layoutCreateInfo);
         m_bindings = builder.m_bindings;
     }
 
     SetLayout::~SetLayout() {
-        Core::GlobalDevice()->destroyDescriptorSetLayout(m_handle);
+        Context::Device()->destroyDescriptorSetLayout(m_handle);
     }
 }

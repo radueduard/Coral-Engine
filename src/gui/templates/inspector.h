@@ -29,15 +29,21 @@ namespace Coral::Reef {
 			std::vector<Element*> children {
 				new LabeledRow(
 					new Text(
-						Text::Piece {"Name:", Text::Style { .fontSize = 15 }},
+						"Name:",
+						Text::Style {
+							.fontSize = 15,
+							.fontStyle = FontType::Bold,
+							.verticalAlignment = Text::VerticalAlignment::Middle,
+							.horizontalAlignment = Text::HorizontalAlignment::Left,
+						},
 						{
-							.size { Shrink, Grow },
+							.size { Grow, Grow },
 							.padding { 5.f, 5.f, 0.f, 0.f },
 						}
 					),
 					new InputField("Name", &data.Name(),
 						{
-							.size = { Grow, 23.f },
+							.size = { 300.f, 23.f },
 						}
 					),
 					{

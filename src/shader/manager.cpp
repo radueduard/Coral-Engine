@@ -10,15 +10,21 @@ namespace Coral::Shader {
 	Manager::Manager(std::filesystem::path defaultSearchPath) : m_defaultSearchPath(std::move(defaultSearchPath)) {
 		s_instance = this;
 		m_currentPath = m_defaultSearchPath;
+		m_shaderStorage = std::make_unique<Slang>();
 	}
 
-	void Manager::Update() {
-		for (auto& shader : m_shaders | std::views::values) {
-			const auto lastTime = last_write_time(shader->Path());
-			if (shader->LastWriteTime() != lastTime) {
-				shader->Reload();
-			} else {
-				shader->m_changed = false;
+	void Manager::Update() const {
+		for (const auto& shader : m_shaderStorage->modules | std::views::values) {
+			for (const auto& entryPoint : shader->entryPoints | std::views::values) {
+				entryPoint->Update();
+			}
+		}
+	}
+
+	void Manager::LateUpdate() const {
+		for (const auto& shader : m_shaderStorage->modules | std::views::values) {
+			for (const auto& entryPoint : shader->entryPoints | std::views::values) {
+				entryPoint->LateUpdate();
 			}
 		}
 	}

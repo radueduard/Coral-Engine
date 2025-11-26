@@ -24,10 +24,10 @@ namespace Coral::Graphics {
 			.setHeight(renderPass.Extent().y)
 			.setLayers(1);
 
-		m_handle = Core::GlobalDevice()->createFramebuffer(createInfo);
+		m_handle = Context::Device()->createFramebuffer(createInfo);
 	}
 
 	Framebuffer::~Framebuffer() {
-		Core::GlobalDevice()->destroyFramebuffer(m_handle);
+		Context::Device()->destroyFramebuffer(m_handle);
 	}
 }

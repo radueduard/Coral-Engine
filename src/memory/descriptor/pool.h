@@ -8,6 +8,8 @@
 
 #include <vector>
 
+#include "context.h"
+
 namespace Coral::Memory::Descriptor {
     class Pool {
     public:
@@ -38,7 +40,7 @@ namespace Coral::Memory::Descriptor {
         void Free(const vk::DescriptorSet &descriptorSet) const;
         void Free(const std::vector<vk::DescriptorSet> &descriptorSets) const;
 
-        void Reset() const { Core::GlobalDevice()->resetDescriptorPool(m_pool); }
+        void Reset() const { Context::Device()->resetDescriptorPool(m_pool); }
 
     private:
         vk::DescriptorPool m_pool;

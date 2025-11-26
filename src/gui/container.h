@@ -17,7 +17,7 @@ namespace Coral::Reef {
 		Container(nullptr_t) : m_layer(nullptr) {}
 
         explicit Container(T *layer) : m_layer(layer) {
-            GlobalManager().AddLayer(m_layer);
+            Context::GUIManager().AddLayer(m_layer);
             static_cast<Layer *>(m_layer)->OnGUIAttach();
         }
         ~Container() {
@@ -25,7 +25,7 @@ namespace Coral::Reef {
                 return;
             }
             static_cast<Layer *>(m_layer)->OnGUIDetach();
-            GlobalManager().RemoveLayer(m_layer);
+            Context::GUIManager().RemoveLayer(m_layer);
             delete m_layer;
         }
 
@@ -58,7 +58,7 @@ namespace Coral::Reef {
         		return;
         	}
         	static_cast<Layer *>(m_layer)->OnGUIDetach();
-        	GlobalManager().RemoveLayer(m_layer);
+        	Context::GUIManager().RemoveLayer(m_layer);
         	delete m_layer;
         	m_layer = nullptr;
         }

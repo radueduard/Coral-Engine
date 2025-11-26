@@ -5,23 +5,24 @@
 #pragma once
 
 #include "math/vector.h"
+#include "color/color.h"
 
 namespace Coral::ECS {
 	struct Light final : Component {
 		struct Point {
-			Color color = { 1.f, 1.f, 1.f, 1.f };
+			Color color = Colors::white;
 			Math::Vector3<f32> attenuation = { 1.f, 0.09f, 0.032f };
 			f32 range = 10.f;
 		};
 
 		struct Directional {
-			Color color = { 1.f, 1.f, 1.f, 1.f };
+			Color color = Colors::white;
 			f32 intensity = 1.f;
 			Math::Vector3<f32> direction = { 0.f, -1.f, 0.f };
 		};
 
 		struct Spot {
-			Color color = { 1.f, 1.f, 1.f, 1.f };
+			Color color = Colors::white;
 			f32 intensity = 1.f;
 			f32 range = 10.f;
 			f32 innerAngle = 30.f; // in degrees

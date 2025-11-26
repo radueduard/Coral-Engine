@@ -110,12 +110,12 @@ namespace Coral::Math {
 			// Get the AABB corners
 			Vector3<f32> corners[8];
 			corners[0] = aabb.Min();
-			corners[1] = Vector3 { aabb.Max().x, aabb.Min().y, aabb.Min().z };
-			corners[2] = Vector3 { aabb.Min().x, aabb.Max().y, aabb.Min().z };
-			corners[3] = Vector3 { aabb.Max().x, aabb.Max().y, aabb.Min().z };
-			corners[4] = Vector3 { aabb.Min().x, aabb.Min().y, aabb.Max().z };
-			corners[5] = Vector3 { aabb.Max().x, aabb.Min().y, aabb.Max().z };
-			corners[6] = Vector3 { aabb.Min().x, aabb.Max().y, aabb.Max().z };
+			corners[1] = Vector3f { aabb.Max().x, aabb.Min().y, aabb.Min().z };
+			corners[2] = Vector3f { aabb.Min().x, aabb.Max().y, aabb.Min().z };
+			corners[3] = Vector3f { aabb.Max().x, aabb.Max().y, aabb.Min().z };
+			corners[4] = Vector3f { aabb.Min().x, aabb.Min().y, aabb.Max().z };
+			corners[5] = Vector3f { aabb.Max().x, aabb.Min().y, aabb.Max().z };
+			corners[6] = Vector3f { aabb.Min().x, aabb.Max().y, aabb.Max().z };
 			corners[7] = aabb.Max();
 
 			// For each frustum plane

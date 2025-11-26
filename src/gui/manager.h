@@ -40,13 +40,9 @@ namespace Coral::Reef {
         Black
     };
 
-    inline Manager* g_manager = nullptr;
-    inline Manager& GlobalManager() { return *g_manager; }
-
     class Manager {
     public:
         void AddFont(std::string path, float size, const ImWchar* ranges);
-        void RequestFont(FontType type, float size);
         ImFont* GetFont(FontType type, float size);
 
         struct CreateInfo {
@@ -85,8 +81,6 @@ namespace Coral::Reef {
     	}
 
     private:
-        std::vector<std::pair<FontType, float>> m_fontRequests {};
-
     	bool m_frameStarted = false;
         const Core::Queue& m_queue;
         const Graphics::RenderPass& m_renderPass;

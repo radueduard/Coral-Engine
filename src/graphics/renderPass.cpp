@@ -22,7 +22,7 @@
 namespace Coral::Graphics {
     void RenderPass::Attachment::Resize(const Math::Vector2<f32>& extent) const {
         for (auto* image : images) {
-            image->Resize(Math::Vector3 { static_cast<u32>(extent.x), static_cast<u32>(extent.y), 1u });
+            image->Resize(Math::Vector3u { static_cast<u32>(extent.x), static_cast<u32>(extent.y), 1u });
         }
     }
 
@@ -79,7 +79,7 @@ namespace Coral::Graphics {
             .setSubpasses(subpassDescriptions)
             .setDependencies(m_dependencies);
 
-        m_handle = Core::GlobalDevice()->createRenderPass(renderPassInfo);
+        m_handle = Context::Device()->createRenderPass(renderPassInfo);
     }
 
     void RenderPass::CreateFrameBuffers() {
@@ -91,7 +91,7 @@ namespace Coral::Graphics {
 
     void RenderPass::DestroyRenderPass() {
         if (m_handle) {
-            Core::GlobalDevice()->destroyRenderPass(m_handle);
+            Context::Device()->destroyRenderPass(m_handle);
             m_handle = nullptr;
         }
     }
@@ -137,18 +137,12 @@ namespace Coral::Graphics {
 
     void RenderPass::Update(const float deltaTime) {
         for (auto& [builder, pipeline] : m_pipelines) {
-	        bool shouldRebuild = false;
-        	for (const auto shader : pipeline->Shaders() | std::views::values) {
-        		if (shader->Changed()) {
-        			shouldRebuild = true;
-        		}
-        	}
-
-        	if (shouldRebuild) {
-        		if (std::ranges::all_of(
-					pipeline->Shaders() | std::views::values,
-					[](const auto& shader) { return shader->Valid(); }))
-        		{
+        	bool needsUpdate = builder->ShouldRebuild();
+        	for (const auto& shader : pipeline->Shaders() | std::views::values) {
+				needsUpdate |= shader->HasReloaded();
+			}
+        	if (needsUpdate) {
+        		if (std::ranges::all_of(pipeline->Shaders() | std::views::values, [](const Shader::Shader* shader) { return true; })) {
         			builder->m_shaders = std::move(pipeline->m_shaders);
         			pipeline = builder->Build();
         		}
@@ -172,8 +166,8 @@ namespace Coral::Graphics {
             		entity = entity->Parent();
             	}
                 for (const auto [mesh, material] : renderTarget.Targets()) {
-                	pipeline->BindDescriptorSet(1, *commandBuffer, material->DescriptorSet());
-                    pipeline->PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, matrix);
+                	// pipeline->BindDescriptorSet(1, *commandBuffer, material->DescriptorSet());
+                    pipeline->PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eTessellationEvaluation, 0, matrix);
                     mesh->Bind(*commandBuffer);
                     mesh->Draw(*commandBuffer);
                 }
@@ -200,7 +194,7 @@ namespace Coral::Graphics {
             return false;
         }
 
-        Core::GlobalDevice()->waitIdle();
+        Context::Device()->waitIdle();
 
         DestroyFrameBuffers();
 

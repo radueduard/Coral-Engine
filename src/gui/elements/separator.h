@@ -19,10 +19,10 @@ namespace Coral::Reef {
 				.backgroundColor = { .8f, .8f, .8f, 1.f },
 			}) : Element(style), m_size(size)
 		{
-			if (m_axis == Axis::Horizontal) {
-				m_baseSize = { Grow, m_size + m_padding.top + m_padding.bottom };
+			if (m_style.direction == Axis::Horizontal) {
+				m_baseSize = { Grow, m_size + m_style.padding.top + m_style.padding.bottom };
 			} else {
-				m_baseSize = { m_size + m_padding.left + m_padding.right, Grow };
+				m_baseSize = { m_size + m_style.padding.left + m_style.padding.right, Grow };
 			}
 		}
 		~Separator() override = default;

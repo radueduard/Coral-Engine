@@ -37,7 +37,7 @@ namespace Coral::Graphics {
         m_size = static_cast<uint32_t>(width);
         m_image = Memory::Image::Builder()
             .Format(vk::Format::eR8G8B8A8Srgb)
-            .Extent({ m_size, m_size, 1 })
+            .Extent({ m_size, m_size, 1u })
             .UsageFlags(vk::ImageUsageFlagBits::eSampled)
     		.UsageFlags(vk::ImageUsageFlagBits::eTransferDst)
             .MipLevels(1)

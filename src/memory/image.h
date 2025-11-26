@@ -77,7 +77,7 @@ namespace Coral::Memory {
 
         	String m_name;
             vk::Format m_format = vk::Format::eUndefined;
-            Math::Vector3<u32> m_extent = { 1, 1, 1 };
+            Math::Vector3<u32> m_extent = { 1u, 1u, 1u };
         	UnorderedSet<vk::ImageUsageFlagBits> m_usageFlagsSet = {};
             vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
             u32 m_mipLevels = 1;

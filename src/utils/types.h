@@ -10,10 +10,23 @@
 #include <unordered_set>
 
 #include <boost/uuid/uuid.hpp>
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 #include <imgui.h>
+
+namespace spirv_cross {
+	class SPIRType;
+}
+
+namespace vk {
+	enum class Format;
+}
 
 namespace Coral {
     using UUID = boost::uuids::uuid;
+    using UUIDGenerator = boost::uuids::random_generator;
+
     using String = std::string;
     using Path = std::filesystem::path;
     using Time = std::chrono::high_resolution_clock::time_point;
@@ -75,4 +88,8 @@ namespace Coral {
             throw std::invalid_argument("Unsupported type for ImGuiDataType");
         }
     }
+
+	vk::Format FormatFromString(const String& format);
+	vk::Format SPIRTypeToVkFormatConverter(const spirv_cross::SPIRType& type);
+
 }

@@ -4,141 +4,163 @@
 
 #pragma once
 
+#include <utility>
 #include <vector>
 
 #include "element.h"
 #include "imgui.h"
 #include "gui/manager.h"
+#include <color/color.h>
 
 namespace Coral::Reef {
-	class Text final : public Element {
+	class Text : public Element {
 	public:
+		enum class Overflow {
+			Clip,
+			Fade,
+			Ellipsis,
+		};
+
+		enum class VerticalAlignment
+		{
+			Top,
+			Middle,
+			Bottom,
+		};
+
+		enum class HorizontalAlignment
+		{
+			Left,
+			Center,
+			Right,
+		};
+
 		struct Style {
-			Color color = { 1.f, 1.f, 1.f, 1.f };
+			Color color = Colors::white;
 			f32 fontSize = 13.f;
-			FontType fontType = FontType::Regular;
-			Math::Vector2<f32> minSize = { 0.f, 0.f };
+			FontType fontStyle = FontType::Regular;
+			String fontFamily = "Roboto";
+			Overflow overflow = Overflow::Clip;
+			u32 maxLines = 0;
+			Axis direction = Axis::Horizontal;
+			VerticalAlignment verticalAlignment = VerticalAlignment::Middle;
+			HorizontalAlignment horizontalAlignment = HorizontalAlignment::Left;
 		};
 
-		struct Piece {
-			String text;
-			Style style;
-
-			explicit Piece(String text, Style style = Style())
-				: text(std::move(text)), style(std::move(style)) {}
-		};
-
-		class Builder {
-			friend class Text;
-		public:
-			explicit Builder(Reef::Style style = Reef::Style()) : m_style(std::move(style)) {
-				m_text.emplace_back();
-			}
-
-			Builder& Add(String text, Text::Style style = Style()) {
-				m_text.back().emplace_back(std::move(text), std::move(style));
-				return *this;
-			}
-
-			Builder& NewLine() {
-				m_text.emplace_back();
-				return *this;
-			}
-
-			[[nodiscard]]
-			Text* Build() {
-				return new Text(this);
-			}
-
-		private:
-			Reef::Style m_style {};
-			std::vector<std::vector<Piece>> m_text {};
-		};
-
-		explicit Text(Builder* builder) : Element(builder->m_style) {
-			m_text = std::move(builder->m_text);
-		}
-
-		explicit Text(const Piece& piece, const Reef::Style& style = Reef::Style())
-			: Element(style) {
-			m_text.emplace_back();
-			m_text.back().emplace_back(piece);
-		}
-
-		explicit Text(const String& text, const Reef::Style& style = Reef::Style())
-			: Element(style) {
-			m_text.emplace_back();
-			m_text.back().emplace_back(text, Style {});
-		}
+		explicit Text(String text, Text::Style textStyle = {}, const Reef::Style& elementStyle = {
+			.backgroundColor = Colors::transparent,
+		}) : Element(elementStyle, {}), m_text(std::move(text)), m_textStyle(std::move(textStyle)) {}
 
 		~Text() override = default;
+
 		bool Render() override {
 			const bool shouldReset = Element::Render();
 
-			const f32 yOffset = (m_currentSize.height - m_textBlockSize.height) / 2.f;
-			Math::Vector2<f32> position = m_position + Math::Vector2 { m_padding.left, m_padding.top };
-			for (const auto& line : m_text) {
-				const f32 lineHeight = std::ranges::fold_left(line, 0.f, [](const f32 acc, const Piece& piece) {
-					const auto textSize = GlobalManager().GetFont(piece.style.fontType, piece.style.fontSize)
-						->CalcTextSizeA(piece.style.fontSize, FLT_MAX, 0.f, piece.text.c_str(), nullptr, nullptr);
-					return std::max(acc, textSize.y);
-				});
-				for (const auto& [text, style] : line) {
-					ImGui::PushFont(GlobalManager().GetFont(style.fontType, style.fontSize));
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(style.color.r, style.color.g, style.color.b, style.color.a));
-
-					const auto textSize = ImGui::CalcTextSize(text.c_str());
-					auto usedPosition = position + Math::Vector2 { 0.f, lineHeight - textSize.y } + Math::Vector2 { 0.f, yOffset };
-					ImGui::SetCursorScreenPos(ImVec2(usedPosition));
-					ImGui::Text("%s", text.c_str());
-
-					position.x += textSize.x + m_spacing;
-
-					ImGui::PopStyleColor();
-					ImGui::PopFont();
-				}
-				position.y += lineHeight + m_spacing;
-				position.x = m_position.x + m_padding.left;
+			Math::Vector2f position;
+			if (m_textStyle.horizontalAlignment == HorizontalAlignment::Left) {
+				position.x = m_position.x;
+			} else if (m_textStyle.horizontalAlignment == HorizontalAlignment::Center) {
+				position.x = m_position.x - (m_textSize.x / 2.f) + (m_currentSize.width / 2.f);
+			} else {
+				position.x = m_position.x - m_textSize.x + m_currentSize.width;
 			}
+
+			if (m_textStyle.verticalAlignment == VerticalAlignment::Top) {
+				position.y = m_position.y;
+			} else if (m_textStyle.verticalAlignment == VerticalAlignment::Middle) {
+				position.y = m_position.y - (m_textSize.y / 2.f) + (m_currentSize.height / 2.f);
+			} else {
+				position.y = m_position.y - m_textSize.y + m_currentSize.height;
+			}
+
+			const ImFont* font = Context::GUIManager().GetFont(m_textStyle.fontStyle, m_textStyle.fontSize);
+			ImGui::GetWindowDrawList()->AddText(
+				font,
+				m_textStyle.fontSize,
+				{ position.x, position.y },
+				ImGui::ColorConvertFloat4ToU32(static_cast<ImVec4>(m_textStyle.color)),
+				m_text.c_str(),
+				nullptr,
+				m_currentSize.width);
 
 			return shouldReset;
 		}
 
-		void RecreateRequired() override {
-			m_textBlockSize = CalcSize();
-			if (m_baseSize.width == Shrink) {
-				m_baseSize.width = std::max(m_baseSize.width, m_textBlockSize.width);
+		bool RecreateRequired() override {
+			const auto newSize = CalcSize();
+			if (newSize == m_textSize) {
+				return false;
 			}
-			if (m_baseSize.height == Shrink) {
-				m_baseSize.height = std::max(m_baseSize.height, m_textBlockSize.height);
-			}
-			Element::RecreateRequired();
+			m_textSize = newSize;
+			m_minSize = m_textSize;
+			return true;
 		}
-	private:
+	protected:
+		[[nodiscard]]
 		Math::Vector2<f32> CalcSize() const {
-			Math::Vector2 size = { 0.f, 0.f };
-			for (const auto& line : m_text) {
-				f32 lineHeight = 0.f;
-				for (const auto& piece : line) {
-					const auto font = GlobalManager().GetFont(piece.style.fontType, piece.style.fontSize);
-					auto textSize = font->CalcTextSizeA(piece.style.fontSize, FLT_MAX, 0.f, piece.text.c_str(), nullptr, nullptr);
-					lineHeight = std::max(lineHeight, textSize.y);
-					size.x += textSize.x;
-				}
-				if (!line.empty()) {
-					size.x += m_spacing * static_cast<f32>(line.size() - 1);
-				}
-				size.y += lineHeight;
-			}
-			if (!m_text.empty()) {
-				size.y += m_spacing * static_cast<f32>(m_text.size() - 1);
-			}
-			size.x += m_padding.left + m_padding.right;
-			size.y += m_padding.top + m_padding.bottom;
-			return size;
+			const auto* font = Context::GUIManager().GetFont(m_textStyle.fontStyle, m_textStyle.fontSize);
+			const auto size = font->CalcTextSizeA(
+				m_textStyle.fontSize,
+				FLT_MAX,
+				m_currentSize.width,
+				m_text.c_str(),
+				nullptr);
+			return { size.x, size.y };
 		}
 
-		std::vector<std::vector<Piece>> m_text {};
-		Math::Vector2<f32> m_textBlockSize;
+		String m_text;
+		Text::Style m_textStyle;
+		Math::Vector2f m_textSize;
+	};
+
+	template<typename... T>
+	class DynamicText final : public Text {
+	public:
+		explicit DynamicText(String format, std::function<T()>... funcs)
+			: Text(""), m_format(std::move(format)), m_args(std::make_tuple(std::move(funcs)...))
+		{
+			m_evaluatedArgs = std::apply([&](const std::function<T()>&... fs) {
+				return std::make_tuple(fs()...);
+			}, m_args);
+
+			m_text = std::apply(
+				[&](const T&... evaluatedArgs) {
+					return std::vformat(m_format, std::make_format_args(evaluatedArgs...));
+				}, m_evaluatedArgs);
+
+		}
+
+		DynamicText* setTextStyle(const Text::Style& style) {
+			m_textStyle = style;
+			return this;
+		}
+
+		DynamicText* setBoxStyle(const Reef::Style& style) {
+			m_style = style;
+			return *this;
+		}
+
+		bool RecreateRequired() override {
+			auto args = std::apply([&](const std::function<T()>&... fs) {
+				return std::make_tuple(fs()...);
+			}, m_args);
+
+			if (args == m_evaluatedArgs) {
+				return false;
+			}
+
+			m_text = std::apply(
+				[&](const T&... evaluatedArgs) {
+					return std::vformat(m_format, std::make_format_args(evaluatedArgs...));
+				},
+				args);
+
+			return Text::RecreateRequired();
+		}
+
+	private:
+		String m_format;
+		std::tuple<std::function<T()>...> m_args;
+		std::tuple<T...> m_evaluatedArgs;
 	};
 }

@@ -4,15 +4,16 @@
 
 #include "material.h"
 
+#include "context.h"
 #include "core/scheduler.h"
-#include "memory/descriptor/set.h"
-#include "memory/gpuStructs.h"
 #include "ecs/entity.h"
 #include "gui/elements/popup.h"
+#include "memory/descriptor/set.h"
+#include "memory/gpuStructs.h"
 
 namespace Coral::Graphics {
     Material::Material(const Builder &builder) : m_uuid(builder.m_uuid), m_name(builder.m_name), m_textures(builder.m_textures) {
-		static auto descriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
+		auto descriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
 			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)				// parameters
 			.AddBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		// albedo texture
     		.AddBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		// normal texture
@@ -54,7 +55,7 @@ namespace Coral::Graphics {
 
     	m_parametersBuffer->CopyBuffer(stagingBuffer);
 
-    	m_descriptorSet = Memory::Descriptor::Set::Builder(Core::GlobalScheduler().DescriptorPool(), *descriptorSetLayout)
+    	m_descriptorSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *descriptorSetLayout)
     		.WriteBuffer(0, m_parametersBuffer->DescriptorInfo())
 			.WriteImage(1, m_textures.at(PBR::Usage::Albedo)->DescriptorInfo())
     		.WriteImage(2, m_textures.at(PBR::Usage::Normal)->DescriptorInfo())

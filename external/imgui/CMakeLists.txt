@@ -1,6 +1,3 @@
-find_package(vulkan REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
-
 file(GLOB_RECURSE IMGUI_SOURCES Source/*.cpp)
 file(GLOB_RECURSE IMGUI_HEADERS Include/*.h)
 

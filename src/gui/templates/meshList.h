@@ -32,15 +32,16 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(Text::Piece(mesh->Name(),
-												 {
-													 .fontSize = 16.f,
-													 .fontType = FontType::Regular,
-												 }),
-									 {
-										 .size = {Grow, Shrink},
-										 .padding = {5.f, 0.f, 0.f, 0.f},
-									 }),
+							new Text(mesh->Name(),
+								{
+									.fontSize = 16.f,
+									.fontStyle = FontType::Regular,
+								},
+								{
+									.size = {Grow, Shrink},
+									.padding = {5.f, 0.f, 0.f, 0.f},
+								}
+							),
 						}));
 				}
 			}
@@ -51,7 +52,6 @@ namespace Coral::Reef {
 					.spacing = 10.f,
 					.backgroundColor = {0.1f, 0.1f, 0.1f, 1.f},
 					.direction = Axis::Vertical,
-					.scrollable = true,
 				},
 				elements);
 		}
@@ -78,15 +78,16 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(Text::Piece(material->Name(),
-												 {
-													 .fontSize = 16.f,
-													 .fontType = FontType::Regular,
-												 }),
-									 {
-										 .size = {Grow, Shrink},
-										 .padding = {5.f, 0.f, 0.f, 0.f},
-									 }),
+							new Text(material->Name(),
+								 {
+									 .fontSize = 16.f,
+									 .fontStyle = FontType::Regular,
+								 },
+								 {
+									 .size = {Grow, Shrink},
+									 .padding = {5.f, 0.f, 0.f, 0.f},
+								 }
+							),
 						}));
 				}
 			}
@@ -97,7 +98,6 @@ namespace Coral::Reef {
 					.spacing = 10.f,
 					.backgroundColor = {0.1f, 0.1f, 0.1f, 1.f},
 					.direction = Axis::Vertical,
-					.scrollable = true,
 				},
 				elements);
 		}
@@ -126,16 +126,17 @@ namespace Coral::Reef {
 									  .backgroundColor = {0.f, 0.f, 0.f, 1.f},
 								  }
 							),
-							new Text(Text::Piece(
+							new Text(
 								texture->Name(),
 								{
-									 .fontSize = 16.f,
-									 .fontType = FontType::Regular,
-								 }),
-								 {
-									 .size = {Grow, Shrink},
-									 .padding = {5.f, 0.f, 0.f, 0.f},
-								 }),
+									.fontSize = 16.f,
+									.fontStyle = FontType::Regular,
+								},
+								{
+									.size = {Grow, Shrink},
+									.padding = {5.f, 0.f, 0.f, 0.f},
+								}
+							),
 						}));
 				}
 			}
@@ -146,7 +147,6 @@ namespace Coral::Reef {
 					.spacing = 10.f,
 					.backgroundColor = {0.1f, 0.1f, 0.1f, 1.f},
 					.direction = Axis::Vertical,
-					.scrollable = true,
 				},
 				elements);
 		}
@@ -177,12 +177,12 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(Text::Piece(
+							new Text(
 								prefab->Name(),
 								{
 									 .fontSize = 16.f,
-									 .fontType = FontType::Regular,
-								 }),
+									 .fontStyle = FontType::Regular,
+								 },
 								 {
 									 .size = {Grow, Shrink},
 									 .padding = {5.f, 0.f, 0.f, 0.f},

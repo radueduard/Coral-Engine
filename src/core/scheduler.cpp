@@ -4,31 +4,45 @@
 
 #include "scheduler.h"
 
+#include "context.h"
+#include "ecs/entity.h"
 #include "graphics/renderPass.h"
+#include "gui/elements/popup.h"
 #include "memory/descriptor/pool.h"
 #include "project/renderGraph.h"
-#include "ecs/entity.h"
-#include "gui/elements/popup.h"
 
 
 namespace Coral::Core {
-    Frame::Frame(const uint32_t imageIndex)
-        : m_imageIndex(imageIndex) {
-        m_imageAvailable = GlobalDevice()->createSemaphore({});
-        m_inFlightFence = GlobalDevice()->createFence(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
-        m_readyToPresent = GlobalDevice()->createSemaphore({});
-    }
+	Frame::Frame(const uint32_t imageIndex, const Core::Queue& queue)
+	 : m_imageIndex(imageIndex), m_queue(queue)
+	{
+		m_imageAvailable = Context::Device()->createSemaphore({});
+		m_readyToPresent = Context::Device()->createSemaphore({});
+		// m_inFlightFence = Context::Device()->createFence(vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled));
+		// m_queue = Context::Device().RequestQueue(vk::QueueFlagBits::eGraphics);
+		// m_finalImageTransferCommandBuffer = Context::Device().RequestCommandBuffer(*m_queue);
 
-    Frame::~Frame() {
-        GlobalDevice()->destroySemaphore(m_imageAvailable);
-        GlobalDevice()->destroySemaphore(m_readyToPresent);
-        GlobalDevice()->destroyFence(m_inFlightFence);
-    }
+		m_finalImageTransferCommandBuffer = Context::Device().RequestCommandBuffer(m_queue);
+
+	}
+
+	Frame::~Frame() {
+		Context::Device()->destroySemaphore(m_imageAvailable);
+		Context::Device()->destroySemaphore(m_readyToPresent);
+		// Context::Device()->destroyFence(m_inFlightFence);
+	}
 
     Scheduler::Scheduler(const CreateInfo& createInfo)
         : m_imageCount(createInfo.imageCount)
     {
-        g_scheduler = this;
+		static bool firstTime = true;
+		if (!firstTime) {
+			throw std::runtime_error("Scheduler already created!");
+		}
+		firstTime = false;
+        Context::m_scheduler = this;
+
+		m_queue = Context::Device().RequestQueue(vk::QueueFlagBits::eGraphics);
         CreateFrames();
 
         const auto swapChainCreateInfo = Graphics::SwapChain::CreateInfo {
@@ -49,7 +63,7 @@ namespace Coral::Core {
     }
 
     Scheduler::~Scheduler() {
-        GlobalDevice()->waitIdle();
+        Context::Device()->waitIdle();
     }
 
     void Scheduler::CreateDescriptorPool() {
@@ -66,40 +80,39 @@ namespace Coral::Core {
     void Scheduler::CreateFrames() {
         m_frames.reserve(m_imageCount);
         for (uint32_t i = 0; i < m_imageCount; i++) {
-            m_frames.emplace_back(std::make_unique<Frame>(i));
+            m_frames.emplace_back(std::make_unique<Frame>(i, *m_queue));
         }
     }
 
     void Scheduler::Update(const float deltaTime) {
         m_renderGraph->Update(deltaTime);
-
         // m_renderGraph->Resize(m_window.Extent());
     }
 
     void Scheduler::Draw() {
-        const auto& currentFrame = CurrentFrame();
+        const auto& frame = CurrentFrame();
 
-        const auto& fence = currentFrame.InFlightFence();
-        if (const auto result = Core::GlobalDevice()->waitForFences(1, &fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess) {
+        const auto& fence = frame.InFlightFence();
+        if (const auto result = Context::Device()->waitForFences(1, &fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess) {
             throw std::runtime_error("Failed to wait fence: " + vk::to_string(result));
         }
 
-        if (const auto result = Core::GlobalDevice()->resetFences(1, &fence); result != vk::Result::eSuccess) {
+        if (const auto result = Context::Device()->resetFences(1, &fence); result != vk::Result::eSuccess) {
             throw std::runtime_error("Failed to reset fence: " + vk::to_string(result));
         }
 
-        if (const auto result = m_swapChain->Acquire(currentFrame);
+        if (const auto result = m_swapChain->Acquire(frame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_swapChain->Resize(Window::Get().Extent());
             m_renderGraph->Resize(Window::Get().Extent());
             return;
         }
 
-    	m_renderGraph->Execute(currentFrame);
+    	m_renderGraph->Execute(frame);
 
-        GlobalDevice().RunSingleTimeCommand([&](const CommandBuffer& commandBuffer) {
-            const Memory::Image& outputImage = m_renderGraph->OutputImage(currentFrame.ImageIndex());
-            const Memory::Image& swapChainImage = *m_swapChain->SwapChainImages()[currentFrame.ImageIndex()];
+        frame.FinalImageTransferCommandBuffer().Run([&](const CommandBuffer& commandBuffer) {
+            const Memory::Image& outputImage = m_renderGraph->OutputImage(frame.ImageIndex());
+            const Memory::Image& swapChainImage = *m_swapChain->SwapChainImages()[frame.ImageIndex()];
 
             vk::ImageMemoryBarrier outputImageBarrier = vk::ImageMemoryBarrier()
                 .setImage(*outputImage)
@@ -193,17 +206,14 @@ namespace Coral::Core {
                 nullptr,
                 { outputImageBarrier }
             );
-        },
-        vk::QueueFlagBits::eGraphics,
-        currentFrame.InFlightFence(),
-        m_renderGraph->RenderFinished(currentFrame.ImageIndex()),
-        currentFrame.ReadyToPresent());
+        }, frame.ReadyToPresent());
 
-        if (const auto result = m_swapChain->Present(currentFrame);
+        if (const auto result = m_swapChain->Present(frame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_swapChain->Resize(Window::Get().Extent());
             m_renderGraph->Resize(Window::Get().Extent());
-            return;
         }
+
+		AdvanceFrame();
     }
 }

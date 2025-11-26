@@ -21,7 +21,7 @@ namespace Coral::Reef {
 			const Text::Style labelStyle {
 				.color = { 0.8f, 0.8f, 0.8f, 1.f },
 				.fontSize = 15.f,
-				.fontType = FontType::Bold,
+				.fontStyle = FontType::Bold,
 			};
 
 			return new Element(
@@ -34,42 +34,42 @@ namespace Coral::Reef {
 				},
 				{
 					new LabeledRow(
-						new Text(Text::Piece("Name:", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Name:", labelStyle, { .size = { Shrink, Grow } }),
 						new InputField("name", &data.m_name, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Format", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Format", labelStyle, { .size = { Shrink, Grow } }),
 						new DropDown("format", &data.m_format, {}, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Extent", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Extent", labelStyle, { .size = { Shrink, Grow } }),
 						new Drag<u32, 3>("extent", &data.m_extent.x, 1, 1, 8192, &m_changed, std::nullopt, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Mip Level Count", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Mip Level Count", labelStyle, { .size = { Shrink, Grow } }),
 						new Slider<u32, 1>("mipLevels", &data.m_mipLevels, 1, 14, 1, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Layer Count", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Layer Count", labelStyle, { .size = { Shrink, Grow } }),
 						new Slider<u32, 1>("layer count", &data.m_layersCount, 1, 32, 1, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Sample Count", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Sample Count", labelStyle, { .size = { Shrink, Grow } }),
 						new DropDown("sample count", &data.m_sampleCount, {}, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Layout", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Layout", labelStyle, { .size = { Shrink, Grow } }),
 						new DropDown("layout", &data.m_layout, {}, { .size = { 250.f, Grow } }),
 						{ .size = { Grow, 23.f }}
 					),
 					new LabeledRow(
-						new Text(Text::Piece("Usage Flags", labelStyle), { .size = { Shrink, Grow } }),
+						new Text("Usage Flags", labelStyle, { .size = { Shrink, Grow } }),
 						new SetSelection(&data.m_usageFlagsSet, {
 							.size = { 250.f, Grow },
 							.padding = { 10.f, 10.f, 10.f, 10.f },

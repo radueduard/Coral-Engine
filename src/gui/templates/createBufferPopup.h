@@ -29,13 +29,11 @@ namespace Coral::Reef {
 								{
 									new Reef::Element(),
 									new Reef::Text(
-										Reef::Text::Piece(
-											"Create Image",
-											{
+										"Create Image",
+										{
 											.fontSize = 20.f,
-											.fontType = Reef::FontType::Black,
-											}
-										),
+											.fontStyle = Reef::FontType::Black,
+										},
 										{
 											.size = {Reef::Shrink, 20.f},
 										}
@@ -59,13 +57,14 @@ namespace Coral::Reef {
 											.cornerRadius = 5.f,
 										},
 										[this]() -> bool {
-											Reef::GlobalManager().GetPopup("##CreateImage")->Close();
+											Context::GUIManager().GetPopup("##CreateImage")->Close();
 											imageBuilder = Memory::Image::Builder();
 											return true;
 										},
 										{
 											new Reef::Text(
-												Reef::Text::Piece("Cancel"),
+												"Cancel",
+												{},
 												{
 													.size = {Reef::Shrink, Reef::Grow}
 												}
@@ -79,14 +78,13 @@ namespace Coral::Reef {
 											.cornerRadius = 5.f,
 										},
 										[this]() -> bool {
-											Reef::GlobalManager().GetPopup("##CreateImage")->Close();
+											Context::GUIManager().GetPopup("##CreateImage")->Close();
 											auto image = imageBuilder.Build();
 											imageBuilder = Memory::Image::Builder();
 											return true;
 										},
 										{
-											new Reef::Text(
-												Reef::Text::Piece("Submit"),
+											new Reef::Text("Submit", {},
 												{
 													.size = {Reef::Shrink, Reef::Grow}
 												}
@@ -126,13 +124,11 @@ namespace Coral::Reef {
 								{
 									new Reef::Element(),
 									new Reef::Text(
-										Reef::Text::Piece(
-											"Create Buffer",
-											{
-												.fontSize = 20.f,
-												.fontType = Reef::FontType::Black,
-											}
-										),
+										"Create Buffer",
+										{
+											.fontSize = 20.f,
+											.fontStyle = Reef::FontType::Black,
+										},
 										{
 											.size = {Reef::Shrink, 20.f},
 										}
@@ -156,13 +152,13 @@ namespace Coral::Reef {
 											.cornerRadius = 5.f,
 										},
 										[this]() -> bool {
-											Reef::GlobalManager().GetPopup("##CreateBuffer")->Close();
+											Context::GUIManager().GetPopup("##CreateBuffer")->Close();
 											bufferBuilder = Memory::Buffer::Builder();
 											return true;
 										},
 										{
 											new Reef::Text(
-												Reef::Text::Piece("Cancel"),
+												"Cancel", {},
 												{
 													.size = {Reef::Shrink, Reef::Grow}
 												}
@@ -176,14 +172,14 @@ namespace Coral::Reef {
 											.cornerRadius = 5.f,
 										},
 										[this]() -> bool {
-											Reef::GlobalManager().GetPopup("##CreateBuffer")->Close();
+											Context::GUIManager().GetPopup("##CreateBuffer")->Close();
 											auto buffer = bufferBuilder.Build();
 											bufferBuilder = Memory::Buffer::Builder();
 											return true;
 										},
 										{
 											new Reef::Text(
-												Reef::Text::Piece("Submit"),
+												"Submit", {},
 												{
 													.size = {Reef::Shrink, Reef::Grow}
 												}
