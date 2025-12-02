@@ -32,6 +32,7 @@ namespace Coral::Reef {
 					.cornerRadius = 10.f,
 					.backgroundColor = { .1f, .1f, .1f, 1.f },
 					.direction = Axis::Vertical,
+					.debug = true,
 				},
 				{
 					new Text(" " ICON_FA_PAINTBRUSH "   Graphics Pipeline",
@@ -123,7 +124,8 @@ namespace Coral::Reef {
 						new Text("Cull Mode", labelStyle),
 						new FlagSetSelection(
 							data.m_rasterizer.cullMode,
-							{ .size = { 250.f, Grow } })
+							{ .size = { 250.f, Grow } }),
+							// { .size = { Grow, Grow } }
 					},
 					new LabeledRow {
 						new Text("Front Face", labelStyle),
@@ -205,6 +207,33 @@ namespace Coral::Reef {
 								data.m_inputAssembly.primitiveRestartEnable = newValue;
 							},
 							{ .size = { 23.f, 23.f } }
+						),
+						{ .size = { Grow, 23.f } }
+					},
+					new Separator(),
+					new Text(
+						"Tessellation State",
+						Text::Style{
+							.color = Colors::grey[300],
+							.fontSize = 14.f,
+							.fontStyle = FontType::Black,
+							.verticalAlignment = Text::VerticalAlignment::Middle,
+							.horizontalAlignment = Text::HorizontalAlignment::Center,
+						},
+						{ .size = { 0.f, 20.f } }
+					),
+					new Separator(),
+					new LabeledRow {
+						new Text("Patch Control Points", labelStyle),
+						new Drag<u32, 1>(
+							"Patch Control Points",
+							&data.m_tessellation.patchControlPoints,
+							1.f,
+							1,
+							32,
+							nullptr,
+							{},
+							{ .size = { 250.f, Grow } }
 						),
 						{ .size = { Grow, 23.f } }
 					},

@@ -37,12 +37,12 @@ namespace Coral::Reef {
 
 		struct Style {
 			Color color = Colors::white;
-			f32 fontSize = 13.f;
-			FontType fontStyle = FontType::Regular;
-			String fontFamily = "Roboto";
-			Overflow overflow = Overflow::Clip;
-			u32 maxLines = 0;
-			Axis direction = Axis::Horizontal;
+			f32 fontSize;
+			FontType fontStyle;
+			String fontFamily;
+			Overflow overflow;
+			u32 maxLines;
+			Axis direction;
 			VerticalAlignment verticalAlignment = VerticalAlignment::Middle;
 			HorizontalAlignment horizontalAlignment = HorizontalAlignment::Left;
 		};
@@ -53,24 +53,35 @@ namespace Coral::Reef {
 
 		~Text() override = default;
 
-		bool Render() override {
-			const bool shouldReset = Element::Render();
+	    void Update() override
+	    {
+	        Element::Update();
+	        const auto newSize = CalcSize();
+	        if (newSize == m_textSize) {
+	            m_shouldResize = false;
+	        } else {
+	            m_textSize = newSize;
+	            m_minSize = m_textSize;
+	            m_shouldResize = true;
+	        }
+	    }
 
+		void Subrender() override {
 			Math::Vector2f position;
 			if (m_textStyle.horizontalAlignment == HorizontalAlignment::Left) {
-				position.x = m_position.x;
+				position.x = m_actualRenderedPosition.x;
 			} else if (m_textStyle.horizontalAlignment == HorizontalAlignment::Center) {
-				position.x = m_position.x - (m_textSize.x / 2.f) + (m_currentSize.width / 2.f);
+				position.x = m_actualRenderedPosition.x - (m_textSize.x / 2.f) + (m_currentSize.width / 2.f);
 			} else {
-				position.x = m_position.x - m_textSize.x + m_currentSize.width;
+				position.x = m_actualRenderedPosition.x - m_textSize.x + m_currentSize.width;
 			}
 
 			if (m_textStyle.verticalAlignment == VerticalAlignment::Top) {
-				position.y = m_position.y;
+				position.y = m_actualRenderedPosition.y;
 			} else if (m_textStyle.verticalAlignment == VerticalAlignment::Middle) {
-				position.y = m_position.y - (m_textSize.y / 2.f) + (m_currentSize.height / 2.f);
+				position.y = m_actualRenderedPosition.y - (m_textSize.y / 2.f) + (m_currentSize.height / 2.f);
 			} else {
-				position.y = m_position.y - m_textSize.y + m_currentSize.height;
+				position.y = m_actualRenderedPosition.y - m_textSize.y + m_currentSize.height;
 			}
 
 			const ImFont* font = Context::GUIManager().GetFont(m_textStyle.fontStyle, m_textStyle.fontSize);
@@ -82,19 +93,8 @@ namespace Coral::Reef {
 				m_text.c_str(),
 				nullptr,
 				m_currentSize.width);
-
-			return shouldReset;
 		}
 
-		bool RecreateRequired() override {
-			const auto newSize = CalcSize();
-			if (newSize == m_textSize) {
-				return false;
-			}
-			m_textSize = newSize;
-			m_minSize = m_textSize;
-			return true;
-		}
 	protected:
 		[[nodiscard]]
 		Math::Vector2<f32> CalcSize() const {
@@ -140,22 +140,25 @@ namespace Coral::Reef {
 			return *this;
 		}
 
-		bool RecreateRequired() override {
-			auto args = std::apply([&](const std::function<T()>&... fs) {
-				return std::make_tuple(fs()...);
-			}, m_args);
+	    void Update() override
+		{
+		    auto args = std::apply([&](const std::function<T()>&... fs) {
+                return std::make_tuple(fs()...);
+            }, m_args);
 
-			if (args == m_evaluatedArgs) {
-				return false;
-			}
+		    if (args == m_evaluatedArgs) {
+		        m_shouldResize = false;
+                return;
+		    }
 
-			m_text = std::apply(
-				[&](const T&... evaluatedArgs) {
-					return std::vformat(m_format, std::make_format_args(evaluatedArgs...));
-				},
-				args);
+		    m_text = std::apply(
+                [&](const T&... evaluatedArgs) {
+                    return std::vformat(m_format, std::make_format_args(evaluatedArgs...));
+                },
+                args);
 
-			return Text::RecreateRequired();
+		    m_evaluatedArgs = args;
+		    Text::Update();
 		}
 
 	private:

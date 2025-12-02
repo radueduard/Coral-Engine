@@ -32,16 +32,7 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(mesh->Name(),
-								{
-									.fontSize = 16.f,
-									.fontStyle = FontType::Regular,
-								},
-								{
-									.size = {Grow, Shrink},
-									.padding = {5.f, 0.f, 0.f, 0.f},
-								}
-							),
+							new Text(mesh->Name()),
 						}));
 				}
 			}
@@ -78,16 +69,7 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(material->Name(),
-								 {
-									 .fontSize = 16.f,
-									 .fontStyle = FontType::Regular,
-								 },
-								 {
-									 .size = {Grow, Shrink},
-									 .padding = {5.f, 0.f, 0.f, 0.f},
-								 }
-							),
+							new Text(material->Name()),
 						}));
 				}
 			}
@@ -126,17 +108,7 @@ namespace Coral::Reef {
 									  .backgroundColor = {0.f, 0.f, 0.f, 1.f},
 								  }
 							),
-							new Text(
-								texture->Name(),
-								{
-									.fontSize = 16.f,
-									.fontStyle = FontType::Regular,
-								},
-								{
-									.size = {Grow, Shrink},
-									.padding = {5.f, 0.f, 0.f, 0.f},
-								}
-							),
+							new Text(texture->Name()),
 						}));
 				}
 			}
@@ -177,16 +149,7 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(
-								prefab->Name(),
-								{
-									 .fontSize = 16.f,
-									 .fontStyle = FontType::Regular,
-								 },
-								 {
-									 .size = {Grow, Shrink},
-									 .padding = {5.f, 0.f, 0.f, 0.f},
-								 }),
+							new Text(prefab->Name()),
 						}));
 				}
 			}

@@ -30,16 +30,18 @@ namespace Coral::Reef {
 		}
 		m_viewportTextures.clear();
 		m_viewportTextures.reserve(m_renderPass.ImageCount());
-		const uint32_t outputImageIndex = m_renderPass.OutputImageIndex();
+		const uint32_t outputAttachmentIndex = m_renderPass.OutputAttachmentIndex();
 		for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {
 			const auto& framebuffer = m_renderPass.Framebuffer(i);
 			m_viewportTextures.emplace_back(ImGui_ImplVulkan_AddTexture(
 				**m_sampler,
-				*framebuffer.ImageView(outputImageIndex),
+				*framebuffer.ImageView(outputAttachmentIndex),
 				static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal)));
 		}
 
-		m_image = new Image(m_viewportTextures[0]);
+		m_image = new Image(m_viewportTextures[0], Style {
+			.size = { Reef::Grow, Reef::Grow },
+		});
 		AddDockable("viewport", new Reef::Window (
             "Main Viewport",
             {
@@ -82,6 +84,7 @@ namespace Coral::Reef {
 	}
 
 	void Viewport::OnGUIUpdate() {
+		Layer::OnGUIUpdate();
 		m_image->SetTexture(m_viewportTextures[Context::Scheduler().CurrentFrame().ImageIndex()]);
 	}
 }

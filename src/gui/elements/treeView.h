@@ -24,9 +24,7 @@ namespace Coral::Reef {
             : Element(style), m_tree(tree), m_onItemClick(std::move(onItemClick)) {}
         ~TreeView() override = default;
 
-		bool Render() override {
-			const bool shouldReset = Element::Render();
-
+		void Subrender() override {
             ImGui::BeginChildFrame(ImGui::GetID(this), ImVec2(m_currentSize), ImGuiWindowFlags_NoBackground);
             ImGui::EndChildFrame();
             if (ImGui::BeginDragDropTarget()) {
@@ -43,7 +41,7 @@ namespace Coral::Reef {
                 ImGui::EndDragDropTarget();
             }
 
-            ImGui::SetCursorScreenPos(ImVec2(m_position + Math::Vector2f { m_style.padding.left, m_style.padding.top }));
+            ImGui::SetCursorPos(ImVec2(m_relativePosition));
         	const auto childSize = m_currentSize - Math::Vector2f { m_style.padding.left + m_style.padding.right, m_style.padding.top + m_style.padding.bottom };
             ImGui::BeginChild(
             	typeid(T).name(),
@@ -61,8 +59,6 @@ namespace Coral::Reef {
 
             ImGui::PopStyleVar();
             ImGui::EndChild();
-
-			return shouldReset;
         }
 
     private:

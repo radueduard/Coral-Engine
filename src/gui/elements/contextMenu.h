@@ -29,7 +29,7 @@ namespace Coral::Reef {
 			std::vector<std::pair<String, std::function<bool()>>> m_items;
 		};
 
-		bool Render() override {
+		void Subrender() override {
 			if (ImGui::BeginPopupContextItem()) {
 				for (const auto& [text, onClick] : m_items) {
 					if (ImGui::Selectable(text.c_str())) {
@@ -40,8 +40,6 @@ namespace Coral::Reef {
 				}
 				ImGui::EndPopup();
 			}
-
-			return false;
 		}
 
 	private:

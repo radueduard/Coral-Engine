@@ -13,15 +13,11 @@ namespace Coral::Reef {
 			: Element(style), m_name(std::move(name)), m_value(initialValue), m_function(std::move(function)) {}
 		~Checkbox() override = default;
 
-		bool Render() override {
-			const bool shouldReset = Element::Render();
-
+		void Subrender() override {
 			ImGui::SetNextItemWidth(m_currentSize.width);
 			if (ImGui::Checkbox(("##" + m_name).c_str(), &m_value)) {
 				m_function(m_value);
 			}
-
-			return shouldReset;
 		}
 	private:
 		String m_name;

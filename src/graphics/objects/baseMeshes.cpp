@@ -9,61 +9,78 @@
 #include "ecs/components/RenderTarget.h"
 
 namespace Coral::Graphics {
-    std::unique_ptr<Mesh> Cube() {
-		// Create a cube mesh with 24 vertices and 36 indices
+    std::unique_ptr<Mesh> Cube(const int patchSize) {
+	    // Create a cube mesh with 24 vertices and 36 indices
 
-        return Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"))
-            .Name("Cube")
-	        // Front face
-	        .AddVertex({{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-	        .AddVertex({{1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-	        .AddVertex({{-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-	        .AddVertex({{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-	        // Back face
-	        .AddVertex({{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-	        .AddVertex({{1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-	        .AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-	        .AddVertex({{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-	        // Right face
-	        .AddVertex({{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {1.0f, 1.0f}})
-	        .AddVertex({{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {1.0f, 0.0f}})
-	        .AddVertex({{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {0.0f, 0.0f}})
-	        .AddVertex({{1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {0.0f, 1.0f}})
-	        // Left face
-	        .AddVertex({{-1.0f, 1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 1.0f}})
-	        .AddVertex({{-1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f}})
-	        .AddVertex({{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 0.0f}})
-	        .AddVertex({{-1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}})
-	        // Top face
-	        .AddVertex({{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-	        .AddVertex({{1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-	        .AddVertex({{-1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-	        .AddVertex({{-1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-	        // Bottom face
-	        .AddVertex({{1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
-	        .AddVertex({{1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
-	        .AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
-	        .AddVertex({{-1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
-	        // Indices for 6 faces (2 triangles per face)
-	        // Front face
-	        .AddIndex(0).AddIndex(2).AddIndex(1)
-	        .AddIndex(2).AddIndex(0).AddIndex(3)
-	        // Back face
-	        .AddIndex(4).AddIndex(6).AddIndex(7)
-	        .AddIndex(6).AddIndex(4).AddIndex(5)
-	        // Right face
-	        .AddIndex(8).AddIndex(9).AddIndex(10)
-	        .AddIndex(10).AddIndex(11).AddIndex(8)
-	        // Left face
-	        .AddIndex(12).AddIndex(15).AddIndex(14)
-	        .AddIndex(14).AddIndex(13).AddIndex(12)
-	        // Top face
-	        .AddIndex(16).AddIndex(17).AddIndex(18)
-	        .AddIndex(18).AddIndex(19).AddIndex(16)
-	        // Bottom face
-	        .AddIndex(20).AddIndex(23).AddIndex(22)
-	        .AddIndex(22).AddIndex(21).AddIndex(20)
-	        .Build();
+    	auto builder = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"))
+			.Name("Cube")
+			// Front face
+			.AddVertex({{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+			.AddVertex({{1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+			.AddVertex({{-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+			.AddVertex({{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
+			// Back face
+			.AddVertex({{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
+			.AddVertex({{1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+			.AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+			.AddVertex({{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}, {-1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+			// Right face
+			.AddVertex({{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {1.0f, 1.0f}})
+			.AddVertex({{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {1.0f, 0.0f}})
+			.AddVertex({{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {0.0f, 0.0f}})
+			.AddVertex({{1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 1.0f}, {0.0f, 1.0f}})
+			// Left face
+			.AddVertex({{-1.0f, 1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 1.0f}})
+			.AddVertex({{-1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {0.0f, 0.0f}})
+			.AddVertex({{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 0.0f}})
+			.AddVertex({{-1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}})
+			// Top face
+			.AddVertex({{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+			.AddVertex({{1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+			.AddVertex({{-1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}})
+			.AddVertex({{-1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+			// Bottom face
+			.AddVertex({{1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
+			.AddVertex({{1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}})
+			.AddVertex({{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}})
+			.AddVertex({{-1.0f, -1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}});
+    	// Indices for 6 faces (2 triangles per face)
+    	if (patchSize == 3) {
+    		builder
+    			// Front face
+				.AddIndex(0).AddIndex(2).AddIndex(1)
+				.AddIndex(0).AddIndex(3).AddIndex(2)
+				// Back face
+				.AddIndex(4).AddIndex(6).AddIndex(7)
+				.AddIndex(4).AddIndex(5).AddIndex(6)
+				// Right face
+				.AddIndex(8).AddIndex(9).AddIndex(10)
+				.AddIndex(11).AddIndex(8).AddIndex(10)
+				// Left face
+				.AddIndex(12).AddIndex(15).AddIndex(14)
+				.AddIndex(13).AddIndex(12).AddIndex(14)
+				// Top face
+				.AddIndex(16).AddIndex(17).AddIndex(18)
+				.AddIndex(19).AddIndex(16).AddIndex(18)
+				// Bottom face
+				.AddIndex(20).AddIndex(23).AddIndex(22)
+				.AddIndex(21).AddIndex(20).AddIndex(22);
+    	} else if (patchSize == 4) {
+    		builder
+    			// Front face
+    			.AddIndex(0).AddIndex(1).AddIndex(2).AddIndex(3)
+    			// Back face
+    			.AddIndex(4).AddIndex(5).AddIndex(6).AddIndex(7)
+				// Right face
+    			.AddIndex(8).AddIndex(9).AddIndex(10).AddIndex(11)
+				// Left face
+				.AddIndex(12).AddIndex(13).AddIndex(14).AddIndex(15)
+    			// Top face
+				.AddIndex(16).AddIndex(17).AddIndex(18).AddIndex(19)
+    			// Bottom face
+				.AddIndex(20).AddIndex(21).AddIndex(22).AddIndex(23);
+    	}
+    	return builder.Build();
     }
 
     std::unique_ptr<Mesh> Sphere() {
@@ -106,7 +123,7 @@ namespace Coral::Graphics {
                 const int second = first + density + 1;
 
                 sphere.AddIndex(first).AddIndex(first + 1).AddIndex(second);
-                sphere.AddIndex(second).AddIndex(first + 1).AddIndex(second + 1);
+                sphere.AddIndex(second + 1).AddIndex(second).AddIndex(first + 1);
             }
         }
         return sphere.Build();

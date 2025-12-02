@@ -48,14 +48,22 @@ struct TessControlOutput
     float2 texCoord : TEXCOORD0;
 };
 
-struct PatchConstants
+struct TrianglePatchConstants
 {
     float edges[3] : SV_TessFactor;
     float inside : SV_InsideTessFactor;
 };
 
+
+struct QuadPatchConstants
+{
+    float edges[4] : SV_TessFactor;
+    float inside[2] : SV_InsideTessFactor;
+};
+
+
 [shader("hull")]
-[domain("tri")]
+[domain("triangle")]
 [partitioning("integer")]
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(3)]
@@ -71,11 +79,9 @@ TessControlOutput hullMain(
     return output;
 }
 
-PatchConstants patchConstantFunc(
-    InputPatch<TessControlInput, 3> patch)
+TrianglePatchConstants patchConstantFunc(InputPatch<TessControlInput, 3> patch)
 {
-    PatchConstants output;
-    // Tessellation levels (passthrough uses fixed values)
+    TrianglePatchConstants output;
     output.edges[0] = 2.0;
     output.edges[1] = 2.0;
     output.edges[2] = 2.0;
@@ -96,9 +102,11 @@ struct TessEvalInput
 struct TessEvalOutput
 {
     float4 position : SV_Position;
+    float4 worldPosition : POSITION;
     float3 normal : NORMAL;
     float2 texCoord : TEXCOORD0;
 };
+
 
 [[vk::binding(0)]]
 ConstantBuffer<Camera> camera;
@@ -106,39 +114,54 @@ ConstantBuffer<Camera> camera;
 [shader("domain")]
 [domain("tri")]
 TessEvalOutput domainMain(
-    PatchConstants patchConst,
-    float3 baryCoords : SV_DomainLocation,
+    TrianglePatchConstants patchConst,
+    float3 barycentricCoords : SV_DomainLocation,
     const OutputPatch<TessEvalInput, 3> patch,
-    uniform float4x4 model)
-{
+    uniform float4x4 model
+) {
     TessEvalOutput output;
     
     // Interpolate position using barycentric coordinates
-    float3 pos = patch[0].position * baryCoords.x +
-                 patch[1].position * baryCoords.y +
-                 patch[2].position * baryCoords.z;
-    
+    float3 position = patch[0].position * barycentricCoords.x +
+                      patch[1].position * barycentricCoords.y +
+                      patch[2].position * barycentricCoords.z;
+
+    // Transform to clip space
+    output.worldPosition = mul(model, float4(position, 1.0));
+    output.position = mul(camera.projection, mul(camera.view, output.worldPosition));
+
     // Interpolate normal
-    float3 norm = patch[0].normal * baryCoords.x +
-                  patch[1].normal * baryCoords.y +
-                  patch[2].normal * baryCoords.z;
+    float3 normal = normalize(
+        patch[0].normal * barycentricCoords.x +
+        patch[1].normal * barycentricCoords.y +
+        patch[2].normal * barycentricCoords.z
+    );
+
+    output.normal = mul((float3x3)model, normal);
     
     // Interpolate texture coordinates
-    float2 tc = patch[0].texCoord * baryCoords.x +
-                patch[1].texCoord * baryCoords.y +
-                patch[2].texCoord * baryCoords.z;
-    
-    float4x4 modelViewProj = mul(camera.projection, mul(camera.view, model));
-    float3 position = normalize(pos);
-    output.position = mul(modelViewProj, float4(position, 1.0));
-    output.normal = normalize(mul((float3x3)model, norm));
-    output.texCoord = tc;
-    
+    output.texCoord = patch[0].texCoord * barycentricCoords.x +
+                      patch[1].texCoord * barycentricCoords.y +
+                      patch[2].texCoord * barycentricCoords.z;
+
     return output;
 }
 
-[[shader("fragment")]]
-float4 fragmentMain(TessEvalOutput input) : SV_Target
+struct FragmentInput
 {
-    return float4(1.0, 1.0, 1.0, 1.0);
+    float4 position : SV_Position;
+    float4 worldPosition : POSITION;
+    float3 normal : NORMAL;
+    float2 texCoord : TEXCOORD0;
+};
+
+bool any2(bool3 v)
+{
+    return (v.x && v.y) || (v.x && v.z) || (v.y && v.z);
+}
+
+[[shader("fragment")]]
+float4 fragmentMain(FragmentInput input) : SV_Target
+{
+    return float4(normalize(input.normal) * 0.5 + 0.5, 1.0);
 }

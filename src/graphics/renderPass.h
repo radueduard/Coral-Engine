@@ -116,7 +116,7 @@ namespace Coral::Graphics {
         }
 
         [[nodiscard]] const Framebuffer& Framebuffer(const u32 index) const { return *m_frameBuffers[index]; }
-        [[nodiscard]] const Math::Vector2<f32>& Extent() const { return m_extent; }
+        [[nodiscard]] const Math::Vector2<u32>& Extent() const { return m_extent; }
         [[nodiscard]] const vk::SampleCountFlagBits& SampleCount() const { return m_sampleCount; }
         [[nodiscard]] u32 OutputImageIndex() const { return m_outputImageIndex; }
         [[nodiscard]] u32 OutputAttachmentIndex() const { return m_outputAttachmentIndex; }
@@ -149,7 +149,7 @@ namespace Coral::Graphics {
         uint32_t m_outputImageIndex = 0;
         std::optional<uint32_t> m_inFlightImageIndex;
         uint32_t m_imageCount;
-        Math::Vector2<f32> m_extent;
+        Math::Vector2<u32> m_extent;
 
         std::vector<std::unique_ptr<Graphics::Framebuffer>> m_frameBuffers;
 

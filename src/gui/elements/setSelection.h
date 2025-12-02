@@ -91,10 +91,10 @@ namespace Coral::Reef {
 			return true;
 		}
 
-		bool RecreateRequired() override {
-			Recreate();
-			return Element::RecreateRequired();
-		}
+		// bool RecreateRequired() override {
+		// 	Recreate();
+		// 	return Element::RecreateRequired();
+		// }
 
 		T m_newValue;
 		UnorderedSet<T>* m_set;

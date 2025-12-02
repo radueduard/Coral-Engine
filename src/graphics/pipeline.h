@@ -91,7 +91,7 @@ namespace Coral::Graphics {
 
             std::vector <vk::DynamicState> m_dynamicStates = {
                 vk::DynamicState::eViewport,
-                vk::DynamicState::eScissor
+                vk::DynamicState::eScissor,
             };
             vk::PipelineDynamicStateCreateInfo m_dynamicState;
 

@@ -14,7 +14,7 @@ namespace Coral::ECS {
 
 namespace Coral::Graphics {
 
-	std::unique_ptr<Mesh> Cube();
+	std::unique_ptr<Mesh> Cube(int patchSize = 3);
 	std::unique_ptr<Mesh> Sphere();
 	std::unique_ptr<Mesh> Frustum(const ECS::Camera *camera);
 }
