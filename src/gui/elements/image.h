@@ -32,20 +32,15 @@ namespace Coral::Reef {
             : Element(style), m_texture(id) {}
         ~Image() override = default;
 
-		bool Render() override {
-			const bool shouldReset = Element::Render();
-
+		void Subrender() override {
             const Math::Vector2f uv1 = { 0.f, 0.f };
             const Math::Vector2f uv2 = { 1.f, 1.f };
 
-            ImGui::SetCursorScreenPos({ m_position.x + m_style.padding.left, m_position.y + m_style.padding.top });
             ImGui::RoundedImage(
                 m_texture,
                 { m_currentSize.width - m_style.padding.left - m_style.padding.right, m_currentSize.height - m_style.padding.top - m_style.padding.bottom },
                 m_style.cornerRadius,
                 ImVec2(uv1), ImVec2(uv2));
-
-			return shouldReset;
         }
 
         void SetTexture(const ImTextureID id) {

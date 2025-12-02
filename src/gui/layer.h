@@ -28,7 +28,11 @@ namespace Coral::Reef {
     protected:
         virtual void OnGUIAttach() {}
         virtual void OnGUIDetach() {}
-        virtual void OnGUIUpdate() {}
+        virtual void OnGUIUpdate() {
+            for (const auto& object : m_dockables | std::views::values) {
+            	object->Update();
+            }
+        }
 
         Element* Dockable(const std::string& name) {
             return m_dockables[name].get();

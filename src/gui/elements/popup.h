@@ -18,9 +18,9 @@ namespace Coral::Reef {
 			Context::GUIManager().UnregisterPopup(m_name);
 		}
 
-		bool Render() override {
+		void Subrender() override {
 			if (!m_open) {
-				return false;
+				return;
 			}
 
 			ImGui::OpenPopup(m_name.c_str());
@@ -32,19 +32,16 @@ namespace Coral::Reef {
 			{
 				ImGui::PopStyleVar();
 				const auto screenPos = Math::Vector2<f32>(ImGui::GetCursorScreenPos());
-				if (m_position != screenPos) {
-					m_position = screenPos;
-					SetPosition(m_position);
+				if (m_absolutePosition != screenPos) {
+					m_absolutePosition = screenPos;
+					SetPosition(m_absolutePosition);
 				}
 
-				if (Element::Render()) {
-					ComputeLayout();
-				}
+				ComputeLayout();
 				ImGui::EndPopup();
-				return false;
+				return;
 			}
 			ImGui::PopStyleVar();
-			return false;
 		}
 
 		void Open() {

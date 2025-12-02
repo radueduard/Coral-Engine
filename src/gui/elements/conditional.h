@@ -19,7 +19,7 @@ namespace Coral::Reef {
 			m_lastState = m_state;
 		}
 
-		bool Render() override {
+		void Subrender() override {
 			m_state = m_condition();
 			if (m_state != m_lastState) {
 				ResetState([this] {
@@ -30,7 +30,6 @@ namespace Coral::Reef {
 				});
 				m_lastState = m_state;
 			}
-			return Element::Render();
 		}
 	private:
 		u8 m_state;

@@ -17,10 +17,8 @@ namespace Coral::Reef {
 			: Element(style), m_name(std::move(name)), m_value(value), m_speed(speed), m_min(min), m_max(max), m_changed(changed), m_labels(labels) {}
 		~Drag() override = default;
 
-		bool Render() override {
-			if (Element::Render()) {
-				ResetState();
-			}
+		void Subrender() override {
+			ResetState();
 
 			ImGui::BeginChild(m_name.c_str(), {m_currentSize.width, m_currentSize.height }, false, ImGuiWindowFlags_NoDecoration);
 			ImGui::PushItemWidth(m_currentSize.width);
@@ -29,7 +27,6 @@ namespace Coral::Reef {
 			ImGui::EndChild();
 			if (m_changed != nullptr)
 				*m_changed |= changed;
-			return changed;
 		}
 
 	private:

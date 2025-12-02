@@ -256,6 +256,7 @@ namespace Coral::Project {
 		auto* vertexShader = Shader::Manager::Get().GetShader("wireframe", "vertexMain");
 		auto* hullShader = Shader::Manager::Get().GetShader("wireframe", "hullMain");
 		auto* domainShader = Shader::Manager::Get().GetShader("wireframe", "domainMain");
+		// auto* geometryShader = Shader::Manager::Get().GetShader("wireframe", "geometryMain");
 		auto* fragmentShader = Shader::Manager::Get().GetShader("wireframe", "fragmentMain");
 
 		// const auto vertexShader = Core::Shader("wireframe/wireframe.vert");
@@ -266,6 +267,7 @@ namespace Coral::Project {
 			.AddShader(vertexShader)
 			.AddShader(hullShader)
 			.AddShader(domainShader)
+			// .AddShader(geometryShader)
 			.AddShader(fragmentShader)
 			.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
 				.setPolygonMode(vk::PolygonMode::eLine)
@@ -427,10 +429,11 @@ namespace Coral::Project {
 		AddDockable("Graphics Pipeline",
 			new Reef::Window(ICON_FA_PAINTBRUSH "   Graphics Pipeline",
 				Reef::Style{
-				   .size = {300.f, 0.f},
-				   .padding = {10.f, 10.f, 10.f, 10.f},
-				   .spacing = 10.f,
-				   .backgroundColor = {0.0f, 0.0f, 0.0f, 1.f},
+				    .size = {300.f, 0.f},
+				    .padding = {10.f, 10.f, 10.f, 10.f},
+				    .spacing = 10.f,
+				    .backgroundColor = {0.0f, 0.0f, 0.0f, 1.f},
+					.direction = Reef::Axis::Vertical,
 				},
 				{
 					m_pipelineTemplate->Build(*m_pipelineBuilder),

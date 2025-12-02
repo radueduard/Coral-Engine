@@ -16,9 +16,7 @@ namespace Coral::Reef {
 			: Element(style), m_name(std::move(name)), m_value(value) {}
 		~InputField() override = default;
 
-		bool Render() override {
-			const bool shouldReset = Element::Render();
-
+		void Subrender() override {
 			ImGui::PushID(this);
 			// ImGui::SetCursorScreenPos(m_position + Math::Vector2 { m_padding.left, m_padding.top });
 			ImGui::InputTextEx(
@@ -33,8 +31,6 @@ namespace Coral::Reef {
 				ImGuiInputTextFlags_None
 			);
 			ImGui::PopID();
-
-			return shouldReset;
 		}
 
 	private:

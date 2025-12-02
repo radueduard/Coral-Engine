@@ -34,35 +34,47 @@ namespace Coral::Reef {
         f32 cornerRadius = padding.right;
         Color backgroundColor = Colors::transparent;
         Axis direction = Axis::Horizontal;
-    	bool debug = false;
+    	bool allowInteraction = true;
+        bool debug = false;
     };
 
     class Element {
     public:
-        explicit Element(const Style& style = {}, std::vector<Element*> children = {}, bool debug = false);
+        explicit Element(const Style& style = {}, const std::vector<Element*>& children = {});
         virtual ~Element() = default;
 
         Element(const Element&) = default;
         Element& operator=(const Element&) = default;
 
-        [[nodiscard]] const Math::Vector2<f32>& Position() const { return m_position; }
+    	void AddChild(Element* child);
+
+        [[nodiscard]] const Math::Vector2<f32>& RelativePosition() const { return m_relativePosition; }
+        [[nodiscard]] const Math::Vector2<f32>& AbsolutePosition() const { return m_absolutePosition; }
 
         f32 ComputeFitSizeOnAxis(Axis axis);
         void ComputeGrowSizeOnAxis(Axis axis);
         void SetPosition(Math::Vector2<f32> position);
 
-        virtual bool RecreateRequired();
+        [[nodiscard]] bool RecreateRequired() const;
+        virtual void Render();
 
         virtual void ComputeLayout();
+        virtual void Update();
+    	virtual void Subrender() {}
 
-        virtual bool Render();
+    	void DisableInteraction() {
+    		m_style.allowInteraction = false;
+    		for (const auto& child : m_children) {
+				child->DisableInteraction();
+			}
+    	}
 
-        void Outline() const;
+        void Debug() const;
 
         [[nodiscard]]
     	const Math::Vector2<f32>& CurrentSize() const;
 
-    // protected:
+    protected:
         f32& CurrentSize(Axis axis);
 
         f32& BaseSize(Axis axis);
@@ -81,14 +93,17 @@ namespace Coral::Reef {
 
         UUID m_uuid;
         Style m_style;
-        bool m_debug;
 
         Math::Vector2<f32> m_baseSize;
         Math::Vector2<f32> m_minSize;
 
         Math::Vector2<f32> m_childrenSize;
         Math::Vector2<f32> m_currentSize;
-        Math::Vector2<f32> m_position = { 0.f, 0.f };
+        Math::Vector2<f32> m_relativePosition = { 0.f, 0.f };
+        Math::Vector2<f32> m_absolutePosition = { 0.f, 0.f };
+        Math::Vector2<f32> m_actualRenderedPosition = { 0.f, 0.f };
+
+        bool m_shouldResize = true;
 
         Element* m_parent = nullptr;
         std::vector<std::unique_ptr<Element>> m_children;

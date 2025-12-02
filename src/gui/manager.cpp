@@ -140,9 +140,7 @@ namespace Coral::Reef {
     }
 
     void Manager::Update(const float deltaTime) {
-        for (auto* layer : m_layers) {
-            layer->OnGUIUpdate();
-        }
+
     }
 
     void Manager::Render(const Core::CommandBuffer& commandBuffer) {
@@ -239,6 +237,10 @@ namespace Coral::Reef {
 				ImGui::EndMenu();
 			}
 			ImGui::EndMainMenuBar();
+		}
+
+		for (auto* layer : m_layers) {
+			layer->OnGUIUpdate();
 		}
 
         for (const auto* layer : m_layers) {

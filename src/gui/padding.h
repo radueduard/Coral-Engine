@@ -23,5 +23,9 @@ namespace Coral::Reef {
 
 		f32 Horizontal() const { return left + right; }
 		f32 Vertical() const { return top + bottom; }
+
+		operator Math::Vector2f() const {
+			return { Horizontal(), Vertical() };
+		}
 	};
 }

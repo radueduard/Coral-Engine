@@ -17,18 +17,14 @@ namespace Coral::Reef {
 			: Element(style), m_name(std::move(name)), m_value(value), m_min(min), m_max(max), m_step(step) {}
 		~Slider() override = default;
 
-		bool Render() override {
-			if (Element::Render()) {
-				ResetState();
-			}
+		void Subrender() override {
+			ResetState();
 
 			ImGui::BeginChild(m_name.c_str(), ImVec2(m_currentSize), false, ImGuiWindowFlags_NoDecoration);
 			ImGui::PushItemWidth(m_currentSize.width - m_style.padding.left - m_style.padding.right);
 			ImGui::SliderScalarN("", GetImGuiDataType<T>(), m_value, N, &m_min, &m_max);
 			ImGui::PopItemWidth();
 			ImGui::EndChild();
-
-			return false;
 		}
 
 	private:

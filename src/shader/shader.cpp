@@ -238,11 +238,16 @@ namespace Coral::Shader {
 
 		constexpr int targetIndex = 0;
     	Slang::ComPtr<IBlob> kernelBlob;
-    	linkedProgram->getEntryPointCode(
-			entryPointIndex,
-			targetIndex,
-			kernelBlob.writeRef(),
-			diagnostics.writeRef());
+		try {
+			linkedProgram->getEntryPointCode(
+				entryPointIndex,
+				targetIndex,
+				kernelBlob.writeRef(),
+				diagnostics.writeRef());
+		} catch (const std::exception& e) {
+			std::cerr << "Failed to get entry point code: " << e.what() << std::endl;
+			throw;
+		}
 
 		IEntryPoint* entryPoint = entryPoints[m_entryPoint];
 

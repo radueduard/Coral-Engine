@@ -179,7 +179,7 @@ namespace Coral::Asset {
 	}
 
 	void Manager::CreateUI() {
-		RemoveDockable("assetManager");
+	    RemoveDockable("assetManager");
 
     	auto* dockable = new Reef::Window(
 				ICON_FA_CUBE "   Asset Manager",
@@ -198,32 +198,9 @@ namespace Coral::Asset {
 									 std::views::transform([](const auto& pair) { return pair.get(); }) |
 									 std::ranges::to<std::vector>()),
 				},
-				nullptr,
-				Reef::ContextMenu::Builder()
-					.AddItem("Create Image",
-							 [&]() -> bool {
-								 Context::GUIManager().GetPopup("##CreateImage")->Open();
-								 return true;
-							 })
-					.AddItem("Create Buffer",
-							 [&]() -> bool {
-								 Context::GUIManager().GetPopup("##CreateBuffer")->Open();
-								 return true;
-							 })
-					.AddItem("Import",
-							 [&]() -> bool {
-								 Context::GUIManager().GetPopup("##Import")->Open();
-								 return true;
-							 })
-					.Build());
+				nullptr);
 
-    	dockable->AddPopups(std::vector<Reef::Element*> {
-    		new Reef::CreateBufferPopup(),
-    		new Reef::CreateImagePopup(),
-			new Reef::ImportAssetPopup(),
-    	});
-
-	    AddDockable("assetManager", dockable);
+    	AddDockable("assetManager", dockable);
     }
 
 	void Manager::OnGUIAttach() {
