@@ -20,8 +20,6 @@ namespace Coral {
 	class Engine {
     public:
         Engine();
-        ~Engine();
-
         void Run() const;
 
     private:

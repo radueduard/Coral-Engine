@@ -22,54 +22,11 @@ namespace Coral::Reef {
         }
         ~Button() override = default;
 
-        void Render() override {
-            if (m_style.debug) {
-                Debug();
-            }
-
-            auto cornerRadius = m_style.cornerRadius;
-            if (const auto smallerDimension = std::min(m_currentSize.width, m_currentSize.height);
-                cornerRadius * 2 > smallerDimension)
-            {
-                cornerRadius = smallerDimension / 2.f;
-            }
-
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(m_style.padding.left, m_style.padding.top));
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, cornerRadius);
-            ImGui::PushStyleColor(
-                ImGuiCol_ChildBg,
-                ImGui::ColorConvertFloat4ToU32(ImVec4(m_style.backgroundColor))
-            );
-
-            ImGui::SetCursorPos({ m_relativePosition.x, m_relativePosition.y });
-            ImGui::BeginChild(
-                boost::uuids::to_string(m_uuid).c_str(),
-                ImVec2(m_currentSize.width, m_currentSize.height),
-                ImGuiChildFlags_AlwaysUseWindowPadding,
-                ImGuiWindowFlags_NoDecoration
-            );
-
-            m_actualRenderedPosition = Math::Vector2<f32>(ImGui::GetCursorScreenPos());
-
-            Subrender();
-            ImGui::SetCursorScreenPos({ m_actualRenderedPosition.x, m_actualRenderedPosition.y });
-            for (const auto& child : m_children) {
-                child->Render();
-            }
-
-            ImGui::EndChild();
-
-
-            ImGui::PopStyleColor();
-            ImGui::PopStyleVar(2);
-
-        }
-
 		void Subrender() override {
             const auto id = reinterpret_cast<const void*>(this);
             const auto outerBounds = ImRect {
-                { m_actualRenderedPosition.x, m_actualRenderedPosition.y },
-                { m_actualRenderedPosition.x + m_currentSize.width, m_actualRenderedPosition.y + m_currentSize.height }
+                ImVec2 { m_actualRenderedPosition - Math::Vector2f(m_style.padding) / 2.f },
+                ImVec2 { m_actualRenderedPosition + m_currentSize - Math::Vector2f(m_style.padding) / 2.f }
             };
 
             bool hovered, held;

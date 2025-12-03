@@ -36,12 +36,56 @@ namespace Coral::Reef {
         Axis direction = Axis::Horizontal;
     	bool allowInteraction = true;
         bool debug = false;
+
+    	Style& withSize(const Math::Vector2<f32>& newSize) {
+			size = newSize;
+			return *this;
+		}
+
+    	Style& withPadding(const Padding& newPadding) {
+			padding = newPadding;
+			return *this;
+		}
+
+    	Style& withSpacing(const f32 newSpacing) {
+			spacing = newSpacing;
+			return *this;
+		}
+
+    	Style& withCornerRadius(const f32 radius) {
+			cornerRadius = radius;
+			return *this;
+		}
+
+    	Style& withBackgroundColor(const Color& color) {
+			backgroundColor = color;
+			return *this;
+		}
+
+    	Style& withDirection(const Axis dir) {
+			direction = dir;
+			return *this;
+		}
+
+    	Style& withAllowInteraction(const bool allow) {
+			allowInteraction = allow;
+			return *this;
+		}
+
+    	Style& withDebug(const bool debugMode) {
+			debug = debugMode;
+			return *this;
+		}
+
     };
 
     class Element {
     public:
         explicit Element(const Style& style = {}, const std::vector<Element*>& children = {});
-        virtual ~Element() = default;
+
+		void SetDebug();
+
+		virtual ~Element() = default;
 
         Element(const Element&) = default;
         Element& operator=(const Element&) = default;

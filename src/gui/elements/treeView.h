@@ -20,13 +20,21 @@ namespace Coral::Reef {
     template<typename T, typename IdType> requires std::is_base_of_v<NarryTree<T, IdType>, T>
     class TreeView final : public Element {
     public:
-        TreeView(T& tree, std::function<void(T&)> onItemClick, const Style& style = Style())
-            : Element(style), m_tree(tree), m_onItemClick(std::move(onItemClick)) {}
+        TreeView(T& tree, std::function<void(T&)> onItemClick, const Style& style = Style(), const Text::Style& textStyle = {})
+            : Element(style), m_tree(tree), m_onItemClick(std::move(onItemClick)), m_textStyle(textStyle) {}
         ~TreeView() override = default;
 
 		void Subrender() override {
-            ImGui::BeginChildFrame(ImGui::GetID(this), ImVec2(m_currentSize), ImGuiWindowFlags_NoBackground);
-            ImGui::EndChildFrame();
+        	const auto childSize = m_currentSize - Math::Vector2f { m_style.padding.left + m_style.padding.right, m_style.padding.top + m_style.padding.bottom };
+		    ImGui::BeginChildFrame(ImGui::GetID(this), ImVec2(childSize), ImGuiWindowFlags_NoBackground);
+		    ImGui::EndChildFrame();
+
+		    const f32 fontSize = std::min(
+                m_currentSize.width - m_style.padding.top - m_style.padding.bottom,
+                m_textStyle.fontSize);
+
+		    ImGui::SetWindowFontScale(fontSize / ImGui::GetFontSize());
+
             if (ImGui::BeginDragDropTarget()) {
                 if (const auto payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                     IdType recvObject = *static_cast<IdType*>(payload->Data);
@@ -42,7 +50,6 @@ namespace Coral::Reef {
             }
 
             ImGui::SetCursorPos(ImVec2(m_relativePosition));
-        	const auto childSize = m_currentSize - Math::Vector2f { m_style.padding.left + m_style.padding.right, m_style.padding.top + m_style.padding.bottom };
             ImGui::BeginChild(
             	typeid(T).name(),
                 ImVec2(childSize),
@@ -59,6 +66,8 @@ namespace Coral::Reef {
 
             ImGui::PopStyleVar();
             ImGui::EndChild();
+
+		    ImGui::SetWindowFontScale(1.f);
         }
 
     private:
@@ -108,7 +117,14 @@ namespace Coral::Reef {
 
             static std::pair<std::string, std::array<char, 256>> popupName;
 
-            if (ImGui::BeginPopupContextItem()) {
+            const std::string id = std::format("{}", static_cast<u64>(object.Id()));
+            if (ImGui::BeginPopupContextItem(id.c_str())) {
+                const f32 fontSize = std::min(
+                m_currentSize.width - m_style.padding.top - m_style.padding.bottom,
+                m_textStyle.fontSize);
+
+                ImGui::SetWindowFontScale(fontSize / ImGui::GetFontSize());
+
                 if (ImGui::MenuItem(ICON_FA_PLUS "    Add Empty", nullptr, false)) {
                 	object.AddEmpty();
                 }
@@ -130,6 +146,8 @@ namespace Coral::Reef {
                 if (ImGui::MenuItem(ICON_FA_TRASH "    Delete", nullptr, false)) {
                     object.Detach();
                 }
+                ImGui::SetWindowFontScale(1.f);
+
                 ImGui::EndPopup();
             }
 
@@ -181,5 +199,6 @@ namespace Coral::Reef {
         T& m_tree;
         std::function<void(T&)> m_onItemClick;
         std::unique_ptr<ContextMenu> m_contextMenu;
+        Text::Style m_textStyle;
     };
 }

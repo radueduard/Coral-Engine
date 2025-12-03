@@ -32,7 +32,7 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(mesh->Name()),
+							new Text(mesh->Name(), Text::Style().withHorizontalAlignment(Text::HorizontalAlignment::Center)),
 						}));
 				}
 			}
@@ -69,7 +69,7 @@ namespace Coral::Reef {
 								.size = {100.f, 100.f},
 								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
 							}),
-							new Text(material->Name()),
+							new Text(material->Name(), Text::Style().withHorizontalAlignment(Text::HorizontalAlignment::Center)),
 						}));
 				}
 			}
@@ -108,7 +108,7 @@ namespace Coral::Reef {
 									  .backgroundColor = {0.f, 0.f, 0.f, 1.f},
 								  }
 							),
-							new Text(texture->Name()),
+							new Text(texture->Name(), Text::Style().withHorizontalAlignment(Text::HorizontalAlignment::Center)),
 						}));
 				}
 			}
@@ -136,20 +136,19 @@ namespace Coral::Reef {
 					elements.emplace_back(new Button(
 						{
 							.size = {Grow, Shrink},
-							.padding = {5.f, 5.f, 5.f, 5.f},
+							.padding = { 10.f, 10.f, 10.f, 10.f },
 							.spacing = 5.f,
 							.cornerRadius = 5.f,
 						},
-						[prefab] -> bool {
+						[prefab] {
 							prefab->Load();
-							return true;
 						},
 						{
 							new Element({
 								.size = {100.f, 100.f},
-								.backgroundColor = {0.f, 0.f, 0.f, 1.f},
+								.backgroundColor = Colors::black,
 							}),
-							new Text(prefab->Name()),
+							new Text(prefab->Name(), Text::Style().withHorizontalAlignment(Text::HorizontalAlignment::Center)),
 						}));
 				}
 			}

@@ -8,17 +8,18 @@
 
 #include "element.h"
 #include "imgui_internal.h"
+#include "text.h"
 
 namespace Coral::Reef {
 	class InputField final : public Element {
 	public:
-		InputField(std::string name, std::string* value, const Style& style = Style())
-			: Element(style), m_name(std::move(name)), m_value(value) {}
+		InputField(std::string name, std::string* value, const Style& style = Style(), const Text::Style& textStyle = {})
+			: Element(style), m_name(std::move(name)), m_value(value), m_textStyle(textStyle) {}
 		~InputField() override = default;
 
 		void Subrender() override {
 			ImGui::PushID(this);
-			// ImGui::SetCursorScreenPos(m_position + Math::Vector2 { m_padding.left, m_padding.top });
+			ImGui::SetWindowFontScale(m_textStyle.fontSize / ImGui::GetFontSize());
 			ImGui::InputTextEx(
 				("##" + m_name).c_str(),
 				"object",
@@ -30,11 +31,13 @@ namespace Coral::Reef {
 				},
 				ImGuiInputTextFlags_None
 			);
+			ImGui::SetWindowFontScale(1.f);
 			ImGui::PopID();
 		}
 
 	private:
 		std::string m_name;
 		std::string* m_value;
+		Text::Style m_textStyle;
 	};
 }

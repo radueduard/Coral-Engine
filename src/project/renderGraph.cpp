@@ -270,7 +270,7 @@ namespace Coral::Project {
 			// .AddShader(geometryShader)
 			.AddShader(fragmentShader)
 			.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
-				.setPolygonMode(vk::PolygonMode::eLine)
+				.setPolygonMode(vk::PolygonMode::eFill)
 				.setCullMode(vk::CullModeFlagBits::eNone)
 				.setFrontFace(vk::FrontFace::eClockwise)
 				.setLineWidth(1.0f))

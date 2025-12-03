@@ -74,11 +74,10 @@ namespace Coral {
     	m_assetManager = Reef::MakeContainer<Asset::Manager>();
     }
 
-    Engine::~Engine() {
-    }
-
     void Engine::Run() const {
         Input::Setup();
+
+		Asset::Importer("C:/Users/radue/CLionProjects/Coral-Engine/assets/DamagedHelmet/DamagedHelmet.gltf").Import();
 
         while (!m_window->ShouldClose()) {
 	        auto startTime = std::chrono::high_resolution_clock::now();

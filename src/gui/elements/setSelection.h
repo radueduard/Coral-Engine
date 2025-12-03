@@ -121,7 +121,7 @@ namespace Coral::Reef {
 	template <typename T>
 	class FlagSetSelection final : public Element {
 	public:
-		FlagSetSelection(vk::Flags<T>& flags, const Style& style = Style())
+		explicit FlagSetSelection(vk::Flags<T>& flags, const Style& style = Style())
 			: Element(style), m_flags(flags)
 		{
 			m_style.direction = Axis::Vertical;
@@ -144,13 +144,14 @@ namespace Coral::Reef {
 		void Recreate() {
 			m_children.clear();
 			for (auto& [value, enabled] : m_values) {
-				m_children.emplace_back(
+				AddChild(
 					new LabeledRow(
 						new Text(
 							String(magic_enum::enum_name(value).data()),
-							{
-								.verticalAlignment = Text::VerticalAlignment::Middle,
-								.horizontalAlignment = Text::HorizontalAlignment::Left,
+							Text::Style {
+								.color = { 0.8f, 0.8f, 0.8f, 1.f },
+								.fontSize = 15.f,
+								.fontStyle = FontType::Bold,
 							}
 						),
 						new Checkbox(

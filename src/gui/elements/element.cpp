@@ -7,9 +7,10 @@
 namespace Coral::Reef {
     Element::Element(const Style& style, const std::vector<Element*>& children)
         : m_style(style){
+
         m_children.reserve(children.size());
         for (auto& child : children) {
-            m_children.emplace_back(child);
+            AddChild(child);
         }
 
         m_baseSize = style.size;
@@ -17,7 +18,6 @@ namespace Coral::Reef {
         m_uuid = Context::GenerateUUID();
 
         for (auto& child : children) {
-            child->m_parent = this;
             if (m_style.direction == Axis::Horizontal) {
                 m_minSize.width += child->m_minSize.width;
                 m_minSize.height = std::max(m_minSize.height, child->m_minSize.height);
@@ -39,9 +39,20 @@ namespace Coral::Reef {
         }
     }
 
+    void Element::SetDebug() {
+        m_style.debug = true;
+        for (const auto& child : m_children) {
+            child->SetDebug();
+        }
+    }
+
     void Element::AddChild(Element *child) {
         child->m_parent = this;
         m_children.emplace_back(child);
+
+        if (m_style.debug) {
+            child->SetDebug();
+        }
     }
 
     f32 Element::ComputeFitSizeOnAxis(const Axis axis)
@@ -172,9 +183,11 @@ namespace Coral::Reef {
     void Element::ComputeLayout()
     {
         ComputeFitSizeOnAxis(Axis::Horizontal);
-        ComputeFitSizeOnAxis(Axis::Vertical);
         ComputeGrowSizeOnAxis(Axis::Horizontal);
+
+        ComputeFitSizeOnAxis(Axis::Vertical);
         ComputeGrowSizeOnAxis(Axis::Vertical);
+
         SetPosition(m_relativePosition);
     }
 
@@ -191,10 +204,6 @@ namespace Coral::Reef {
 
     void Element::Render()
     {
-        if (m_style.debug) {
-            Debug();
-        }
-
         auto cornerRadius = m_style.cornerRadius;
         if (const auto smallerDimension = std::min(m_currentSize.width, m_currentSize.height);
             cornerRadius * 2 > smallerDimension)
@@ -233,6 +242,10 @@ namespace Coral::Reef {
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(2);
+
+        if (m_style.debug) {
+            Debug();
+        }
     }
 
     void Element::Debug() const

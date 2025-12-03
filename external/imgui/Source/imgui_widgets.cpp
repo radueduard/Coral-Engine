@@ -1149,6 +1149,7 @@ bool ImGui::Checkbox(const char* label, bool* v)
     ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
+
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
 
     const float square_sz = GetFrameHeight();
@@ -1201,8 +1202,8 @@ bool ImGui::Checkbox(const char* label, bool* v)
         }
         else if (*v)
         {
-            const float pad = ImMax(1.0f, IM_TRUNC(square_sz / 6.0f));
-            RenderCheckMark(window->DrawList, check_bb.Min + ImVec2(pad, pad), check_col, square_sz - pad * 2.0f);
+            const float pad = ImMax(1.0f, square_sz - label_size.y) * 0.5f;
+            RenderCheckMark(window->DrawList, check_bb.Min + ImVec2(pad, pad), check_col, label_size.y);
         }
     }
     const ImVec2 label_pos = ImVec2(check_bb.Max.x + style.ItemInnerSpacing.x, check_bb.Min.y + style.FramePadding.y);

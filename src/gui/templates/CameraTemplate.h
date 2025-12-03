@@ -29,12 +29,6 @@ namespace Coral::Reef {
 							   .backgroundColor = ImVec4{163 / 255.f, 58 / 255.f, 44 / 255.f, 1.f}},
 			};
 
-			const Text::Style labelStyle {
-				.color = { 0.8f, 0.8f, 0.8f, 1.f },
-				.fontSize = 15.f,
-				.fontStyle = FontType::Bold,
-			};
-
 			const Text::Style titleStyle {
 				.color = { 0.8f, 0.8f, 0.8f, 1.f },
 				.fontSize = 20.f,
@@ -52,7 +46,7 @@ namespace Coral::Reef {
 					new Text(" " ICON_FA_CAMERA "    Camera Settings", titleStyle, { .size = { Grow, 20.f } }),
 					new Separator(),
 					new LabeledRow(
-						new Text("Primary", labelStyle, { .size = { Grow, Grow } }),
+						new Text("Primary"),
 						new Checkbox(
 							"Primary",
 							data.m_primary,
@@ -64,16 +58,19 @@ namespace Coral::Reef {
 									data.Primary() = false;
 									ECS::SceneManager::Get().GetLoadedScene().Root().Get<ECS::Camera>().Primary() = true;
 								}
-							}, { .size = { 23.f, Grow } }),
-						{ .size = { Grow, 23.f } }
+							},
+							Checkbox::DefaultStyle()
+								.withSize({ 23.f, Grow })
+						),
+						Style()
+							.withSize({ Grow, 23.f })
 					),
 					new DropDown(
 						"Camera Type",
 						&data.GetProjectionData().type,
 						{},
-						Style {
-							.size = { Grow, 23.f },
-						}
+						DropDownDefaultStyle()
+							.withSize({ Grow, 23.f })
 					),
 					new Conditional(
 						[&data] {
@@ -98,43 +95,120 @@ namespace Coral::Reef {
 								.direction = Axis::Vertical,
 							}, {
 								new LabeledRow {
-									new Text("left", labelStyle),
-									new Drag<f32, 1>("Left", &data.m_projectionData.data.orthographic.left, 0.1f, 0.f, 100.f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
-									{ .size = { 0.f, 23.f } }
+									new Text("left"),
+									new Drag<>(
+										"Left",
+										&data.m_projectionData.data.orthographic.left,
+										0.1f,
+										0.f,
+										100.f,
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									Style()
+										.withSize({ Grow, 23.f })
 								},
 								new LabeledRow {
-									new Text("right", labelStyle),
-									new Drag<f32, 1>("Right", &data.m_projectionData.data.orthographic.right, 0.1f, 0.f, 100.f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
-									{ .size = { 0.f, 23.f } }
+									new Text("right"),
+									new Drag<>(
+										"Right",
+										&data.m_projectionData.data.orthographic.right,
+										0.1f,
+										0.f,
+										100.f,
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									Style()
+										.withSize({ Grow, 23.f })
 								},
 								new LabeledRow {
-									new Text("top", labelStyle),
-									new Drag<f32, 1>("Top", &data.m_projectionData.data.orthographic.top, 0.1f, 0.0f, 100.0f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
-									{ .size = { 0.f, 23.f } }
+									new Text("top"),
+									new Drag<f32, 1>(
+										"Top",
+										&data.m_projectionData.data.orthographic.top,
+										0.1f,
+										0.0f,
+										100.0f,
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									Style()
+										.withSize({ Grow, 23.f })
 								},
 								new LabeledRow {
-									new Text("bottom", labelStyle),
-									new Drag<f32, 1>("Bottom", &data.m_projectionData.data.orthographic.bottom, 0.1f, 0.0f, 100.0f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
-									{ .size = { 0.f, 23.f } }
+									new Text("bottom"),
+									new Drag<f32, 1>(
+										"Bottom",
+										&data.m_projectionData.data.orthographic.bottom,
+										0.1f,
+										0.0f,
+										100.0f,
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									Style()
+										.withSize({ Grow, 23.f })
 								},
 								new LabeledRow {
-									new Text("projection planes", labelStyle),
-									new Drag<f32, 2>("Projection planes", &data.m_projectionData.data.orthographic.near, 0.1f, 0.0f, 100.0f, &data.m_changed, labels, { .size = { 250.f, Grow } }),
-									{ .size = { 0.f, 23.f } }
+									new Text("projection planes"),
+									new Drag<f32, 2>(
+										"Projection planes",
+										&data.m_projectionData.data.orthographic.near,
+										0.1f,
+										0.0f,
+										100.0f,
+										&data.m_changed,
+										labels,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									Style()
+										.withSize({ Grow, 23.f })
 								},
 							}),
 							new Element({
 								.direction = Axis::Vertical,
 							}, {
 								new LabeledRow {
-									new Text("fov", labelStyle),
-									new Drag<f32, 1>("Fov", &data.m_projectionData.data.perspective.fov, 1.f, 40.0f, 140.0f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
-									{ .size = { 0.f, 23.f } }
+									new Text("fov"),
+									new Drag<>(
+										"Fov",
+										&data.m_projectionData.data.perspective.fov,
+										1.f,
+										40.0f,
+										140.0f,
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									Style()
+										.withSize({ Grow, 23.f })
 								},
 								new LabeledRow {
-									new Text("projection planes", labelStyle),
-									new Drag<f32, 2>("Projection planes", &data.m_projectionData.data.perspective.near, 0.1f, 0.0f, 100.0f, &data.m_changed, labels, { .size = { 250.f, Grow } }),
-									{ .size = { 0.f, 23.f } }
+									new Text("projection planes"),
+									new Drag<f32, 2>(
+										"Projection planes",
+										&data.m_projectionData.data.perspective.near,
+										0.1f,
+										0.0f,
+										100.0f,
+										&data.m_changed,
+										labels,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									Style()
+										.withSize({ Grow, 23.f })
 								},
 							})
 						}

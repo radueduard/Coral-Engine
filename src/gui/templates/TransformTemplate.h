@@ -41,12 +41,6 @@ namespace Coral::Reef {
 				}
 			};
 
-			const Text::Style labelStyle {
-				.color = { 0.8f, 0.8f, 0.8f, 1.f },
-				.fontSize = 15.f,
-				.fontStyle = FontType::Bold,
-				// .minSize = { 60.f, 0.f }
-			};
 
 			return new Element({
 					.size = { Grow, Shrink },
@@ -59,27 +53,59 @@ namespace Coral::Reef {
 					new Text(
 						" " ICON_FA_LOCATION_CROSSHAIRS "   Transform",
 						Text::Style{
-							{ 0.8f, 0.8f, 0.8f, 1.f },
-							20.f,
-							FontType::Black
+							.color = Colors::grey[300],
+							.fontSize = 20.f,
+							.fontStyle = FontType::Black,
+							.verticalAlignment = Text::VerticalAlignment::Middle,
+							.horizontalAlignment = Text::HorizontalAlignment::Left,
 						},
-						{ .size = { 0.f, 20.f } }
+						{ .size = { Grow, 20.f } }
 					),
 					new Separator(),
 					new LabeledRow {
-						new Text("position", labelStyle, { .size = { Grow, Grow } }),
-						new Drag<f32, 3>("Position", reinterpret_cast<f32*>(&data.position), 0.5f, -100.f, 100.f, &data.m_changed, labels, {.size = { 250.f, 0.f }}),
-						{ .size = { 0.f, 23.f } }
+						new Text("position"),
+						new Drag<f32, 3>(
+							"Position",
+							reinterpret_cast<f32*>(&data.position),
+							0.5f,
+							-100.f,
+							100.f,
+							&data.m_changed,
+							labels,
+							DragDefaultStyle()
+								.withSize({ 250.f, Grow })
+						),
+						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("rotation", labelStyle, { .size = { Grow, Grow } }),
-						new Drag<f32, 3>("Rotation", reinterpret_cast<f32*>(&data.rotation), 1.f, -360.f, 360.f, &data.m_changed, labels, {.size = { 250.f, 0.f }}),
-						{ .size = { 0.f, 23.f } }
+						new Text("rotation"),
+						new Drag<f32, 3>(
+							"Rotation",
+							reinterpret_cast<f32*>(&data.rotation),
+							1.f,
+							-360.f,
+							360.f,
+							&data.m_changed,
+							labels,
+							DragDefaultStyle()
+								.withSize({ 250.f, Grow })
+						),
+						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("scale", labelStyle, { .size = { Grow, Grow } }),
-						new Drag<f32, 3>("Scale", reinterpret_cast<f32*>(&data.scale), 0.1f, -10.f, 10.f, &data.m_changed, labels, {.size = { 250.f, 0.f }}),
-						{ .size = { 0.f, 23.f } }
+						new Text("scale"),
+						new Drag<f32, 3>(
+							"Scale",
+							reinterpret_cast<f32*>(&data.scale),
+							0.1f,
+							-10.f,
+							10.f,
+							&data.m_changed,
+							labels,
+							DragDefaultStyle()
+								.withSize({ 250.f, Grow })
+						),
+						{ .size = { Grow, 23.f } }
 					},
 				}
 			);

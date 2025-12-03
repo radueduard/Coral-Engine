@@ -2,7 +2,7 @@
     "cameras": {},
     "lights": {},
     "materials": {
-        "04a7360a-bd64-483a-844e-2ab989ff54e4": {
+        "0eac7ba3-a0f6-43e2-9d2e-9ecad6dc89c3": {
             "alphaCutoff": 0.5,
             "baseColorFactor": [
                 1.0,
@@ -21,27 +21,27 @@
             "name": "Material_MR",
             "roughnessFactor": 1.0,
             "textures": {
-                "aiTextureType_BASE_COLOR": "85a60b72-314a-4669-9164-e230b9c4fa79",
-                "aiTextureType_DIFFUSE_ROUGHNESS": "21e92949-5e8b-4c3f-8abb-6ad25525f07e",
-                "aiTextureType_EMISSIVE": "f528cf7e-6554-40e3-901b-844dd99f0ae5",
-                "aiTextureType_LIGHTMAP": "cf61e89a-8395-4643-8104-9664f8d2fd8a",
-                "aiTextureType_METALNESS": "21e92949-5e8b-4c3f-8abb-6ad25525f07e",
-                "aiTextureType_NORMALS": "8ac86c8d-bf31-4c79-8cf9-b0fe20a5daca"
+                "aiTextureType_BASE_COLOR": "9638d612-c8c1-46df-9419-b7906050542d",
+                "aiTextureType_DIFFUSE_ROUGHNESS": "86a9de4a-9f2f-449b-9226-c562da9dd7e1",
+                "aiTextureType_EMISSIVE": "a888cc48-b86e-429c-95c7-ee3bb36a2ad4",
+                "aiTextureType_LIGHTMAP": "542b390c-515f-44d6-a481-826770935011",
+                "aiTextureType_METALNESS": "86a9de4a-9f2f-449b-9226-c562da9dd7e1",
+                "aiTextureType_NORMALS": "a09457d6-fd3a-4593-86c7-78716838e343"
             }
         }
     },
     "meshes": {
-        "290edac6-4b7b-4016-9fde-5823bcf3734a": {
+        "b5fd5ef3-debd-4267-b4ee-25a973970c29": {
             "id": 0,
             "name": "mesh_helmet_LP_13930damagedHelmet"
         }
     },
     "objects": {
-        "c19d24f2-e2f0-4c28-8d42-7e00c7226a09": {
+        "efd6ae86-c5bf-431c-b3d0-457588b16cd9": {
             "meshes": [
                 {
-                    "material": "04a7360a-bd64-483a-844e-2ab989ff54e4",
-                    "mesh": "290edac6-4b7b-4016-9fde-5823bcf3734a"
+                    "material": "0eac7ba3-a0f6-43e2-9d2e-9ecad6dc89c3",
+                    "mesh": "b5fd5ef3-debd-4267-b4ee-25a973970c29"
                 }
             ],
             "name": "node_damagedHelmet_-6514",
@@ -66,29 +66,29 @@
         }
     },
     "textures": {
-        "21e92949-5e8b-4c3f-8abb-6ad25525f07e": {
+        "542b390c-515f-44d6-a481-826770935011": {
             "normalMap": false,
-            "path": "E:/glTF-Sample-Assets/Models/DamagedHelmet/glTF/Default_metalRoughness.jpg",
+            "path": "C:/Users/radue/CLionProjects/Coral-Engine/assets/DamagedHelmet/Default_AO.jpg",
             "size": 2048
         },
-        "85a60b72-314a-4669-9164-e230b9c4fa79": {
+        "86a9de4a-9f2f-449b-9226-c562da9dd7e1": {
             "normalMap": false,
-            "path": "E:/glTF-Sample-Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg",
+            "path": "C:/Users/radue/CLionProjects/Coral-Engine/assets/DamagedHelmet/Default_metalRoughness.jpg",
             "size": 2048
         },
-        "8ac86c8d-bf31-4c79-8cf9-b0fe20a5daca": {
+        "9638d612-c8c1-46df-9419-b7906050542d": {
+            "normalMap": false,
+            "path": "C:/Users/radue/CLionProjects/Coral-Engine/assets/DamagedHelmet/Default_albedo.jpg",
+            "size": 2048
+        },
+        "a09457d6-fd3a-4593-86c7-78716838e343": {
             "normalMap": true,
-            "path": "E:/glTF-Sample-Assets/Models/DamagedHelmet/glTF/Default_normal.jpg",
+            "path": "C:/Users/radue/CLionProjects/Coral-Engine/assets/DamagedHelmet/Default_normal.jpg",
             "size": 2048
         },
-        "cf61e89a-8395-4643-8104-9664f8d2fd8a": {
+        "a888cc48-b86e-429c-95c7-ee3bb36a2ad4": {
             "normalMap": false,
-            "path": "E:/glTF-Sample-Assets/Models/DamagedHelmet/glTF/Default_AO.jpg",
-            "size": 2048
-        },
-        "f528cf7e-6554-40e3-901b-844dd99f0ae5": {
-            "normalMap": false,
-            "path": "E:/glTF-Sample-Assets/Models/DamagedHelmet/glTF/Default_emissive.jpg",
+            "path": "C:/Users/radue/CLionProjects/Coral-Engine/assets/DamagedHelmet/Default_emissive.jpg",
             "size": 2048
         }
     }

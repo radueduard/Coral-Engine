@@ -37,17 +37,54 @@ namespace Coral::Reef {
 
 		struct Style {
 			Color color = Colors::white;
-			f32 fontSize;
-			FontType fontStyle;
-			String fontFamily;
-			Overflow overflow;
-			u32 maxLines;
-			Axis direction;
+			f32 fontSize = 15.f;
+			FontType fontStyle = FontType::Regular;
+			String fontFamily = "Roboto";
+			Overflow overflow = Overflow::Clip;
+			u32 maxLines = 0;
+			Axis direction = Axis::Horizontal;
 			VerticalAlignment verticalAlignment = VerticalAlignment::Middle;
 			HorizontalAlignment horizontalAlignment = HorizontalAlignment::Left;
+
+			Style& withColor(const Color& c) {
+				color = c;
+				return *this;
+			}
+			Style& withFontSize(const f32 size) {
+				fontSize = size;
+				return *this;
+			}
+			Style& withFontStyle(const FontType style) {
+				fontStyle = style;
+				return *this;
+			}
+			Style& withFontFamily(const String& family) {
+				fontFamily = family;
+				return *this;
+			}
+			Style& withOverflow(const Overflow ov) {
+				overflow = ov;
+				return *this;
+			}
+			Style& withMaxLines(const u32 lines) {
+				maxLines = lines;
+				return *this;
+			}
+			Style& withDirection(const Axis dir) {
+				direction = dir;
+				return *this;
+			}
+			Style& withVerticalAlignment(const VerticalAlignment align) {
+				verticalAlignment = align;
+				return *this;
+			}
+			Style& withHorizontalAlignment(const HorizontalAlignment align) {
+				horizontalAlignment = align;
+				return *this;
+			}
 		};
 
-		explicit Text(String text, Text::Style textStyle = {}, const Reef::Style& elementStyle = {
+		explicit Text(String text, const Text::Style& textStyle = {}, const Reef::Style& elementStyle = {
 			.backgroundColor = Colors::transparent,
 		}) : Element(elementStyle, {}), m_text(std::move(text)), m_textStyle(std::move(textStyle)) {}
 

@@ -15,22 +15,24 @@ namespace Coral::Reef {
 				m_elements.emplace_back(child);
 			}
 			m_state = m_condition();
-			m_children.emplace_back(std::move(m_elements[m_state]));
+			AddChild(m_elements[m_state].release());
 			m_lastState = m_state;
 		}
 
-		void Subrender() override {
+		void Update() override {
+			Element::Update();
 			m_state = m_condition();
 			if (m_state != m_lastState) {
 				ResetState([this] {
 					auto oldElement = std::move(m_children.front());
 					m_children.clear();
 					m_elements[m_lastState] = std::move(oldElement);
-					m_children.emplace_back(std::move(m_elements[m_state]));
+					AddChild(m_elements[m_state].release());
 				});
 				m_lastState = m_state;
 			}
 		}
+
 	private:
 		u8 m_state;
 		u8 m_lastState;

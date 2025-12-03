@@ -20,19 +20,12 @@ namespace Coral::Reef {
 		~RenderPipelineTemplate() override = default;
 
 		Element* Build(Graphics::Pipeline::Builder& data) override {
-			const Text::Style labelStyle {
-				.color = { 0.8f, 0.8f, 0.8f, 1.f },
-				.fontSize = 15.f,
-				.fontStyle = FontType::Bold,
-			};
-
 			return new Element({
 					.size = { Grow, Shrink },
 					.padding = { 10.f, 10.f, 10.f, 10.f },
 					.cornerRadius = 10.f,
 					.backgroundColor = { .1f, .1f, .1f, 1.f },
 					.direction = Axis::Vertical,
-					.debug = true,
 				},
 				{
 					new Text(" " ICON_FA_PAINTBRUSH "   Graphics Pipeline",
@@ -48,7 +41,7 @@ namespace Coral::Reef {
 							"Rasterization State",
 							Text::Style{
 								.color = Colors::grey[300],
-								.fontSize = 14.f,
+								.fontSize = 20.f,
 								.fontStyle = FontType::Black,
 								.verticalAlignment = Text::VerticalAlignment::Middle,
 								.horizontalAlignment = Text::HorizontalAlignment::Center,
@@ -57,58 +50,61 @@ namespace Coral::Reef {
 					),
 					new Separator(),
 					new LabeledRow {
-						new Text("Depth Clamp Enable", labelStyle),
+						new Text("Depth Clamp Enable"),
 						new Checkbox(
 							"Depth Clamp Enable",
 							data.m_rasterizer.depthClampEnable,
 							[&data](bool newValue) {
 								data.m_rasterizer.depthClampEnable = newValue;
 							},
-							{ .size = { 23.f, 23.f } }
+							Checkbox::DefaultStyle()
+								.withSize({ 23.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Depth Bias Clamp", labelStyle),
-						new Drag<f32, 1>(
+						new Text("Depth Bias Clamp"),
+						new Drag(
 							"Depth Bias Clamp",
 							&data.m_rasterizer.depthBiasClamp,
 							0.1f,
 							0.f,
-							100.f,
+							200.f,
 							nullptr,
 							{},
-							{ .size = { 250.f, Grow } }
+							DragDefaultStyle()
+								.withSize({ 200.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Rasterizer Discard Enable", labelStyle),
+						new Text("Rasterizer Discard Enable"),
 						new Checkbox(
 							"Rasterizer Discard Enable",
 							data.m_rasterizer.rasterizerDiscardEnable,
 							[&data](bool newValue) {
 								data.m_rasterizer.rasterizerDiscardEnable = newValue;
 							},
-							{ .size = { 23.f, 23.f } }
+							Checkbox::DefaultStyle()
+								.withSize({ 23.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Polygon Mode", labelStyle),
+						new Text("Polygon Mode"),
 						new DropDown("Polygon Mode",
 							&data.m_rasterizer.polygonMode,
 							{},
-							{
-								.size = { 250.f, 0.f },
-							}),
+							DropDownDefaultStyle()
+								.withSize({ 200.f, Grow })
+						),
 						{
 							.size = { 0.f, 23.f }
 						}
 					},
 					new LabeledRow {
-						new Text("Line Width", labelStyle),
-						new Drag<f32, 1>(
+						new Text("Line Width"),
+						new Drag(
 							"Line Width",
 							&data.m_rasterizer.lineWidth,
 							1.f,
@@ -116,63 +112,68 @@ namespace Coral::Reef {
 							20.f,
 							nullptr,
 							{},
-							{ .size = { 250.f, Grow } }
+							DragDefaultStyle()
+								.withSize({ 200.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Cull Mode", labelStyle),
+						new Text("Cull Mode"),
 						new FlagSetSelection(
 							data.m_rasterizer.cullMode,
-							{ .size = { 250.f, Grow } }),
+							{ .size = { 200.f, Grow } }),
 							// { .size = { Grow, Grow } }
 					},
 					new LabeledRow {
-						new Text("Front Face", labelStyle),
+						new Text("Front Face"),
 						new DropDown("Front Face",
 							&data.m_rasterizer.frontFace,
 							{},
-							{ .size = { 250.f, 0.f } }
+							DropDownDefaultStyle()
+								.withSize({ 200.f, Grow })
 						),
 						{ .size = { 0.f, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Depth Bias Enable", labelStyle),
+						new Text("Depth Bias Enable"),
 						new Checkbox(
 							"Depth Bias Enable",
 							data.m_rasterizer.depthBiasEnable,
 							[&data](bool newValue) {
 								data.m_rasterizer.depthBiasEnable = newValue;
 							},
-							{ .size = { 23.f, 23.f } }
+							Checkbox::DefaultStyle()
+								.withSize({ 23.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Depth Bias Constant Factor", labelStyle),
-						new Drag<f32, 1>(
+						new Text("Depth Bias Constant Factor"),
+						new Drag(
 							"Depth Bias Constant Factor",
 							&data.m_rasterizer.depthBiasConstantFactor,
 							0.1f,
 							0.f,
-							100.f,
+							200.f,
 							nullptr,
 							{},
-							{ .size = { 250.f, Grow } }
+							DragDefaultStyle()
+								.withSize({ 200.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Depth Bias Slope Factor", labelStyle),
-						new Drag<f32, 1>(
+						new Text("Depth Bias Slope Factor"),
+						new Drag(
 							"Depth Bias Slope Factor",
 							&data.m_rasterizer.depthBiasSlopeFactor,
 							0.1f,
 							0.f,
-							100.f,
+							200.f,
 							nullptr,
 							{},
-							{ .size = { 250.f, Grow } }
+							DragDefaultStyle()
+								.withSize({ 200.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
@@ -181,7 +182,7 @@ namespace Coral::Reef {
 						"Input Assembly State",
 						Text::Style{
 							.color = Colors::grey[300],
-							.fontSize = 14.f,
+							.fontSize = 20.f,
 							.fontStyle = FontType::Black,
 							.verticalAlignment = Text::VerticalAlignment::Middle,
 							.horizontalAlignment = Text::HorizontalAlignment::Center,
@@ -190,23 +191,25 @@ namespace Coral::Reef {
 					),
 					new Separator(),
 					new LabeledRow {
-						new Text("Primitive Topology", labelStyle),
+						new Text("Primitive Topology"),
 						new DropDown("Primitive Topology",
 							&data.m_inputAssembly.topology,
 							{},
-							{ .size = { 250.f, 0.f } }
+							DropDownDefaultStyle()
+								.withSize({ 200.f, Grow })
 						),
 						{ .size = { 0.f, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Primitive Restart Enable", labelStyle),
+						new Text("Primitive Restart Enable"),
 						new Checkbox(
 							"Primitive Restart Enable",
 							data.m_inputAssembly.primitiveRestartEnable,
 							[&data](bool newValue) {
 								data.m_inputAssembly.primitiveRestartEnable = newValue;
 							},
-							{ .size = { 23.f, 23.f } }
+							Checkbox::DefaultStyle()
+								.withSize({ 23.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
@@ -215,17 +218,17 @@ namespace Coral::Reef {
 						"Tessellation State",
 						Text::Style{
 							.color = Colors::grey[300],
-							.fontSize = 14.f,
+							.fontSize = 20.f,
 							.fontStyle = FontType::Black,
 							.verticalAlignment = Text::VerticalAlignment::Middle,
 							.horizontalAlignment = Text::HorizontalAlignment::Center,
 						},
-						{ .size = { 0.f, 20.f } }
+						{ .size = { Grow, 20.f } }
 					),
 					new Separator(),
 					new LabeledRow {
-						new Text("Patch Control Points", labelStyle),
-						new Drag<u32, 1>(
+						new Text("Patch Control Points"),
+						new Drag<u32>(
 							"Patch Control Points",
 							&data.m_tessellation.patchControlPoints,
 							1.f,
@@ -233,7 +236,8 @@ namespace Coral::Reef {
 							32,
 							nullptr,
 							{},
-							{ .size = { 250.f, Grow } }
+							DragDefaultStyle()
+								.withSize({ 200.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},

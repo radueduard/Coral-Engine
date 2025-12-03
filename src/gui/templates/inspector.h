@@ -28,23 +28,9 @@ namespace Coral::Reef {
 		Element *Build(ECS::Entity &data) override {
 			std::vector<Element*> children {
 				new LabeledRow(
-					new Text(
-						"Name:",
-						Text::Style {
-							.fontSize = 15,
-							.fontStyle = FontType::Bold,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Left,
-						},
-						{
-							.size { Grow, Grow },
-							.padding { 5.f, 5.f, 0.f, 0.f },
-						}
-					),
+					new Text("Name:"),
 					new InputField("Name", &data.Name(),
-						{
-							.size = { 300.f, 23.f },
-						}
+						{ .size = { 300.f, 23.f }, }
 					),
 					{
 						.size = { Grow, Shrink },

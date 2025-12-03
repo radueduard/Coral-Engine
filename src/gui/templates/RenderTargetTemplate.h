@@ -40,13 +40,12 @@ namespace Coral::Reef {
 					}, {
 						new Element({},
 							{
-								new Text(mesh->Name(), Text::Style{ { 0.8f, 0.8f, 0.8f, 1.f } }),
+								new Text(mesh->Name(), Text::Style().withHorizontalAlignment(Text::HorizontalAlignment::Center)),
 							}
 						),
-						new Element(),
 						new Element({},
 							{
-								new Text(material->Name(), Text::Style{ { 0.8f, 0.8f, 0.8f, 1.f } }),
+								new Text(material->Name(), Text::Style().withHorizontalAlignment(Text::HorizontalAlignment::Center)),
 							}
 						),
 					}

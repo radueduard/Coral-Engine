@@ -75,7 +75,8 @@ namespace Coral::Reef {
         ImGuiIO &io = ImGui::GetIO(); (void)io;
 
 
-        AddFont("assets/fonts/Roboto-Regular.ttf", 13, io.Fonts->GetGlyphRangesDefault());
+        AddFont("assets/fonts/Roboto-Regular.ttf", 20, io.Fonts->GetGlyphRangesDefault());
+        // AddFont("assets/fonts/Roboto-Bold.ttf", 20, io.Fonts->GetGlyphRangesDefault());
         // AddFont("assets/fonts/Roboto-Regular.ttf", 32, io.Fonts->GetGlyphRangesDefault());
 
         // for (int baseFontSize = 8; baseFontSize <= 32; baseFontSize++) {
@@ -120,7 +121,7 @@ namespace Coral::Reef {
         };
         ImGui_ImplVulkan_Init(&init_info);
 
-        io.FontDefault = GetFont(FontType::Regular, 13.0f);
+        io.FontDefault = GetFont(FontType::Regular, 15.0f);
     }
 
     Manager::~Manager() {
@@ -164,6 +165,8 @@ namespace Coral::Reef {
         window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
         ImGui::Begin("DockSpace Demo", nullptr, window_flags);
+
+		ImGui::SetWindowFontScale(15.f / ImGui::GetFontSize());
 
         ImGui::PushStyleVar(ImGuiStyleVar_TabBarBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 10.f, 10.f });
@@ -221,23 +224,23 @@ namespace Coral::Reef {
         const ImGuiID dockSpaceId = ImGui::GetID("MainDockSpace");
         ImGui::DockSpace(dockSpaceId, ImVec2(0.0f, 0.0f), dockSpaceFlags);
 
-        ImGui::PushFont(GetFont(FontType::Regular, 13.f));
+        ImGui::PushFont(GetFont(FontType::Regular, 15.f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
 
 		// App menu bar
-		if (ImGui::BeginMainMenuBar()) {
-			if (ImGui::BeginMenu("File")) {
-				if (ImGui::MenuItem("New Project")) {
-					ECS::SceneManager::Get().RegisterEvent([] {
-						ECS::SceneManager::Get().NewScene();
-						Asset::Manager::Get().Reset();
-					});
-				}
-				ImGui::EndMenu();
-			}
-			ImGui::EndMainMenuBar();
-		}
+		// if (ImGui::BeginMainMenuBar()) {
+		// 	if (ImGui::BeginMenu("File")) {
+		// 		if (ImGui::MenuItem("New Project")) {
+		// 			ECS::SceneManager::Get().RegisterEvent([] {
+		// 				ECS::SceneManager::Get().NewScene();
+		// 				Asset::Manager::Get().Reset();
+		// 			});
+		// 		}
+		// 		ImGui::EndMenu();
+		// 	}
+		// 	ImGui::EndMainMenuBar();
+		// }
 
 		for (auto* layer : m_layers) {
 			layer->OnGUIUpdate();
@@ -252,6 +255,8 @@ namespace Coral::Reef {
 
         ImGui::PopStyleColor(24);
         ImGui::PopStyleVar(16);
+
+		ImGui::SetWindowFontScale(1.f);
 
         ImGui::End();
 
