@@ -23,6 +23,7 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(Boost COMPONENTS unordered uuid REQUIRED)
 find_package(slang CONFIG REQUIRED)
+find_package(glslang CONFIG REQUIRED)
 
 # Add the source files
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.cc")
@@ -58,9 +59,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 set(IMGUI_DIR external/imgui)
 add_subdirectory(${IMGUI_DIR} imgui)
 
-# Glslang
-set(GLSLANG_DIR external/glslang)
-add_subdirectory(${GLSLANG_DIR} glslang)
+## Glslang
+#set(GLSLANG_DIR external/glslang)
+#add_subdirectory(${GLSLANG_DIR} glslang)
 
 # Spirv-Cross
 set(SPIRV_CROSS_DIR external/spirv-cross)
