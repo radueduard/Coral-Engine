@@ -64,7 +64,7 @@ add_subdirectory(${GLSLANG_DIR} glslang)
 
 # Spirv-Cross
 set(SPIRV_CROSS_DIR external/spirv-cross)
-add_subdirectory(${SPIRV_CROSS_DIR} SPIRV-Cross)
+add_subdirectory(${SPIRV_CROSS_DIR} Spirv-Cross)
 
 # Dear ImGui
 target_link_libraries(${PROJECT_NAME} PRIVATE imgui)

@@ -77,7 +77,8 @@ namespace Coral {
     void Engine::Run() const {
         Input::Setup();
 
-		Asset::Importer("C:/Users/radue/CLionProjects/Coral-Engine/assets/DamagedHelmet/DamagedHelmet.gltf").Import();
+		Asset::Importer("assets/DamagedHelmet/DamagedHelmet.gltf").Import();
+		// Asset::Importer("E:/main_sponza/NewSponza_Main_glTF_003.gltf").Import();
 
         while (!m_window->ShouldClose()) {
 	        auto startTime = std::chrono::high_resolution_clock::now();

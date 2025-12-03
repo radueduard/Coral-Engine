@@ -82,10 +82,10 @@ TessControlOutput hullMain(
 TrianglePatchConstants patchConstantFunc(InputPatch<TessControlInput, 3> patch)
 {
     TrianglePatchConstants output;
-    output.edges[0] = 2.0;
-    output.edges[1] = 2.0;
-    output.edges[2] = 2.0;
-    output.inside = 2.0;
+    output.edges[0] = 1.0;
+    output.edges[1] = 1.0;
+    output.edges[2] = 1.0;
+    output.inside = 1.0;
     return output;
 }
 
