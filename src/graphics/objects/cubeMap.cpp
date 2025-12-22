@@ -41,7 +41,7 @@ namespace Coral::Graphics {
             .UsageFlags(vk::ImageUsageFlagBits::eSampled)
     		.UsageFlags(vk::ImageUsageFlagBits::eTransferDst)
             .MipLevels(1)
-            .LayersCount(6)
+            .LayerCount(6)
             .SampleCount(vk::SampleCountFlagBits::e1)
             .InitialLayout(vk::ImageLayout::eTransferDstOptimal)
             .Build();
@@ -60,7 +60,7 @@ namespace Coral::Graphics {
             stagingBuffer->Write(data);
             stagingBuffer->Unmap();
 
-            m_image->Copy(**stagingBuffer, 0, i);
+            m_image->Copy(*stagingBuffer, 0, i);
         }
 
         m_image->TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -71,13 +71,12 @@ namespace Coral::Graphics {
             .LayerCount(6)
             .Build());
 
-        const auto samplerCreateInfo = Memory::Sampler::CreateInfo {
-            .magFilter = vk::Filter::eLinear,
-            .minFilter = vk::Filter::eLinear,
-            .addressMode = vk::SamplerAddressMode::eRepeat,
-            .mipmapMode = vk::SamplerMipmapMode::eLinear
-        };
-        m_sampler = std::make_unique<Memory::Sampler>(samplerCreateInfo);
+        m_sampler = Memory::Sampler::Builder()
+    		.MagFilter(vk::Filter::eLinear)
+    		.MinFilter(vk::Filter::eLinear)
+    		.AddressMode(vk::SamplerAddressMode::eRepeat)
+    		.MipmapMode(vk::SamplerMipmapMode::eLinear)
+    		.Build();
     }
 
     vk::DescriptorImageInfo CubeMap::DescriptorInfo() const {

@@ -224,21 +224,21 @@ namespace Coral::Reef {
         }
 
         ImGui::SetCursorPos({ m_relativePosition.x, m_relativePosition.y });
-        ImGui::BeginChild(
+		const bool visible = ImGui::BeginChild(
             boost::uuids::to_string(m_uuid).c_str(),
             ImVec2(m_currentSize.width, m_currentSize.height),
             ImGuiChildFlags_AlwaysUseWindowPadding,
             windowFlags
         );
+		if (visible) {
+			m_actualRenderedPosition = Math::Vector2<f32>(ImGui::GetCursorScreenPos());
 
-        m_actualRenderedPosition = Math::Vector2<f32>(ImGui::GetCursorScreenPos());
+			Subrender();
 
-        Subrender();
-
-        for (const auto& child : m_children) {
-            child->Render();
-        }
-
+			for (const auto& child : m_children) {
+				child->Render();
+			}
+		}
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(2);

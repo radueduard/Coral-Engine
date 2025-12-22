@@ -10,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 
 #include "constants.h"
 #include "matrix.h"
@@ -97,4 +98,25 @@ namespace Coral::Math {
 			glm::sin(eulerAngles.y) * glm::cos(eulerAngles.x)
 		}.Normalized();
     }
+
+	inline void DecomposeMatrix(const Matrix4<f32>& matrix, Vector3<f32>& outScale, Quaternion<f32>& outRotation, Vector3<f32>& outPosition) {
+		glm::vec3 scale;
+		glm::quat rotation;
+		glm::vec3 position;
+    	glm::vec3 skew;
+		glm::vec4 perspective;
+
+		glm::decompose(
+			reinterpret_cast<const glm::mat4&>(matrix),
+			scale,
+			rotation,
+			position,
+			skew,
+			perspective
+		);
+
+		outScale = reinterpret_cast<const Vector3<f32>&>(scale);
+		outRotation = reinterpret_cast<const Quaternion<f32>&>(rotation);
+		outPosition = reinterpret_cast<const Vector3<f32>&>(position);
+	}
 }

@@ -10,70 +10,79 @@
 
 #include "core/device.h"
 
-#include "memory/descriptor/setLayout.h"
 #include "memory/descriptor/set.h"
+#include "memory/descriptor/setLayout.h"
+#include "shader/manager.h"
 
 namespace Coral::Compute {
-    Pipeline::Pipeline(Shader::Shader* shader, std::string kernelName) : m_shader(shader), m_kernelName(std::move(kernelName)) {
-        std::vector<Memory::Descriptor::SetLayout::Builder> setLayoutBuilders;
-        for (const auto &[set, binding, name, type, count] : m_shader->Descriptors()) {
-            if (setLayoutBuilders.size() <= set) {
-                setLayoutBuilders.resize(set + 1);
-            }
-            setLayoutBuilders[set].AddBinding(binding, type, vk::ShaderStageFlagBits::eCompute, count);
-        }
-        
-        std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> setLayouts;
-        for (const auto &layoutBuilder : setLayoutBuilders) {
-            setLayouts.emplace_back(layoutBuilder.Build());
-        }
-
-        std::vector<vk::DescriptorSetLayout> layouts = setLayouts
-            | std::views::transform([](const auto &layout) { return **layout; })
-            | std::ranges::to<std::vector<vk::DescriptorSetLayout>>();
-
-        std::vector<vk::PushConstantRange> pushConstantRanges;
-        for (const auto &[size, offset, name] : m_shader->PushConstantRanges()) {
-            pushConstantRanges.emplace_back(vk::PushConstantRange()
-                .setOffset(offset)
-                .setSize(size)
-                .setStageFlags(vk::ShaderStageFlagBits::eCompute));
-        }
-
-        const auto pipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
-            .setSetLayouts(layouts)
-            .setPushConstantRanges(pushConstantRanges);
-
-        m_pipelineLayout = Context::Device()->createPipelineLayout(pipelineLayoutCreateInfo);
-
-        const auto shaderStage = vk::PipelineShaderStageCreateInfo()
-            .setStage(vk::ShaderStageFlagBits::eCompute)
-            .setModule(**m_shader)
-            .setPName(m_kernelName.c_str());
-
-        const auto createInfo = vk::ComputePipelineCreateInfo()
-            .setLayout(m_pipelineLayout)
-            .setStage(shaderStage);
-
-        const auto pipeline = Context::Device()->createComputePipeline(nullptr, createInfo);
-        if (pipeline.result != vk::Result::eSuccess) {
-            std::cerr << "Failed to create compute pipeline" << std::endl;
-        }
-        m_pipeline = pipeline.value;
+    Pipeline::Pipeline(const Shader::Shader& shader) : m_shader(shader) {
+		Create();
     }
 
     Pipeline::~Pipeline() {
         Context::Device()->waitIdle();
-        Context::Device()->destroyPipeline(m_pipeline);
-        Context::Device()->destroyPipelineLayout(m_pipelineLayout);
+        Destroy();
     }
 
-    void Pipeline::Bind(const vk::CommandBuffer commandBuffer) const {
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline);
+	void Pipeline::Create() {
+    	std::vector<Memory::Descriptor::SetLayout::Builder> setLayoutBuilders;
+    	for (const auto &[set, binding, name, type, count] : m_shader.Descriptors()) {
+    		if (setLayoutBuilders.size() <= set) {
+    			setLayoutBuilders.resize(set + 1);
+    		}
+    		setLayoutBuilders[set].AddBinding(binding, type, vk::ShaderStageFlagBits::eCompute, count);
+    	}
+
+    	for (const auto &layoutBuilder : setLayoutBuilders) {
+    		m_descriptorSetLayouts.emplace_back(layoutBuilder.Build());
+    	}
+
+    	std::vector<vk::DescriptorSetLayout> layouts = m_descriptorSetLayouts
+			| std::views::transform([](const auto &layout) { return **layout; })
+			| std::ranges::to<std::vector<vk::DescriptorSetLayout>>();
+
+    	std::vector<vk::PushConstantRange> pushConstantRanges;
+    	for (const auto &[size, offset, name] : m_shader.PushConstantRanges()) {
+    		pushConstantRanges.emplace_back(vk::PushConstantRange()
+				.setOffset(offset)
+				.setSize(size)
+				.setStageFlags(vk::ShaderStageFlagBits::eCompute));
+    	}
+
+    	const auto pipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
+			.setSetLayouts(layouts)
+			.setPushConstantRanges(pushConstantRanges);
+
+    	m_pipelineLayout = Context::Device()->createPipelineLayout(pipelineLayoutCreateInfo);
+
+    	const auto shaderStage = vk::PipelineShaderStageCreateInfo()
+			.setStage(vk::ShaderStageFlagBits::eCompute)
+			.setModule(*m_shader)
+			.setPName("main");
+
+    	const auto createInfo = vk::ComputePipelineCreateInfo()
+			.setLayout(m_pipelineLayout)
+			.setStage(shaderStage);
+
+    	const auto pipeline = Context::Device()->createComputePipeline(nullptr, createInfo);
+    	if (pipeline.result != vk::Result::eSuccess) {
+    		std::cerr << "Failed to create compute pipeline" << std::endl;
+    	}
+    	m_pipeline = pipeline.value;
     }
 
-    void Pipeline::BindDescriptorSet(const uint32_t setNumber, const vk::CommandBuffer commandBuffer, const Memory::Descriptor::Set & descriptorSet) const {
-        commandBuffer.bindDescriptorSets(
+	void Pipeline::Destroy() {
+	    Context::Device()->destroyPipeline(m_pipeline);
+    	Context::Device()->destroyPipelineLayout(m_pipelineLayout);
+    	m_descriptorSetLayouts.clear();
+    }
+
+	void Pipeline::Bind(const Core::CommandBuffer& commandBuffer) const {
+        commandBuffer->bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline);
+    }
+
+    void Pipeline::BindDescriptorSet(const uint32_t setNumber, const Core::CommandBuffer& commandBuffer, const Memory::Descriptor::Set & descriptorSet) const {
+        commandBuffer->bindDescriptorSets(
             vk::PipelineBindPoint::eCompute,
             m_pipelineLayout,
             setNumber,
@@ -81,13 +90,13 @@ namespace Coral::Compute {
             nullptr);
     }
 
-    void Pipeline::BindDescriptorSets(const uint32_t startingSet, const vk::CommandBuffer commandBuffer, const std::vector<Memory::Descriptor::Set> & descriptorSets) const {
+    void Pipeline::BindDescriptorSets(const uint32_t startingSet, const Core::CommandBuffer& commandBuffer, const std::vector<Memory::Descriptor::Set> & descriptorSets) const {
         std::vector<vk::DescriptorSet> sets;
         for (const auto &descriptorSet : descriptorSets) {
             sets.push_back(*descriptorSet);
         }
 
-        commandBuffer.bindDescriptorSets(
+        commandBuffer->bindDescriptorSets(
             vk::PipelineBindPoint::eCompute,
             m_pipelineLayout,
             startingSet,

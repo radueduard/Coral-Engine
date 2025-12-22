@@ -98,10 +98,10 @@ namespace Coral::Reef {
 									new Text("left"),
 									new Drag<>(
 										"Left",
-										&data.m_projectionData.data.orthographic.left,
+										{ &data.m_projectionData.data.orthographic.left },
 										0.1f,
-										0.f,
-										100.f,
+										{ -1000.f },
+										{ -0.001f },
 										&data.m_changed,
 										std::nullopt,
 										DragDefaultStyle()
@@ -114,10 +114,10 @@ namespace Coral::Reef {
 									new Text("right"),
 									new Drag<>(
 										"Right",
-										&data.m_projectionData.data.orthographic.right,
+										{ &data.m_projectionData.data.orthographic.right },
 										0.1f,
-										0.f,
-										100.f,
+										{ 0.001f },
+										{ 1000.f },
 										&data.m_changed,
 										std::nullopt,
 										DragDefaultStyle()
@@ -130,10 +130,10 @@ namespace Coral::Reef {
 									new Text("top"),
 									new Drag<f32, 1>(
 										"Top",
-										&data.m_projectionData.data.orthographic.top,
+										{ &data.m_projectionData.data.orthographic.top },
 										0.1f,
-										0.0f,
-										100.0f,
+										{ 0.001f },
+										{ 1000.0f },
 										&data.m_changed,
 										std::nullopt,
 										DragDefaultStyle()
@@ -146,10 +146,10 @@ namespace Coral::Reef {
 									new Text("bottom"),
 									new Drag<f32, 1>(
 										"Bottom",
-										&data.m_projectionData.data.orthographic.bottom,
+										{ &data.m_projectionData.data.orthographic.bottom },
 										0.1f,
-										0.0f,
-										100.0f,
+										{ -1000.0f },
+										{ -0.001f },
 										&data.m_changed,
 										std::nullopt,
 										DragDefaultStyle()
@@ -162,10 +162,10 @@ namespace Coral::Reef {
 									new Text("projection planes"),
 									new Drag<f32, 2>(
 										"Projection planes",
-										&data.m_projectionData.data.orthographic.near,
+										{ &data.m_projectionData.data.orthographic.near, &data.m_projectionData.data.orthographic.far },
 										0.1f,
-										0.0f,
-										100.0f,
+										{0.0001f, 100.f},
+										{10.f, 10000.f},
 										&data.m_changed,
 										labels,
 										DragDefaultStyle()
@@ -180,12 +180,12 @@ namespace Coral::Reef {
 							}, {
 								new LabeledRow {
 									new Text("fov"),
-									new Drag<>(
+									new Drag<f32, 1>(
 										"Fov",
-										&data.m_projectionData.data.perspective.fov,
+										{ &data.m_projectionData.data.perspective.fov },
 										1.f,
-										40.0f,
-										140.0f,
+										{ 40.0f },
+										{ 140.0f },
 										&data.m_changed,
 										std::nullopt,
 										DragDefaultStyle()
@@ -198,10 +198,10 @@ namespace Coral::Reef {
 									new Text("projection planes"),
 									new Drag<f32, 2>(
 										"Projection planes",
-										&data.m_projectionData.data.perspective.near,
+										{ &data.m_projectionData.data.perspective.near, &data.m_projectionData.data.perspective.far },
 										0.1f,
-										0.0f,
-										100.0f,
+										{ 0.01f, 100.f },
+										{ 10.0f, 10000.0f },
 										&data.m_changed,
 										labels,
 										DragDefaultStyle()

@@ -16,8 +16,9 @@
 #include "components/light.h"
 #include "core/input.h"
 #include "core/scheduler.h"
-#include "memory/gpuStructs.h"
 #include "gui/elements/popup.h"
+#include "memory/gpuStructs.h"
+#include "utils/random.h"
 
 namespace Coral::ECS {
     Scene::Scene() {
@@ -92,7 +93,7 @@ namespace Coral::ECS {
     	m_root->AddChild(std::move(firstCamera));
 
     	m_setLayout = Memory::Descriptor::SetLayout::Builder()
-			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eTessellationEvaluation)
+			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 			.Build();
 
 		m_cameraBuffer = Memory::Buffer::Builder()
@@ -105,6 +106,30 @@ namespace Coral::ECS {
 
     	m_set = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_setLayout)
 			.WriteBuffer(0, m_cameraBuffer->DescriptorInfo())
+			.Build();
+
+    	m_planetSetLayout = Memory::Descriptor::SetLayout::Builder()
+    		.AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
+    		.AddBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eMeshEXT)
+    		.Build();
+
+		constexpr u32 resolution = 32;
+    	// m_planetNoise = std::make_unique<Utils::DirectionsNoise<3, 3>>(Math::Vector3u(resolution), 5);
+		m_planetNoise = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(resolution), 4);
+
+    	m_planetImageView = Memory::ImageView::Builder(m_planetNoise->Image())
+    		.ViewType(vk::ImageViewType::e3D)
+    		.Build();
+
+    	m_planetSampler = Memory::Sampler::Builder()
+			.Build();
+
+		m_planetSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_planetSetLayout)
+    		.WriteImage(0, vk::DescriptorImageInfo()
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(**m_planetImageView)
+				.setSampler(**m_planetSampler))
+			.WriteBuffer(1, m_cameraBuffer->DescriptorInfo())
 			.Build();
     }
 
@@ -126,17 +151,17 @@ namespace Coral::ECS {
 				displacement.x -= 1.0f;
 			}
 			if (Input::IsKeyHeld(Key::Q)) {
-				displacement.y += 1.0f;
+				displacement.y -= 1.0f;
 			}
 			if (Input::IsKeyHeld(Key::E)) {
-				displacement.y -= 1.0f;
+				displacement.y += 1.0f;
 			}
 			if (displacement.Length() > 0.0f) {
 				mainCamera.Move(displacement * deltaTime * 3.0f);
 			}
 
 			const Math::Vector2<f32> mouseDelta = Input::GetMousePositionDelta() * 5.f;
-			mainCamera.Rotate(mouseDelta.x, mouseDelta.y);
+			mainCamera.Rotate(mouseDelta.x, -mouseDelta.y);
 		}
 		if (mainCamera.Changed() || mainCamera.Moved()) {
 			mainCamera.RecalculateView();
@@ -163,4 +188,10 @@ namespace Coral::ECS {
 		}
 		throw std::runtime_error("No primary camera found");
 	}
-}
+	Entity* Scene::SelectedEntity() const {
+	    if (m_selectedObject == entt::null) {
+		    return nullptr;
+	    }
+    	return SceneManager::Get().Registry().get<Entity*>(m_selectedObject);
+    }
+} // namespace Coral::ECS

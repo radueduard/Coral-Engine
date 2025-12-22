@@ -20,9 +20,9 @@
 #include "gui/elements/popup.h"
 
 namespace Coral::Graphics {
-    void RenderPass::Attachment::Resize(const Math::Vector2<f32>& extent) const {
+    void RenderPass::Attachment::Resize(const Math::Vector2<u32>& extent) const {
         for (auto* image : images) {
-            image->Resize(Math::Vector3u { static_cast<u32>(extent.x), static_cast<u32>(extent.y), 1u });
+            image->Resize(Math::Vector3u { extent.x, extent.y, 1u });
         }
     }
 
@@ -155,23 +155,7 @@ namespace Coral::Graphics {
 			return;
 
     	for (const auto& pipeline : m_pipelines | std::views::values) {
-            pipeline->Bind(*commandBuffer);
-            pipeline->BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().DescriptorSet());
-            ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
-            [&](const ECS::Entity* entity, const ECS::RenderTarget& renderTarget) {
-                Math::Matrix4<f32> matrix = Math::Matrix4<f32>::Identity();
-            	while (entity) {
-            		auto& transform = entity->Get<ECS::Transform>();
-            		matrix *= transform.Matrix();
-            		entity = entity->Parent();
-            	}
-                for (const auto [mesh, material] : renderTarget.Targets()) {
-                	// pipeline->BindDescriptorSet(1, *commandBuffer, material->DescriptorSet());
-                    pipeline->PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eTessellationEvaluation, 0, matrix);
-                    mesh->Bind(*commandBuffer);
-                    mesh->Draw(*commandBuffer);
-                }
-            });
+			pipeline->Render(commandBuffer);
         }
     }
 
@@ -189,7 +173,7 @@ namespace Coral::Graphics {
     }
 
 
-    bool RenderPass::Resize(const u32 imageCount, const Math::Vector2<f32>& extent) {
+    bool RenderPass::Resize(const u32 imageCount, const Math::Vector2<u32>& extent) {
         if ((m_imageCount == imageCount && m_extent == extent) || (extent.x == 0 || extent.y == 0)) {
             return false;
         }

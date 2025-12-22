@@ -9,7 +9,12 @@
 
 #include <entt/entt.hpp>
 
+#include "utils/noise.h"
+
 namespace Coral::Memory {
+	class Sampler;
+	class ImageView;
+	class Image;
 	class Buffer;
 }
 namespace Coral::Memory::Descriptor {
@@ -38,7 +43,12 @@ namespace Coral::ECS {
 
     	[[nodiscard]] Memory::Descriptor::Set& DescriptorSet() const { return *m_set; }
 
+    	const Memory::Buffer& CameraBuffer() const { return *m_cameraBuffer; }
+
         Camera& MainCamera();
+    	Entity* SelectedEntity() const;
+
+    	[[nodiscard]] Memory::Descriptor::Set& PlanetDescriptorSet() const { return *m_planetSet; }
 
     private:
 
@@ -50,5 +60,12 @@ namespace Coral::ECS {
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_setLayout;
     	std::unique_ptr<Memory::Descriptor::Set> m_set;
     	std::unique_ptr<Memory::Buffer> m_cameraBuffer;
+
+    	std::unique_ptr<Utils::Noise> m_planetNoise;
+    	std::unique_ptr<Memory::ImageView> m_planetImageView;
+    	std::unique_ptr<Memory::Sampler> m_planetSampler;
+
+    	std::unique_ptr<Memory::Descriptor::SetLayout> m_planetSetLayout;
+    	std::unique_ptr<Memory::Descriptor::Set> m_planetSet;
     };
 }

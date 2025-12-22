@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <boost/unordered_map.hpp>
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <memory>

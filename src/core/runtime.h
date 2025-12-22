@@ -41,16 +41,7 @@ namespace Coral::Core {
         [[nodiscard]] const vk::SurfaceKHR& Surface() const { return m_surface; }
         [[nodiscard]] PhysicalDevice& PhysicalDevice() const { return *m_physicalDevice; }
 
-		static const Runtime& Get() {
-        	if (!s_runtime) {
-				throw std::runtime_error("Runtime is not initialized");
-			}
-        	return *s_runtime;
-        }
-
     private:
-		inline static Runtime *s_runtime = nullptr;
-
         vk::PhysicalDeviceFeatures m_deviceFeatures;
         std::vector<const char*> m_instanceLayers;
         std::vector<const char*> m_instanceExtensions;
@@ -63,5 +54,7 @@ namespace Coral::Core {
         vk::SurfaceKHR m_surface;
         std::vector<vk::PhysicalDevice> m_physicalDevices;
         std::unique_ptr<Core::PhysicalDevice> m_physicalDevice = nullptr;
+
+    	vk::detail::DispatchLoaderDynamic dld;
     };
 }

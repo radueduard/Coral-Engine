@@ -14,14 +14,7 @@
 
 namespace Coral::Reef {
 	Viewport::Viewport(Graphics::RenderPass& renderPass): m_renderPass(renderPass) {
-		constexpr auto createInfo = Memory::Sampler::CreateInfo {
-			.magFilter = vk::Filter::eLinear,
-			.minFilter = vk::Filter::eLinear,
-			.addressMode = vk::SamplerAddressMode::eClampToEdge,
-			.mipmapMode = vk::SamplerMipmapMode::eNearest,
-		};
-
-		m_sampler = std::make_unique<Memory::Sampler>(createInfo);
+		m_sampler = Memory::Sampler::Builder().Build();
 	}
 
 	void Viewport::OnGUIAttach() {
@@ -39,9 +32,10 @@ namespace Coral::Reef {
 				static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal)));
 		}
 
-		m_image = new Image(m_viewportTextures[0], Style {
-			.size = { Reef::Grow, Reef::Grow },
-		});
+		m_image = new MultiImage(m_viewportTextures | std::views::transform([](const vk::DescriptorSet& ds) {
+			return static_cast<ImTextureID>(ds);
+		}) | std::ranges::to<std::vector>());
+
 		AddDockable("viewport", new Reef::Window (
             "Main Viewport",
             {
@@ -71,7 +65,10 @@ namespace Coral::Reef {
 							*framebuffer.ImageView(outputAttachmentIndex),
 							static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal)));
 					}
-					m_image->SetTexture(m_viewportTextures[Context::Scheduler().CurrentFrame().ImageIndex()]);
+					m_image->SetTextures(m_viewportTextures | std::views::transform([](const vk::DescriptorSet& ds) {
+							return static_cast<ImTextureID>(ds);
+						}) | std::ranges::to<std::vector>(),
+						Context::Scheduler().CurrentFrame().ImageIndex());
 				}
             }
         ));
@@ -81,10 +78,5 @@ namespace Coral::Reef {
 		for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {
 			ImGui_ImplVulkan_RemoveTexture(m_viewportTextures[i]);
 		}
-	}
-
-	void Viewport::OnGUIUpdate() {
-		Layer::OnGUIUpdate();
-		m_image->SetTexture(m_viewportTextures[Context::Scheduler().CurrentFrame().ImageIndex()]);
 	}
 }

@@ -12,7 +12,9 @@
 #include "context.h"
 
 namespace Coral::Memory {
-    ImageView::ImageView(const Builder &builder)
+	ImageView::Builder::Builder(const Memory::Image& image) : m_image(image) { m_levelCount = image.MipLevels(); }
+
+	ImageView::ImageView(const Builder &builder)
         : m_image(builder.m_image), m_viewType(builder.m_viewType),
           m_baseMipLevel(builder.m_baseMipLevel), m_mipLevelCount(builder.m_levelCount),
           m_baseArrayLayer(builder.m_baseArrayLayer), m_arrayLayerCount(builder.m_layerCount) {
@@ -25,6 +27,10 @@ namespace Coral::Memory {
         } else {
             aspectMask = vk::ImageAspectFlagBits::eColor;
         }
+
+    	if (m_image.Format() == vk::Format::eD32Sfloat) {
+			aspectMask = vk::ImageAspectFlagBits::eDepth;
+		}
 
         const auto viewInfo = vk::ImageViewCreateInfo()
             .setImage(*m_image)

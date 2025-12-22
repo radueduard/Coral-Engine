@@ -66,10 +66,10 @@ namespace Coral::Reef {
 						new Text("position"),
 						new Drag<f32, 3>(
 							"Position",
-							reinterpret_cast<f32*>(&data.position),
-							0.5f,
-							-100.f,
-							100.f,
+							{ &data.position.x, &data.position.y, &data.position.z },
+							0.1f,
+							{ -100.f, -100.f, -100.f },
+							{ 100.f, 100.f, 100.f },
 							&data.m_changed,
 							labels,
 							DragDefaultStyle()
@@ -81,10 +81,10 @@ namespace Coral::Reef {
 						new Text("rotation"),
 						new Drag<f32, 3>(
 							"Rotation",
-							reinterpret_cast<f32*>(&data.rotation),
+							{ &data.rotation.x, &data.rotation.y, &data.rotation.z },
 							1.f,
-							-360.f,
-							360.f,
+							{ -180.f, -180.f, -180.f },
+							{ 180.f, 180.f,	 180.f },
 							&data.m_changed,
 							labels,
 							DragDefaultStyle()
@@ -96,10 +96,10 @@ namespace Coral::Reef {
 						new Text("scale"),
 						new Drag<f32, 3>(
 							"Scale",
-							reinterpret_cast<f32*>(&data.scale),
+							{ &data.scale.x, &data.scale.y, &data.scale.z },
 							0.1f,
-							-10.f,
-							10.f,
+							{ 0.01f, 0.01f, 0.01f },
+							{ 10.f, 10.f, 10.f },
 							&data.m_changed,
 							labels,
 							DragDefaultStyle()

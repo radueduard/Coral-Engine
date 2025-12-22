@@ -90,11 +90,11 @@ namespace Coral::Graphics {
         return *this;
     }
 
-	Pipeline::Builder& Pipeline::Builder::BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)>& function) {
-		// m_function = function;
-    	return *this;
-	}
-
+	Pipeline::Builder& Pipeline::Builder::RenderFunction(const std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)>& function)
+	{
+	    m_function = function;
+		return *this;
+    }
 
     std::unique_ptr<Pipeline> Pipeline::Builder::Build()
     {
@@ -108,7 +108,7 @@ namespace Coral::Graphics {
                 if (auto& currentLayout = layoutBuilders[descriptor.set]; currentLayout.HasBinding(descriptor.binding)) {
                     currentLayout.Binding(descriptor.binding).stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage()));
                 } else {
-                    currentLayout.AddBinding(descriptor.binding, descriptor.type, vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage())), std::max(descriptor.count, 1u));
+                    currentLayout.AddBinding(descriptor.binding, descriptor.type, vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage())), descriptor.count);
                 }
             }
             for (const auto&[size, offset, name] : shader->PushConstantRanges()) {
@@ -203,7 +203,8 @@ namespace Coral::Graphics {
     Pipeline::Pipeline(Builder& builder)
 		: m_pipelineLayout(builder.m_pipelineLayout),
 		m_setLayouts(std::move(builder.m_setLayouts)),
-		m_shaders(std::move(builder.m_shaders))
+		m_shaders(std::move(builder.m_shaders)),
+		m_renderFunction(builder.m_function)
     {
         const auto m_createInfo = vk::GraphicsPipelineCreateInfo()
             .setStages(builder.m_stages)

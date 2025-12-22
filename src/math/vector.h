@@ -10,6 +10,7 @@
 #include <assimp/vector3.h>
 #include <stdexcept>
 #include <type_traits>
+#include <functional>
 
 #include "data.h"
 #include "utils/types.h"
@@ -227,7 +228,7 @@ namespace Coral::Math {
         constexpr Vector& Normalize() {
             T len = this->Length();
             if (len == 0) {
-                throw std::runtime_error("Cannot normalize a zero vector");
+                return *this;
             }
             for (u8 i = 0; i < N; ++i) {
                 this->data[i] /= len;
@@ -263,6 +264,15 @@ namespace Coral::Math {
                 result.data[i] = std::max(lhs.data[i], rhs.data[i]);
             }
             return result;
+        }
+
+    	template <typename R>
+    	constexpr R Fold(std::function<R(R, T)> func, R initial) const {
+	        R result = initial;
+        	for (u8 i = 1; i < N; ++i) {
+        		result = func(result, this->data[i]);
+        	}
+        	return result;
         }
 
         // Conversion operators and constructors

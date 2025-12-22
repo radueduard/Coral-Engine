@@ -68,12 +68,12 @@ namespace Coral::Core {
 
     void Scheduler::CreateDescriptorPool() {
         m_descriptorPool = Memory::Descriptor::Pool::Builder()
-            .AddPoolSize(vk::DescriptorType::eUniformBuffer, 100)
-            .AddPoolSize(vk::DescriptorType::eStorageBuffer, 100)
-            .AddPoolSize(vk::DescriptorType::eCombinedImageSampler, 100)
-            .AddPoolSize(vk::DescriptorType::eStorageImage, 100)
+            .AddPoolSize(vk::DescriptorType::eUniformBuffer, 1000)
+            .AddPoolSize(vk::DescriptorType::eStorageBuffer, 1000)
+            .AddPoolSize(vk::DescriptorType::eCombinedImageSampler, 1000)
+            .AddPoolSize(vk::DescriptorType::eStorageImage, 1000)
             .PoolFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-            .MaxSets(100)
+            .MaxSets(1000)
             .Build();
     }
 
@@ -105,6 +105,7 @@ namespace Coral::Core {
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_swapChain->Resize(Window::Get().Extent());
             m_renderGraph->Resize(Window::Get().Extent());
+        	m_currentFrame = 0;
             return;
         }
 
@@ -212,6 +213,8 @@ namespace Coral::Core {
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_swapChain->Resize(Window::Get().Extent());
             m_renderGraph->Resize(Window::Get().Extent());
+        	m_currentFrame = 0;
+        	return;
         }
 
 		AdvanceFrame();

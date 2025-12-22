@@ -2,6 +2,7 @@
 // Created by radue on 10/14/2024.
 //
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "device.h"
 
 #include <iostream>
@@ -12,7 +13,6 @@
 #include "context.h"
 #include "physicalDevice.h"
 #include "runtime.h"
-
 
 inline static std::thread::id mainThreadId = std::this_thread::get_id();
 
@@ -95,7 +95,7 @@ namespace Coral::Core {
     	firstInstance = false;
     	Context::m_device = this;
 
-        const auto& physicalDevice = Runtime::Get().PhysicalDevice();
+        const auto& physicalDevice = Context::Runtime().PhysicalDevice();
         for (const auto& queueFamily : physicalDevice.QueueFamilyProperties()) {
             const auto queueFamilyIndex = static_cast<uint32_t>(&queueFamily - physicalDevice.QueueFamilyProperties().data());
             const bool canPresent = physicalDevice->getSurfaceSupportKHR(queueFamilyIndex, physicalDevice.Surface());
@@ -121,14 +121,20 @@ namespace Coral::Core {
             .setMaintenance4(true)
             .setPNext(&deviceMeshShaderFeatures);
 
+    	auto vk12Features = vk::PhysicalDeviceVulkan12Features()
+			.setShaderInt8(true)
+    		.setRuntimeDescriptorArray(true)
+			.setPNext(&maintenance4Features);
+
         const auto deviceCreateInfo = vk::DeviceCreateInfo()
             .setQueueCreateInfos(queueCreateInfos)
-            .setPEnabledFeatures(&Runtime::Get().m_deviceFeatures)
-            .setPNext(&maintenance4Features)
-            .setPEnabledExtensionNames(Runtime::Get().m_deviceExtensions)
-            .setPEnabledLayerNames(Runtime::Get().m_deviceLayers);
+            .setPEnabledFeatures(&Context::Runtime().m_deviceFeatures)
+            .setPNext(&vk12Features)
+            .setPEnabledExtensionNames(Context::Runtime().m_deviceExtensions)
+            .setPEnabledLayerNames(Context::Runtime().m_deviceLayers);
 
         m_handle = physicalDevice->createDevice(deviceCreateInfo);
+    	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_handle);
 
         for (const auto& queueFamily : m_queueFamilies) {
             m_commandPools[queueFamily.Index()] = {};
@@ -198,13 +204,13 @@ namespace Coral::Core {
     }
 
     const PhysicalDevice& Device::QuerySurfaceCapabilities() const {
-        auto& physicalDevice = Runtime::Get().PhysicalDevice();
+        auto& physicalDevice = Context::Runtime().PhysicalDevice();
         physicalDevice.QuerySurfaceCapabilities();
         return physicalDevice;
     }
 
     std::optional<uint32_t> Device::FindMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const {
-        const auto& physicalDevice = Runtime::Get().PhysicalDevice();
+        const auto& physicalDevice = Context::Runtime().PhysicalDevice();
         const auto memoryTypes = physicalDevice->getMemoryProperties().memoryTypes;
         for (uint32_t i = 0; i < memoryTypes.size(); i++) {
             if (typeFilter & 1 << i &&

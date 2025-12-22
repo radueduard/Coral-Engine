@@ -8,8 +8,8 @@
 #include "core/device.h"
 
 namespace Coral::Memory {
-    Sampler::Sampler(const CreateInfo& createInfo)
-        : m_magFilter(createInfo.magFilter), m_minFilter(createInfo.minFilter), m_addressMode(createInfo.addressMode), m_mipmapMode(createInfo.mipmapMode) {
+    Sampler::Sampler(const Builder& builder)
+        : m_magFilter(builder.magFilter), m_minFilter(builder.minFilter), m_addressMode(builder.addressMode), m_mipmapMode(builder.mipmapMode) {
         const auto samplerInfo = vk::SamplerCreateInfo()
             .setMagFilter(m_magFilter)
             .setMinFilter(m_minFilter)

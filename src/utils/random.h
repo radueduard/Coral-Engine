@@ -4,77 +4,78 @@
 
 #pragma once
 #include <random>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
-#include <boost/random/uniform_real_distribution.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <glm/glm.hpp>
+#include <math/vector.h>
 
-namespace Utils {
+namespace Coral::Utils {
     class Random {
     public:
-        template<typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+        template<typename T> requires std::is_integral_v<T>
         static T UniformIntegralValue(T min, T max) {
-            boost::random::uniform_int_distribution<T> dist(min, max);
+            std::uniform_int_distribution<T> dist(min, max);
             return dist(m_rng);
         }
 
-        template<typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
+        template<typename T> requires std::is_floating_point_v<T>
         static T UniformRealValue(T min, T max) {
-            boost::random::uniform_real_distribution<T> dist(min, max);
+            std::uniform_real_distribution<T> dist(min, max);
             return dist(m_rng);
         }
 
-        template<typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
+        template<typename T> requires std::is_floating_point_v<T>
         static T NormalValue(T mean, T stddev) {
-            boost::random::normal_distribution<T> dist(mean, stddev);
+            std::normal_distribution<T> dist(mean, stddev);
             return dist(m_rng);
         }
 
-        template<glm::length_t N, typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
-        static glm::vec<N, T> UniformIntegralVector(const glm::vec<N, T> &min, const glm::vec<N, T> &max) {
-            glm::vec<N, T> result;
+        template<u8 N, typename T> requires std::is_integral_v<T>
+        static Math::Vector<T, N> UniformIntegralVector(const Math::Vector<T, N> &min, const Math::Vector<T, N> &max) {
+            Math::Vector<T, N> result;
             for (glm::length_t i = 0; i < N; i++) {
                 result[i] = UniformIntegralValue(min[i], max[i]);
             }
             return result;
         }
 
-        template<glm::length_t N, typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
-        static glm::vec<N, T> UniformRealVector(const glm::vec<N, T> &min, const glm::vec<N, T> &max) {
-            glm::vec<N, T> result;
+        template<u8 N, typename T> requires std::is_floating_point_v<T>
+        static Math::Vector<T, N> UniformRealVector(const Math::Vector<T, N> &min, const Math::Vector<T, N> &max) {
+			Math::Vector<T, N> result;
             for (glm::length_t i = 0; i < N; i++) {
                 result[i] = UniformRealValue(min[i], max[i]);
             }
             return result;
         }
 
-        template<glm::length_t N, typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
-        static glm::vec<N, T> NormalVector(const glm::vec<N, T> &mean, const glm::vec<N, T> &stddev) {
-            glm::vec<N, T> result;
+        template<u8 N, typename T> requires std::is_floating_point_v<T>
+        static Math::Vector<T, N> NormalVector(const Math::Vector<T, N> &mean, const Math::Vector<T, N> &stddev) {
+            Math::Vector<T, N> result;
             for (glm::length_t i = 0; i < N; i++) {
                 result[i] = NormalValue(mean[i], stddev[i]);
             }
             return result;
         }
 
-        static glm::vec3 Color() {
-            return glm::vec3(UniformRealValue(0.1f, .9f), UniformRealValue(0.1f, .9f), UniformRealValue(0.1f, .9f));
+   //      static Color Color() {
+   //          return Coral::Color(
+			// 	UniformRealValue(0.0f, 1.0f),
+			// 	UniformRealValue(0.0f, 1.0f),
+			// 	UniformRealValue(0.0f, 1.0f)
+			// );
+   //      }
+
+    	template<u8 N> requires (N == 2 || N == 3)
+		static Math::Vector<f32, N> Direction();
+
+    	template<>
+        static Math::Vector2f Direction<2>() {
+            return NormalVector<2, f32>(Math::Vector2f(0.0f, 0.0f), Math::Vector2f(1.0f, 1.0f)).Normalized();
         }
 
-        static glm::vec4 ColorWithAlpha() {
-            return glm::vec4(Color(), UniformRealValue(0.0f, 1.0f));
-        }
-
-        static glm::vec2 Direction2D() {
-            return glm::normalize(glm::vec2(UniformRealValue(-1.0f, 1.0f), UniformRealValue(-1.0f, 1.0f)));
-        }
-
-        static glm::vec3 Direction3D() {
-            return glm::normalize(glm::vec3(UniformRealValue(-1.0f, 1.0f), UniformRealValue(-1.0f, 1.0f), UniformRealValue(-1.0f, 1.0f)));
+    	template<>
+        static Math::Vector3f Direction<3>() {
+            return NormalVector<3, f32>(Math::Vector3f(0.0f, 0.0f, 0.0f), Math::Vector3f(1.0f, 1.0f, 1.0f)).Normalized();
         }
 
     private:
-        inline static boost::random::mt19937 m_rng = boost::random::mt19937(std::random_device()());
+        inline static auto m_rng = std::mt19937(std::random_device()());
     };
 }

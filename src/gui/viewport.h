@@ -20,13 +20,12 @@ namespace Coral::Reef {
 
 		void OnGUIAttach() override;
 		void OnGUIDetach() override;
-		void OnGUIUpdate() override;
 
 	private:
 		Graphics::RenderPass& m_renderPass;
 
 		std::unique_ptr<Memory::Sampler> m_sampler;
 		std::vector<vk::DescriptorSet> m_viewportTextures;
-		Image* m_image = nullptr;
+		MultiImage* m_image = nullptr;
     };
 }

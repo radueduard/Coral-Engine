@@ -54,10 +54,18 @@ namespace Coral::Shader {
 		m_handle = Context::Device()->createShaderModule(createInfo);
 	}
 
+	uint32_t GetCount(const spirv_cross::SPIRType& type) {
+		uint32_t count = 1;
+		for (const auto& arraySize : type.array) {
+			count *= arraySize;
+		}
+		return count;
+	}
+
 	void Shader::LoadResourceInfo(std::unordered_map<std::string, std::string> semanticMap) {
 		const auto module = spirv_cross::Compiler(m_spirVCode);
 		const auto resources = module.get_shader_resources();
-		m_stage = static_cast<Stage>(1 << static_cast<u32>(module.get_execution_model()));
+		m_stage = FromExecutionModel(module.get_execution_model());
 
 		for (const auto& input : resources.stage_inputs) {
 			auto location = module.get_decoration(input.id, spv::DecorationLocation);
@@ -78,14 +86,15 @@ namespace Coral::Shader {
 		for (const auto& sampler : resources.separate_samplers) {
 			const uint32_t set = module.get_decoration(sampler.id, spv::DecorationDescriptorSet);
 			const uint32_t binding = module.get_decoration(sampler.id, spv::DecorationBinding);
-			const uint32_t count = module.get_type(sampler.type_id).array.size();
+			const uint32_t count = GetCount(module.get_type(sampler.type_id));
+
 			const auto& name = module.get_name(sampler.id);
 			m_descriptors.emplace(set, binding, name, vk::DescriptorType::eSampler, count);
 		} // eSampler
 		for (const auto& sampledImage : resources.separate_images) {
 			const uint32_t set = module.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
 			const uint32_t binding = module.get_decoration(sampledImage.id, spv::DecorationBinding);
-			const uint32_t count = module.get_type(sampledImage.type_id).array.size();
+			const uint32_t count = GetCount(module.get_type(sampledImage.type_id));
 			const auto& name = module.get_name(sampledImage.id);
 			if (module.get_type(sampledImage.type_id).image.dim == spv::DimBuffer) {
 				m_descriptors.emplace(set, binding, name, vk::DescriptorType::eUniformTexelBuffer, count);
@@ -97,14 +106,14 @@ namespace Coral::Shader {
 		for (const auto& sampledImage : resources.sampled_images) {
 			const uint32_t set = module.get_decoration(sampledImage.id, spv::DecorationDescriptorSet);
 			const uint32_t binding = module.get_decoration(sampledImage.id, spv::DecorationBinding);
-			const uint32_t count = module.get_type(sampledImage.type_id).array.size();
+			const uint32_t count = GetCount(module.get_type(sampledImage.type_id));
 			const auto& name = module.get_name(sampledImage.id);
 			m_descriptors.emplace(set, binding, name, vk::DescriptorType::eCombinedImageSampler, count);
 		} // eCombinedImageSampler
 		for (const auto& image : resources.storage_images) {
 			const uint32_t set = module.get_decoration(image.id, spv::DecorationDescriptorSet);
 			const uint32_t binding = module.get_decoration(image.id, spv::DecorationBinding);
-			const uint32_t count = module.get_type(image.type_id).array.size();
+			const uint32_t count = GetCount(module.get_type(image.type_id));
 			const auto& name = module.get_name(image.id);
 			if (module.get_type(image.type_id).image.dim == spv::DimBuffer) {
 				m_descriptors.emplace(set, binding, name, vk::DescriptorType::eStorageTexelBuffer, count);
@@ -116,21 +125,21 @@ namespace Coral::Shader {
 		for (const auto& buffer : resources.uniform_buffers) {
 			const uint32_t set = module.get_decoration(buffer.id, spv::DecorationDescriptorSet);
 			const uint32_t binding = module.get_decoration(buffer.id, spv::DecorationBinding);
-			const uint32_t count = module.get_type(buffer.type_id).array.size();
+			const uint32_t count = GetCount(module.get_type(buffer.type_id));
 			const auto& name = module.get_name(buffer.id);
 			m_descriptors.emplace(set, binding, name, vk::DescriptorType::eUniformBuffer, count);
 		} // eUniformBuffer
 		for (const auto& buffer : resources.storage_buffers) {
 			const uint32_t set = module.get_decoration(buffer.id, spv::DecorationDescriptorSet);
 			const uint32_t binding = module.get_decoration(buffer.id, spv::DecorationBinding);
-			const uint32_t count = module.get_type(buffer.type_id).array.size();
+			const uint32_t count = GetCount(module.get_type(buffer.type_id));
 			const auto& name = module.get_name(buffer.id);
 			m_descriptors.emplace(set, binding, name, vk::DescriptorType::eStorageBuffer, count);
 		} // eStorageBuffer
 		for (const auto& subpassInput : resources.subpass_inputs) {
 			const uint32_t set = module.get_decoration(subpassInput.id, spv::DecorationDescriptorSet);
 			const uint32_t binding = module.get_decoration(subpassInput.id, spv::DecorationBinding);
-			const uint32_t count = module.get_type(subpassInput.type_id).array.size();
+			const uint32_t count = GetCount(module.get_type(subpassInput.type_id));
 			const auto& name = module.get_name(subpassInput.id);
 			m_descriptors.emplace(set, binding, name, vk::DescriptorType::eInputAttachment, count);
 		} // eInputAttachment
@@ -175,7 +184,7 @@ namespace Coral::Shader {
 
     	TargetDesc targetDesc;
     	targetDesc.format = SLANG_SPIRV;
-    	targetDesc.profile = globalSession->findProfile("glsl_450");
+    	targetDesc.profile = globalSession->findProfile("spirv_1_4");
 
     	const char* searchPaths[] = { "shaders/slang" };
 

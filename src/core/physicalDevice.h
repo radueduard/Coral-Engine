@@ -35,6 +35,10 @@ namespace Coral::Core {
         [[nodiscard]] const std::vector<vk::SurfaceFormatKHR>& SurfaceFormats() const { return m_formats; }
         [[nodiscard]] const std::vector<vk::PresentModeKHR>& SurfacePresentModes() const { return m_presentModes; }
 
+    	[[nodiscard]] const vk::PhysicalDeviceProperties& Properties() const { return m_properties; }
+		[[nodiscard]] const vk::PhysicalDeviceFeatures& Features() const { return m_features; }
+    	[[nodiscard]] const vk::PhysicalDeviceMemoryProperties& MemoryProperties() const { return m_memoryProperties; }
+
         void QuerySurfaceCapabilities();
     private:
         [[nodiscard]] bool hasRequiredQueueFamilies(const std::unordered_set<vk::QueueFlagBits>&) const;

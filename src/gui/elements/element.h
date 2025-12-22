@@ -100,7 +100,7 @@ namespace Coral::Reef {
         void SetPosition(Math::Vector2<f32> position);
 
         [[nodiscard]] bool RecreateRequired() const;
-        virtual void Render();
+		virtual void Render();
 
         virtual void ComputeLayout();
         virtual void Update();

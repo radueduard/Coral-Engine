@@ -24,7 +24,7 @@ namespace Coral::Graphics {
             std::vector<Memory::Image*> images;
             vk::ClearValue clearValue;
 
-            void Resize(const Math::Vector2<f32>& extent) const;
+            void Resize(const Math::Vector2<u32>& extent) const;
         };
 
     	struct Subpass {
@@ -39,22 +39,22 @@ namespace Coral::Graphics {
         public:
             Builder() = default;
 
-            Builder& ImageCount(const uint32_t imageCount) {
+            Builder& ImageCount(const u32 imageCount) {
                 m_imageCount = imageCount;
                 return *this;
             }
 
-            Builder& OutputImageIndex(const uint32_t outputImageIndex) {
+            Builder& OutputImageIndex(const u32 outputImageIndex) {
                 m_outputImageIndex = outputImageIndex;
                 return *this;
             }
 
-            Builder& Extent(const Math::Vector2<uint32_t> extent) {
+            Builder& Extent(const Math::Vector2<u32> extent) {
                 m_extent = extent;
                 return *this;
             }
 
-            Builder& Attachment(const uint32_t index, Attachment attachment) {
+            Builder& Attachment(const u32 index, Attachment attachment) {
                 if (index > m_attachments.size()) {
                     std::cerr << "Attachments should be provided in order" << std::endl;
                     return *this;
@@ -81,7 +81,7 @@ namespace Coral::Graphics {
         private:
             uint32_t m_imageCount = 2;
             uint32_t m_outputImageIndex = 0;
-            Math::Vector2<uint32_t> m_extent;
+            Math::Vector2<u32> m_extent;
             std::vector<RenderPass::Attachment> m_attachments;
             std::vector<struct Subpass> m_subpasses;
             std::vector<vk::SubpassDependency> m_dependencies;
@@ -142,7 +142,7 @@ namespace Coral::Graphics {
             m_pipelines.emplace_back(std::move(pipelineBuilder), std::move(pipeline));
         }
 
-        bool Resize(uint32_t imageCount, const Math::Vector2<f32>& extent);
+        bool Resize(u32 imageCount, const Math::Vector2<u32>& extent);
 
     private:
         uint32_t m_outputAttachmentIndex = 0;

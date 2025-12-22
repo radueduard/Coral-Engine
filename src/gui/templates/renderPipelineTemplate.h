@@ -63,13 +63,43 @@ namespace Coral::Reef {
 						{ .size = { Grow, 23.f } }
 					},
 					new LabeledRow {
-						new Text("Depth Bias Clamp"),
+						new Text("Depth Bias Constant Factor"),
 						new Drag(
-							"Depth Bias Clamp",
-							&data.m_rasterizer.depthBiasClamp,
+							"Depth Bias Constant Factor",
+							{ &data.m_rasterizer.depthBiasConstantFactor },
 							0.1f,
-							0.f,
-							200.f,
+								{ std::numeric_limits<f32>::min() },
+								{ std::numeric_limits<f32>::max() },
+							nullptr,
+							{},
+							DragDefaultStyle()
+								.withSize({ 200.f, Grow })
+						),
+						{ .size = { Grow, 23.f } }
+					},
+					new LabeledRow {
+						new Text("Depth Bias Clamp"),
+						new Drag<f32, 1>(
+							"Depth Bias Clamp",
+							{ &data.m_rasterizer.depthBiasClamp },
+							0.1f,
+							{ std::numeric_limits<f32>::min() },
+							{ std::numeric_limits<f32>::max() },
+							nullptr,
+							{},
+							DragDefaultStyle()
+								.withSize({ 200.f, Grow })
+						),
+						{ .size = { Grow, 23.f } }
+					},
+					new LabeledRow {
+						new Text("Depth Bias Slope Factor"),
+						new Drag(
+							"Depth Bias Slope Factor",
+							{ &data.m_rasterizer.depthBiasSlopeFactor },
+							0.1f,
+								{ std::numeric_limits<f32>::min() },
+								{ std::numeric_limits<f32>::max() },
 							nullptr,
 							{},
 							DragDefaultStyle()
@@ -104,12 +134,12 @@ namespace Coral::Reef {
 					},
 					new LabeledRow {
 						new Text("Line Width"),
-						new Drag(
+						new Drag<f32, 1> (
 							"Line Width",
-							&data.m_rasterizer.lineWidth,
+							{ &data.m_rasterizer.lineWidth },
 							1.f,
-							1.f,
-							20.f,
+							{ Context::Runtime().PhysicalDevice().Properties().limits.lineWidthRange[0] },
+							{ Context::Runtime().PhysicalDevice().Properties().limits.lineWidthRange[1] },
 							nullptr,
 							{},
 							DragDefaultStyle()
@@ -144,36 +174,6 @@ namespace Coral::Reef {
 							},
 							Checkbox::DefaultStyle()
 								.withSize({ 23.f, Grow })
-						),
-						{ .size = { Grow, 23.f } }
-					},
-					new LabeledRow {
-						new Text("Depth Bias Constant Factor"),
-						new Drag(
-							"Depth Bias Constant Factor",
-							&data.m_rasterizer.depthBiasConstantFactor,
-							0.1f,
-							0.f,
-							200.f,
-							nullptr,
-							{},
-							DragDefaultStyle()
-								.withSize({ 200.f, Grow })
-						),
-						{ .size = { Grow, 23.f } }
-					},
-					new LabeledRow {
-						new Text("Depth Bias Slope Factor"),
-						new Drag(
-							"Depth Bias Slope Factor",
-							&data.m_rasterizer.depthBiasSlopeFactor,
-							0.1f,
-							0.f,
-							200.f,
-							nullptr,
-							{},
-							DragDefaultStyle()
-								.withSize({ 200.f, Grow })
 						),
 						{ .size = { Grow, 23.f } }
 					},
@@ -230,10 +230,10 @@ namespace Coral::Reef {
 						new Text("Patch Control Points"),
 						new Drag<u32>(
 							"Patch Control Points",
-							&data.m_tessellation.patchControlPoints,
+							{ &data.m_tessellation.patchControlPoints },
 							1.f,
-							1,
-							32,
+							{ 1 },
+							{ Context::Runtime().PhysicalDevice().Properties().limits.maxTessellationPatchSize },
 							nullptr,
 							{},
 							DragDefaultStyle()

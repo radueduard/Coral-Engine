@@ -99,7 +99,7 @@ namespace Coral::Graphics {
                 .Extent({ static_cast<u32>(m_extent.x), static_cast<u32>(m_extent.y), 1u })
                 .UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
                 .MipLevels(1)
-                .LayersCount(1)
+                .LayerCount(1)
                 .InitialLayout(vk::ImageLayout::ePresentSrcKHR)
                 .Build());
         }

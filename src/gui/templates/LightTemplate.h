@@ -3,6 +3,7 @@
 //
 
 #pragma once
+
 #include "IconsFontAwesome6.h"
 #include "ecs/components/light.h"
 #include "ecs/sceneManager.h"
@@ -86,22 +87,24 @@ namespace Coral::Reef {
 					.direction = Axis::Vertical,
 				},
 				{
-					new Text(" " ICON_FA_LIGHTBULB "    Light Settings",
+					new Text(
+						" " ICON_FA_LIGHTBULB "    Light Settings",
 						Text::Style{
-							{ 0.8f, 0.8f, 0.8f, 1.f },
-							20.f,
-							FontType::Black
+							.color = Colors::grey[300],
+							.fontSize = 20.f,
+							.fontStyle = FontType::Black,
+							.verticalAlignment = Text::VerticalAlignment::Middle,
+							.horizontalAlignment = Text::HorizontalAlignment::Left,
 						},
-						{ .size = { 0.f, 20.f }
-					}),
+						{ .size = { Grow, 23.f } }
+					),
 					new Separator(),
 					new DropDown(
 						"Light Type",
 						&data.m_type,
 						{},
-						Style {
-							.size = { Grow, 23.f },
-						}
+						DropDownDefaultStyle()
+							.withSize({ Grow, 23.f })
 					),
 					new Conditional(
 						[&data] {
@@ -128,18 +131,48 @@ namespace Coral::Reef {
 								.direction = Axis::Vertical,
 							}, {
 								new LabeledRow {
-									new Text("color", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 3>("Color", &data.m_data.point.color.r, 0.01f, 0.f, 1.f, &data.m_changed, colorLabels, { .size = { 250.f, Grow } }),
+									new Text("color"),
+									new Drag<f32, 3>(
+										"Color",
+										{ &data.m_data.point.color.r, &data.m_data.point.color.g, &data.m_data.point.color.b },
+										0.01f,
+										{ 0.f, 0.f, 0.f },
+										{ 1.f, 1.f, 1.f },
+										&data.m_changed,
+										colorLabels,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 								new LabeledRow {
-									new Text("attenuation", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 3>("Attenuation", &data.m_data.point.attenuation.x, 0.01f, 0.f, 1.f, &data.m_changed, attenuationLabels, { .size = { 250.f, Grow } }),
+									new Text("attenuation"),
+									new Drag<f32, 3>(
+										"Attenuation",
+										{ &data.m_data.point.attenuation.x, &data.m_data.point.attenuation.y, &data.m_data.point.attenuation.z },
+										0.01f,
+										{ 0.f, 0.f, 0.f },
+										{ 1.f, 1.f, 1.f },
+										&data.m_changed,
+										attenuationLabels,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 								new LabeledRow {
-									new Text("range", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 1>("Range", &data.m_data.point.range, 0.1f, 0.f, 100.f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
+									new Text("range"),
+									new Drag<>(
+										"Range",
+										{ &data.m_data.point.range },
+										0.1f,
+										{ 0.f },
+										{ 100.f },
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 							}),
@@ -147,13 +180,33 @@ namespace Coral::Reef {
 								.direction = Axis::Vertical,
 							}, {
 								new LabeledRow {
-									new Text("color", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 3>("Color", &data.m_data.directional.color.r, 0.01f, 0.f, 1.f, &data.m_changed, colorLabels, { .size = { 250.f, Grow } }),
+									new Text("color"),
+									new Drag<f32, 3>(
+										"Color",
+										{ &data.m_data.directional.color.r, &data.m_data.directional.color.g, &data.m_data.directional.color.b },
+										0.01f,
+										{ 0.f, 0.f, 0.f },
+										{ 1.f, 1.f, 1.f },
+										&data.m_changed,
+										colorLabels,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 								new LabeledRow {
-									new Text("intensity", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 1>("Intensity", &data.m_data.directional.intensity, 0.1f, 0.f, 100.f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
+									new Text("intensity"),
+									new Drag<>(
+										"Intensity",
+										{ &data.m_data.directional.intensity },
+										0.1f,
+										{ 0.f },
+										{ 100.f },
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 							}),
@@ -161,23 +214,62 @@ namespace Coral::Reef {
 								.direction = Axis::Vertical,
 							}, {
 								new LabeledRow {
-									new Text("color", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 3>("Color", &data.m_data.spot.color.r, 0.01f, 0.f, 1.f, &data.m_changed, colorLabels, { .size = { 250.f, Grow } }),
+									new Text("color"),
+									new Drag<f32, 3>(
+										"Color",
+										{ &data.m_data.spot.color.r, &data.m_data.spot.color.g, &data.m_data.spot.color.b },
+										0.01f,
+										{ 0.f, 0.f, 0.f },
+										{ 1.f, 1.f, 1.f },
+										&data.m_changed,
+										colorLabels,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })),
 									{ .size = { 0.f, 23.f } }
 								},
 								new LabeledRow {
-									new Text("intensity", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 1>("Intensity", &data.m_data.spot.intensity, 0.1f, 0.f, 100.f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
+									new Text("intensity"),
+									new Drag<f32, 1>(
+										"Intensity",
+										{ &data.m_data.spot.intensity },
+										0.1f,
+										{ 0.f },
+										{ 100.f },
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 								new LabeledRow {
-									new Text("range", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 1>("Range", &data.m_data.spot.range, 0.1f, 0.f, 100.f, &data.m_changed, std::nullopt, { .size = { 250.f, Grow } }),
+									new Text("range"),
+									new Drag<f32, 1>(
+										"Range",
+										{ &data.m_data.spot.range, },
+										0.1f,
+										{ 0.f },
+										{ 100.f },
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 								new LabeledRow {
-									new Text("angles", labelStyle, { .size = { Shrink, Grow } }),
-									new Drag<f32, 2>("Angles", &data.m_data.spot.innerAngle, 0.01f, 0.f, 180.f, &data.m_changed, angleLabels, { .size = { 250.f, Grow } }),
+									new Text("angles"),
+									new Drag<f32, 2>(
+										"Angles",
+										{ &data.m_data.spot.innerAngle, &data.m_data.spot.outerAngle },
+										0.01f,
+										{ 0.f, 0.f },
+										{ 90.f, 180.f },
+										&data.m_changed,
+										angleLabels,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
 									{ .size = { 0.f, 23.f } }
 								},
 							})

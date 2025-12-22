@@ -1,7 +1,7 @@
 //
 // Created by radue on 3/6/2025.
 //
-
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "renderGraph.h"
 
 #include <queue>
@@ -9,13 +9,14 @@
 
 #include "core/scheduler.h"
 #include "ecs/entity.h"
+#include "extensions/debugUtils.h"
 #include "graphics/pipeline.h"
+#include "graphics/renderPass.h"
 #include "gui/container.h"
 #include "gui/elements/popup.h"
+#include "gui/templates/renderPipelineTemplate.h"
 #include "gui/viewport.h"
 #include "shader/manager.h"
-#include "graphics/renderPass.h"
-#include "gui/templates/renderPipelineTemplate.h"
 
 
 namespace Coral::Project {
@@ -30,9 +31,9 @@ namespace Coral::Project {
 
 		auto idGui = boost::uuids::nil_uuid();
 		if (m_guiEnabled) {
-            idGui = m_generator();
-            m_images.emplace(idGui, std::vector<Memory::Image*>());
-        }
+			idGui = m_generator();
+			m_images.emplace(idGui, std::vector<Memory::Image*>());
+		}
 
 		auto idDepth = m_generator();
 		auto idColor = m_generator();
@@ -161,7 +162,7 @@ namespace Coral::Project {
 			.description = colorPassColorDescription,
 			.reference = colorPassColorReference,
 			.images = m_images.at(idColor),
-			.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
+			.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 0.0f })
 		};
 
 		auto colorPassColorResolveDescription = vk::AttachmentDescription()
@@ -182,7 +183,7 @@ namespace Coral::Project {
 			.description = colorPassColorResolveDescription,
 			.reference = colorPassColorResolveReference,
 			.images = m_images.at(idColorResolve),
-			.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 1.0f })
+			.clearValue = vk::ClearColorValue(std::array { 0.0f, 0.0f, 0.0f, 0.0f })
 		};
 
 		auto colorSubpass = Graphics::RenderPass::Subpass{
@@ -245,43 +246,75 @@ namespace Coral::Project {
 		const auto& queue = *m_queues.at(vk::QueueFlagBits::eGraphics);
 		for (auto& node : m_runNodes) {
 			auto&[passes, commandBuffers] = *node;
-            for (uint32_t i = 0; i < m_frameCount; i++) {
-                commandBuffers.emplace_back(Context::Device().RequestCommandBuffer(queue));
-            }
-        }
+			for (uint32_t i = 0; i < m_frameCount; i++) {
+				commandBuffers.emplace_back(Context::Device().RequestCommandBuffer(queue));
+			}
+		}
 
 		// TODO: Delete this:
+		{
+			auto* vertexShader = Shader::Manager::Get().GetShader("wireframe", "vertexMain");
+			auto* fragmentShader = Shader::Manager::Get().GetShader("wireframe", "fragmentMain");
 
+			auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
+			(*pipelineBuilder)
+				.AddShader(vertexShader)
+				.AddShader(fragmentShader)
+				.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
+					.setPolygonMode(vk::PolygonMode::eFill)
+					.setCullMode(vk::CullModeFlagBits::eNone)
+					.setFrontFace(vk::FrontFace::eClockwise)
+					.setLineWidth(1.0f))
+				.InputAssemblyState(vk::PipelineInputAssemblyStateCreateInfo()
+					.setTopology(vk::PrimitiveTopology::eTriangleList)
+					.setPrimitiveRestartEnable(vk::False))
+				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer) {
+					pipeline.Bind(*commandBuffer);
+					pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().DescriptorSet());
+					ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
+						[&](const ECS::Entity* entity, const ECS::RenderTarget& renderTarget) {
+							Math::Matrix4<f32> matrix = Math::Matrix4<f32>::Identity();
+							while (entity) {
+								auto& transform = entity->Get<ECS::Transform>();
+								matrix *= transform.Matrix();
+								entity = entity->Parent();
+							}
+							for (const auto [mesh, material] : renderTarget.Targets()) {
+								pipeline.BindDescriptorSet(1, *commandBuffer, material->DescriptorSet());
+								pipeline.PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, matrix);
+								mesh->Bind(*commandBuffer);
+								mesh->Draw(*commandBuffer);
+							}
+						}
+					);
+				});
 
-		auto* vertexShader = Shader::Manager::Get().GetShader("wireframe", "vertexMain");
-		auto* hullShader = Shader::Manager::Get().GetShader("wireframe", "hullMain");
-		auto* domainShader = Shader::Manager::Get().GetShader("wireframe", "domainMain");
-		// auto* geometryShader = Shader::Manager::Get().GetShader("wireframe", "geometryMain");
-		auto* fragmentShader = Shader::Manager::Get().GetShader("wireframe", "fragmentMain");
+			m_pipelineBuilder = pipelineBuilder.get();
+			m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
+		}
 
-		// const auto vertexShader = Core::Shader("wireframe/wireframe.vert");
-		// const auto fragmentShader = Core::Shader("wireframe/wireframe.frag");
+		{
+			auto* meshShader = Shader::Manager::Get().GetShader("planet", "generateChunkMesh");
+			auto* pixelShader = Shader::Manager::Get().GetShader("planet", "planetPixelShader");
 
-		auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
-		(*pipelineBuilder)
-			.AddShader(vertexShader)
-			.AddShader(hullShader)
-			.AddShader(domainShader)
-			// .AddShader(geometryShader)
-			.AddShader(fragmentShader)
-			.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
-				.setPolygonMode(vk::PolygonMode::eFill)
-				.setCullMode(vk::CullModeFlagBits::eNone)
-				.setFrontFace(vk::FrontFace::eClockwise)
-				.setLineWidth(1.0f))
-			.InputAssemblyState(vk::PipelineInputAssemblyStateCreateInfo()
-				.setTopology(vk::PrimitiveTopology::ePatchList)
-				.setPrimitiveRestartEnable(vk::False))
-			.Tessellation(vk::PipelineTessellationStateCreateInfo()
-				.setPatchControlPoints(3));
+			auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
+			(*pipelineBuilder)
+				.AddShader(meshShader)
+				.AddShader(pixelShader)
+				.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
+					.setPolygonMode(vk::PolygonMode::eFill)
+					.setCullMode(vk::CullModeFlagBits::eNone)
+					.setFrontFace(vk::FrontFace::eClockwise)
+					.setLineWidth(1.0f))
+				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer) {
+					pipeline.Bind(*commandBuffer);
+					pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().PlanetDescriptorSet());
+					commandBuffer->drawMeshTasksEXT(64, 64, 64);
+				});
 
-		m_pipelineBuilder = pipelineBuilder.get();
-		m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
+			m_pipelineBuilder = pipelineBuilder.get();
+			m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
+		}
 
 		// ------------------
 

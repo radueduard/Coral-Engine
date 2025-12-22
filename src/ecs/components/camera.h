@@ -97,6 +97,8 @@ namespace Coral::ECS {
         [[nodiscard]] float AspectRatio() const { return static_cast<float>(m_viewportSize.x) / static_cast<float>(m_viewportSize.y); }
         [[nodiscard]] ProjectionData& GetProjectionData() { return m_projectionData; }
 
+    	[[nodiscard]] Math::Vector3f Position() const { return { -m_inverseView[3][0], -m_inverseView[3][1], -m_inverseView[3][2] }; }
+
     	void Move(const Math::Vector3<f32>& amount);
     	void Rotate(f32 yaw, f32 pitch);
 
@@ -116,6 +118,6 @@ namespace Coral::ECS {
         bool m_changed = false;
 
     	const Math::Vector3<f32> FORWARD = { 0.0f, 0.0f, -1.0f };
-    	const Math::Vector3<f32> UP = { 0.0f, -1.0f, 0.0f };
+    	const Math::Vector3<f32> UP = { 0.0f, 1.0f, 0.0f };
     };
 }

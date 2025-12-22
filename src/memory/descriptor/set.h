@@ -15,15 +15,16 @@ namespace Coral::Memory::Descriptor {
         class Builder {
             friend class Set;
         public:
-            explicit Builder(const Pool &pool, const SetLayout &layout) : m_pool{pool}, m_layout{layout} {}
+            explicit Builder(Pool &pool, const SetLayout &layout) : m_pool{pool}, m_layout{layout} {}
 
             Builder &WriteBuffer(uint32_t binding, const vk::DescriptorBufferInfo& bufferInfo);
             Builder &WriteImage(uint32_t binding, const vk::DescriptorImageInfo& imageInfo);
+			Builder& WriteImages(uint32_t binding, const std::vector<vk::DescriptorImageInfo>& imageInfos);
 
-            [[nodiscard]] std::unique_ptr<Set> Build();
+			[[nodiscard]] std::unique_ptr<Set> Build();
 
         private:
-            const Pool &m_pool;
+            Pool &m_pool;
             const SetLayout &m_layout;
             std::vector<vk::WriteDescriptorSet> m_writes = {};
         };
@@ -34,7 +35,7 @@ namespace Coral::Memory::Descriptor {
         Set &operator=(const Set &) = delete;
 
     private:
-        const Pool &m_pool;
+        Pool &m_pool;
         const SetLayout &m_layout;
     };
 }

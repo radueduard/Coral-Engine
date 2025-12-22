@@ -34,8 +34,8 @@ namespace Coral::Memory::Descriptor {
         Pool(const Pool &) = delete;
         Pool &operator=(const Pool &) = delete;
 
-        [[nodiscard]] vk::DescriptorSet Allocate(const SetLayout &layout) const;
-        [[nodiscard]] std::vector<vk::DescriptorSet> Allocate(const std::vector<SetLayout> &layouts) const;
+        [[nodiscard]] vk::DescriptorSet Allocate(const SetLayout &layout);
+        [[nodiscard]] std::vector<vk::DescriptorSet> Allocate(const std::vector<SetLayout> &layouts);
 
         void Free(const vk::DescriptorSet &descriptorSet) const;
         void Free(const std::vector<vk::DescriptorSet> &descriptorSets) const;
@@ -43,6 +43,9 @@ namespace Coral::Memory::Descriptor {
         void Reset() const { Context::Device()->resetDescriptorPool(m_pool); }
 
     private:
+    	u32 m_allocatedSetCount = 0;
+    	std::unordered_map<vk::DescriptorType, uint32_t> m_allocatedBindingCounts;
+
         vk::DescriptorPool m_pool;
         std::vector<vk::DescriptorPoolSize> m_poolSizes;
         vk::DescriptorPoolCreateFlags m_flags;

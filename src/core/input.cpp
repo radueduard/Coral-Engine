@@ -82,7 +82,7 @@ namespace Coral {
         return m_scrollDelta;
     }
 
-	void Input::Callbacks::keyCallback(GLFWwindow *, int key, int, const int action, int) {
+	void Input::Callbacks::keyCallback(GLFWwindow *, int key, int, const int action, int mods) {
     	const auto k = static_cast<Key>(key);
 
     	switch (action) {
@@ -95,6 +95,28 @@ namespace Coral {
     	default:
     		break;
     	}
+
+    	if (mods & GLFW_MOD_SHIFT) {
+			m_keyboardKeyStates[Key::LeftShift] = KeyState::Held;
+		} else {
+			if (m_keyboardKeyStates[Key::LeftShift] == KeyState::Held) {
+				m_keyboardKeyStates[Key::LeftShift] = KeyState::NotPressed;
+			}
+		}
+    	if (mods & GLFW_MOD_CONTROL) {
+			m_keyboardKeyStates[Key::LeftControl] = KeyState::Held;
+		} else {
+			if (m_keyboardKeyStates[Key::LeftControl] == KeyState::Held) {
+				m_keyboardKeyStates[Key::LeftControl] = KeyState::NotPressed;
+			}
+		}
+    	if (mods & GLFW_MOD_ALT) {
+			m_keyboardKeyStates[Key::LeftAlt] = KeyState::Held;
+		} else {
+			if (m_keyboardKeyStates[Key::LeftAlt] == KeyState::Held) {
+				m_keyboardKeyStates[Key::LeftAlt] = KeyState::NotPressed;
+			}
+		}
     }
 
 	void Input::Callbacks::mouseMoveCallback(GLFWwindow *, const double x, const double y) {

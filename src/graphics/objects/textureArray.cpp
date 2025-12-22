@@ -49,7 +49,7 @@ namespace Coral::Graphics {
             stagingBuffer->Write(copy);
             stagingBuffer->Unmap();
 
-            m_image->Copy(**stagingBuffer, 0, i);
+            m_image->Copy(*stagingBuffer, 0, i);
             stbi_image_free(image);
         }
     }
@@ -65,7 +65,7 @@ namespace Coral::Graphics {
         m_image = Memory::Image::Builder()
             .Format(builder.m_format)
             .Extent({ builder.m_width, builder.m_height, 1u })
-            .LayersCount(static_cast<uint32_t>(builder.m_images.size() + builder.m_data.size()))
+            .LayerCount(static_cast<uint32_t>(builder.m_images.size() + builder.m_data.size()))
             .MipLevels(mipLevels)
             .SampleCount(vk::SampleCountFlagBits::e1)
             .InitialLayout(vk::ImageLayout::eUndefined)
@@ -84,7 +84,7 @@ namespace Coral::Graphics {
                 .numThreads = numThreads,
                 .paths = builder.m_images
             };
-            std::function func = [this] (const ThreadPayload &payload) { return LoadTexture(payload); };
+            auto func = [this] (const ThreadPayload &payload) { return LoadTexture(payload); };
             threads.emplace_back(func, payloads[i]);
         }
 
@@ -106,7 +106,7 @@ namespace Coral::Graphics {
             stagingBuffer->Write(copy);
             stagingBuffer->Unmap();
 
-            m_image->Copy(**stagingBuffer, 0, i + static_cast<uint32_t>(builder.m_images.size()));
+            m_image->Copy(*stagingBuffer, 0, i + static_cast<uint32_t>(builder.m_images.size()));
         }
 
         m_image->GenerateMipmaps();
@@ -119,14 +119,12 @@ namespace Coral::Graphics {
             .LayerCount(static_cast<uint32_t>(builder.m_images.size() + builder.m_data.size()))
             .Build());
 
-        constexpr auto samplerCreateInfo = Memory::Sampler::CreateInfo {
-            .magFilter = vk::Filter::eLinear,
-            .minFilter = vk::Filter::eLinear,
-            .addressMode = vk::SamplerAddressMode::eRepeat,
-            .mipmapMode = vk::SamplerMipmapMode::eLinear,
-        };
-
-        m_sampler = std::make_unique<Memory::Sampler>(samplerCreateInfo);
+    	m_sampler = Memory::Sampler::Builder()
+			.MagFilter(vk::Filter::eLinear)
+			.MinFilter(vk::Filter::eLinear)
+			.AddressMode(vk::SamplerAddressMode::eRepeat)
+			.MipmapMode(vk::SamplerMipmapMode::eLinear)
+			.Build();
 
         m_descriptorInfo = vk::DescriptorImageInfo()
             .setSampler(**m_sampler)

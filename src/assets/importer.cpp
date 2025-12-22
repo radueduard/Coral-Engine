@@ -40,7 +40,10 @@ namespace Coral::Asset {
         m_path = path.substr(0, path.find_last_of('/'));
         m_name = path.substr(path.find_last_of('/') + 1);
 
-        constexpr auto flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_GenBoundingBoxes;
+        constexpr auto flags = aiProcess_Triangulate
+    		| aiProcess_FlipUVs
+    		| aiProcess_CalcTangentSpace
+    		| aiProcess_GenBoundingBoxes;
         m_scene = _importer.ReadFile(path, flags);
 
         if (!m_scene || m_scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !m_scene->mRootNode) {
@@ -339,9 +342,21 @@ namespace Coral::Asset {
 
             for (uint32_t j = 0; j < mesh->mNumVertices; j++) {
                 auto position = mesh->mVertices[j];
-                auto normal = mesh->mNormals[j];
-                auto tangent = mesh->mTangents[j];
-                auto bitangent = mesh->mBitangents[j];
+
+            	aiVector3D normal = { 0.0f, 0.0f, 1.0f };
+            	if (mesh->mNormals != nullptr) {
+            		normal = mesh->mNormals[j];
+            	}
+
+            	aiVector3D tangent = { 0.0f, 0.0f, 1.0f };
+				if (mesh->mTangents != nullptr) {
+					tangent = mesh->mTangents[j];
+				}
+
+            	aiVector3D bitangent = { 0.0f, 0.0f, 1.0f };
+            	if (mesh->mBitangents != nullptr) {
+					bitangent = mesh->mBitangents[j];
+            	}
 
                 Math::Vector2f texCoord0 = { 0.0f, 0.0f };
                 if (mesh->mTextureCoords[0] != nullptr) {

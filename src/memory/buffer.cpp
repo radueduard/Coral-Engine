@@ -142,9 +142,11 @@ void Coral::Memory::Buffer::InvalidateAt(const u32 index) const {
 	}
 	Invalidate(1, index);
 }
-void Coral::Memory::Buffer::CopyBuffer(const std::unique_ptr<Buffer>& srcBuffer, const vk::DeviceSize instanceCount,
-									   vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
-	if (m_alignmentSize != srcBuffer->m_alignmentSize) {
+void Coral::Memory::Buffer::CopyBuffer(
+	const Buffer& srcBuffer, const vk::DeviceSize instanceCount,
+	vk::DeviceSize srcOffset, vk::DeviceSize dstOffset
+) const {
+	if (m_alignmentSize != srcBuffer.m_alignmentSize) {
 		std::cerr << "Buffer::CopyBuffer : Alignment sizes do not match" << std::endl;
 		return;
 	}
@@ -156,7 +158,7 @@ void Coral::Memory::Buffer::CopyBuffer(const std::unique_ptr<Buffer>& srcBuffer,
 		dstOffset *= m_alignmentSize;
 	}
 	else {
-		size = std::min(m_instanceCount, srcBuffer->m_instanceCount) * m_alignmentSize;
+		size = std::min(m_instanceCount, srcBuffer.m_instanceCount) * m_alignmentSize;
 		srcOffset = 0;
 		dstOffset = 0;
 	}
@@ -164,7 +166,7 @@ void Coral::Memory::Buffer::CopyBuffer(const std::unique_ptr<Buffer>& srcBuffer,
 	Context::Device().RunSingleTimeCommand(
 		[this, srcOffset, dstOffset, &srcBuffer, size](const Core::CommandBuffer& commandBuffer) {
 			const auto copyRegion = vk::BufferCopy().setSrcOffset(srcOffset).setDstOffset(dstOffset).setSize(size);
-			commandBuffer->copyBuffer(**srcBuffer, m_handle, 1, &copyRegion);
+			commandBuffer->copyBuffer(*srcBuffer, m_handle, 1, &copyRegion);
 		},
 		vk::QueueFlagBits::eTransfer);
 }

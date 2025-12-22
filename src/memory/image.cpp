@@ -7,31 +7,32 @@
 #include <iostream>
 #include <thread>
 
+#include "buffer.h"
 #include "context.h"
 #include "core/device.h"
 #include "math/vector.h"
 
 namespace Coral::Memory {
     Image::Image(const Builder &builder)
-        : m_format(builder.m_format), m_extent(builder.m_extent),m_sampleCount(builder.m_sampleCount),
-            m_mipLevels(builder.m_mipLevels), m_layerCount(builder.m_layersCount) {
+        : m_imageType(builder.m_imageType), m_format(builder.m_format), m_extent(builder.m_extent), m_sampleCount(builder.m_sampleCount),
+            m_mipLevels(builder.m_mipLevels), m_layerCount(builder.m_layerCount) {
 
     	for (const auto& usageFlag : builder.m_usageFlagsSet) {
 			m_usageFlags |= usageFlag;
 		}
 
         if (!builder.m_image.has_value()) {
-            const vk::ImageCreateFlags imageCreateFlags = builder.m_layersCount == 6 ? vk::ImageCreateFlagBits::eCubeCompatible : vk::ImageCreateFlags();
+            auto imageCreateFlags = vk::ImageCreateFlags();
+        	if (m_layerCount > 1 && m_imageType == vk::ImageType::e2D) imageCreateFlags |= vk::ImageCreateFlagBits::e2DArrayCompatibleKHR;
+        	if (m_layerCount == 6 && m_imageType == vk::ImageType::e2D) imageCreateFlags |= vk::ImageCreateFlagBits::eCubeCompatible;
+
             const auto imageCreateInfo = vk::ImageCreateInfo()
-                .setImageType(vk::ImageType::e2D)
-                .setFormat(builder.m_format)
-                .setExtent(vk::Extent3D()
-					.setWidth(builder.m_extent.x)
-					.setHeight(builder.m_extent.y)
-					.setDepth(builder.m_extent.z))
-                .setMipLevels(builder.m_mipLevels)
-                .setArrayLayers(builder.m_layersCount)
-                .setSamples(builder.m_sampleCount)
+                .setImageType(m_imageType)
+                .setFormat(m_format)
+                .setExtent(vk::Extent3D(m_extent))
+                .setMipLevels(m_mipLevels)
+                .setArrayLayers(m_layerCount)
+                .setSamples(m_sampleCount)
                 .setTiling(vk::ImageTiling::eOptimal)
                 .setUsage(m_usageFlags)
                 .setSharingMode(vk::SharingMode::eExclusive)
@@ -68,7 +69,7 @@ namespace Coral::Memory {
         }
     }
 
-    void Image::Copy(const vk::Buffer &buffer, const uint32_t mipLevel, const uint32_t layer) const {
+    void Image::Copy(const Memory::Buffer &buffer, const uint32_t mipLevel, const uint32_t layer) const {
         if (!(m_usageFlags & vk::ImageUsageFlagBits::eTransferDst)) {
             throw std::runtime_error("Image : Image must have transfer destination usage flag");
         }
@@ -79,7 +80,7 @@ namespace Coral::Memory {
             throw std::runtime_error("Image : Layer out of range");
         }
 
-        Context::Device().RunSingleTimeCommand([this, buffer, layer, mipLevel] (const Core::CommandBuffer& commandBuffer) {
+        Context::Device().RunSingleTimeCommand([this, &buffer, layer, mipLevel] (const Core::CommandBuffer& commandBuffer) {
             auto extent = m_extent;
             for (uint32_t i = 0; i < mipLevel; i++) {
                 extent.width = std::max<uint32_t>(1u, extent.width / 2);
@@ -101,8 +102,23 @@ namespace Coral::Memory {
 					.setWidth(extent.x)
 					.setHeight(extent.y)
 					.setDepth(extent.z));
-            commandBuffer->copyBufferToImage(buffer, m_handle, vk::ImageLayout::eTransferDstOptimal, region);
+            commandBuffer->copyBufferToImage(*buffer, m_handle, vk::ImageLayout::eTransferDstOptimal, region);
         }, vk::QueueFlagBits::eTransfer);
+    }
+
+	void Image::TransitionLayout(const Core::CommandBuffer& commandBuffer, const vk::ImageLayout newLayout) {
+	    if (m_layout == newLayout) {
+	    	return;
+	    }
+
+    	const vk::PipelineStageFlags sourceStage = layoutPipelineStageMap.at(m_layout);
+    	const vk::PipelineStageFlags destinationStage = layoutPipelineStageMap.at(newLayout);
+    	const vk::AccessFlags srcAccessMask = layoutAccessMap.at(m_layout);
+    	const vk::AccessFlags dstAccessMask = layoutAccessMap.at(newLayout);
+
+    	Barrier(commandBuffer, srcAccessMask, dstAccessMask, sourceStage, destinationStage, newLayout);
+
+    	m_layout = newLayout;
     }
 
     void Image::TransitionLayout(const vk::ImageLayout newLayout) {
@@ -111,128 +127,16 @@ namespace Coral::Memory {
         }
 
         Context::Device().RunSingleTimeCommand([this, newLayout] (const Core::CommandBuffer &commandBuffer) {
-            auto barrier = vk::ImageMemoryBarrier()
-                .setOldLayout(m_layout)
-                .setNewLayout(newLayout)
-                .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                .setImage(m_handle)
-                .setSubresourceRange(vk::ImageSubresourceRange()
-                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                    .setBaseMipLevel(0)
-                    .setLevelCount(m_mipLevels)
-                    .setBaseArrayLayer(0)
-                    .setLayerCount(m_layerCount));
-
-            if (m_format == vk::Format::eD32SfloatS8Uint || m_format == vk::Format::eD24UnormS8Uint || m_format == vk::Format::eD32Sfloat) {
-                barrier.subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eDepth);
-                if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
-                    barrier.subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
-                }
-            } else {
-                barrier.subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor);
-            }
-
-            vk::PipelineStageFlags sourceStage;
-            vk::PipelineStageFlags destinationStage;
-
-            switch (m_layout) {
-                case vk::ImageLayout::eUndefined:
-                    barrier.setSrcAccessMask(vk::AccessFlagBits::eNone);
-                    sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-                    switch (newLayout) {
-                        case vk::ImageLayout::eColorAttachmentOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-                            destinationStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-                        case vk::ImageLayout::eTransferDstOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
-                            destinationStage = vk::PipelineStageFlagBits::eTransfer;
-                        break;
-                        case vk::ImageLayout::eDepthStencilAttachmentOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
-                            destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
-                        break;
-                        case vk::ImageLayout::eShaderReadOnlyOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
-                            destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-                        break;
-                        case vk::ImageLayout::eGeneral:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite);
-                            destinationStage = vk::PipelineStageFlagBits::eAllCommands;
-                        break;
-                        case vk::ImageLayout::eDepthReadOnlyOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead);
-                            destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
-                        break;
-                        case vk::ImageLayout::ePresentSrcKHR:
-                        case vk::ImageLayout::eSharedPresentKHR:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
-                            destinationStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-                        break;
-                        default:
-                            throw std::runtime_error("Unsupported new layout transition");
-                    }
-                    break;
-                case vk::ImageLayout::eTransferDstOptimal:
-                    barrier.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite);
-                    sourceStage = vk::PipelineStageFlagBits::eTransfer;
-                    switch (newLayout) {
-                        case vk::ImageLayout::eShaderReadOnlyOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
-                            destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-                        break;
-                        default:
-                            throw std::runtime_error("Unsupported new layout transition");
-                    }
-                    break;
-                case vk::ImageLayout::eDepthStencilAttachmentOptimal:
-                    barrier.setSrcAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
-                    sourceStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
-                    switch (newLayout) {
-                        case vk::ImageLayout::eShaderReadOnlyOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
-                            destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-                        break;
-                        default:
-                            throw std::runtime_error("Unsupported new layout transition");
-                    }
-                    break;
-                case vk::ImageLayout::eShaderReadOnlyOptimal:
-                    barrier.setSrcAccessMask(vk::AccessFlagBits::eShaderRead);
-                    sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
-                    switch (newLayout) {
-                        case vk::ImageLayout::eTransferDstOptimal:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
-                            destinationStage = vk::PipelineStageFlagBits::eTransfer;
-                        break;
-                        case vk::ImageLayout::eUndefined:
-                            barrier.setDstAccessMask(vk::AccessFlagBits::eNone);
-                            destinationStage = vk::PipelineStageFlagBits::eTopOfPipe;
-                        break;
-                        default:
-                            throw std::runtime_error("Unsupported new layout transition");
-                    }
-                    break;
-                default:
-                    throw std::runtime_error("Unsupported old layout transition");
-            }
-
-            commandBuffer->pipelineBarrier(
-                sourceStage,
-                destinationStage,
-                vk::DependencyFlags(),
-                nullptr,
-                nullptr,
-                barrier);
-
-            m_layout = newLayout;
+            TransitionLayout(commandBuffer, newLayout);
         },
         vk::QueueFlagBits::eGraphics);
     }
 
-    void Image::Barrier(const vk::CommandBuffer &commandBuffer,
+    void Image::Barrier(const Core::CommandBuffer& commandBuffer,
         const vk::AccessFlags srcAccessMask, const vk::AccessFlags dstAccessMask,
-        const vk::PipelineStageFlags srcStage, const vk::PipelineStageFlags dstStage) const {
+        const vk::PipelineStageFlags srcStage, const vk::PipelineStageFlags dstStage,
+    	const vk::ImageLayout newLayout
+    ) const {
 
         vk::ImageAspectFlags aspectMask = {};
         if (m_usageFlags & vk::ImageUsageFlagBits::eDepthStencilAttachment) {
@@ -246,7 +150,7 @@ namespace Coral::Memory {
 
         const auto imageBarrier = vk::ImageMemoryBarrier()
             .setOldLayout(m_layout)
-            .setNewLayout(m_layout)
+            .setNewLayout(newLayout)
             .setImage(m_handle)
             .setSubresourceRange(vk::ImageSubresourceRange()
                 .setAspectMask(aspectMask)
@@ -257,7 +161,7 @@ namespace Coral::Memory {
             .setSrcAccessMask(srcAccessMask)
             .setDstAccessMask(dstAccessMask);
 
-        commandBuffer.pipelineBarrier(
+        commandBuffer->pipelineBarrier(
             srcStage,
             dstStage,
             vk::DependencyFlags(),
@@ -266,7 +170,44 @@ namespace Coral::Memory {
             imageBarrier);
     }
 
-    void Image::Resize(const Math::Vector3<u32> &extent) {
+	void Image::Clear(const Core::CommandBuffer& commandBuffer, const vk::ClearValue& clearValue) const {
+    	vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor;
+    	if (m_usageFlags & vk::ImageUsageFlagBits::eDepthStencilAttachment) {
+    		aspectMask = vk::ImageAspectFlagBits::eDepth;
+    		if (m_format == vk::Format::eD32SfloatS8Uint || m_format == vk::Format::eD24UnormS8Uint) {
+    			aspectMask |= vk::ImageAspectFlagBits::eStencil;
+    		}
+    	}
+
+    	const auto range = vk::ImageSubresourceRange()
+			.setAspectMask(aspectMask)
+			.setBaseMipLevel(0)
+			.setLevelCount(m_mipLevels)
+			.setBaseArrayLayer(0)
+			.setLayerCount(m_layerCount);
+
+    	if (aspectMask & vk::ImageAspectFlagBits::eDepth) {
+    		commandBuffer->clearDepthStencilImage(
+				m_handle,
+				m_layout,
+				clearValue.depthStencil,
+				range);
+    		return;
+    	}
+    	commandBuffer->clearColorImage(
+			m_handle,
+			m_layout,
+			clearValue.color,
+			range);
+    }
+
+	void Image::Clear(const vk::ClearValue& clearValue) {
+		Context::Device().RunSingleTimeCommand([this, clearValue](const Core::CommandBuffer& commandBuffer) {
+			Clear(commandBuffer, clearValue);
+		}, vk::QueueFlagBits::eGraphics);
+    }
+
+	void Image::Resize(const Math::Vector3<u32> &extent) {
         if (m_extent == extent || (extent.width == 0 || extent.height == 0 || extent.depth == 0))
             return;
 

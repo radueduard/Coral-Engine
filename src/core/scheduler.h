@@ -4,8 +4,6 @@
 #pragma once
 
 #include <vector>
-#include <ranges>
-
 #include <vulkan/vulkan.hpp>
 
 #include "device.h"
@@ -89,7 +87,7 @@ namespace Coral::Core {
     	void Draw();
 
     	[[nodiscard]] const Graphics::SwapChain &SwapChain() const { return *m_swapChain; }
-    	[[nodiscard]] const Memory::Descriptor::Pool &DescriptorPool() const { return *m_descriptorPool; }
+    	[[nodiscard]] Memory::Descriptor::Pool &DescriptorPool() const { return *m_descriptorPool; }
     	[[nodiscard]] const Frame &CurrentFrame() const { return *m_frames.at(m_currentFrame); }
     	[[nodiscard]] const Frame &NextFrame() const { return *m_frames.at((m_currentFrame + 1) % m_imageCount); }
     	void AdvanceFrame() { m_currentFrame = (m_currentFrame + 1) % m_imageCount; }

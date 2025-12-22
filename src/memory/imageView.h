@@ -23,8 +23,8 @@ namespace Coral::Memory {
         class Builder {
             friend class ImageView;
         public:
-            explicit Builder(const Memory::Image& image) : m_image(image) {}
-            ~Builder() = default;
+            explicit Builder(const Image& image);
+			~Builder() = default;
 
             Builder& ViewType(const vk::ImageViewType viewType) {
                 m_viewType = viewType;

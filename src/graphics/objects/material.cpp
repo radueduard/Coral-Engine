@@ -53,7 +53,7 @@ namespace Coral::Graphics {
     		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
     		.Build();
 
-    	m_parametersBuffer->CopyBuffer(stagingBuffer);
+    	m_parametersBuffer->CopyBuffer(*stagingBuffer);
 
     	m_descriptorSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *descriptorSetLayout)
     		.WriteBuffer(0, m_parametersBuffer->DescriptorInfo())

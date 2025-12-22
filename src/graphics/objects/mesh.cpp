@@ -108,22 +108,21 @@ Coral::Graphics::Mesh::~Mesh() = default;
 const Coral::UUID& Coral::Graphics::Mesh::Id() const { return m_uuid; }
 const std::string& Coral::Graphics::Mesh::Name() const { return m_name; }
 void Coral::Graphics::Mesh::Bind(const vk::CommandBuffer& commandBuffer) const {
-	const vk::ArrayProxy<const vk::Buffer> buffers = {**m_vertexBuffer};
-	const vk::ArrayProxy<const vk::DeviceSize> offsets = {0};
-	commandBuffer.bindVertexBuffers(0, buffers, offsets);
+	commandBuffer.bindVertexBuffers(0, { **m_vertexBuffer }, { 0 });
 	commandBuffer.bindIndexBuffer(**m_indexBuffer, 0, vk::IndexType::eUint32);
 }
+
 void Coral::Graphics::Mesh::Draw(const vk::CommandBuffer& commandBuffer, const uint32_t instanceCount) const {
 	commandBuffer.drawIndexed(m_indexBuffer->InstanceCount(), instanceCount, 0, 0, 0);
 }
 void Coral::Graphics::Mesh::CreateVertexBuffer(std::vector<Vertex>& vertices) {
 	const auto stagingBuffer = Memory::Buffer::Builder()
-								   .InstanceSize(sizeof(Vertex))
-								   .InstanceCount(static_cast<uint32_t>(vertices.size()))
-								   .UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-								   .MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-								   .MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-								   .Build();
+		.InstanceSize(sizeof(Vertex))
+		.InstanceCount(static_cast<uint32_t>(vertices.size()))
+		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+		.Build();
 
 	stagingBuffer->Map<Vertex>();
 	const auto copy = std::span(vertices.data(), vertices.size());
@@ -132,24 +131,24 @@ void Coral::Graphics::Mesh::CreateVertexBuffer(std::vector<Vertex>& vertices) {
 	stagingBuffer->Unmap();
 
 	m_vertexBuffer = Memory::Buffer::Builder()
-						 .InstanceSize(sizeof(Vertex))
-						 .InstanceCount(static_cast<uint32_t>(vertices.size()))
-						 .UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-						 .UsageFlags(vk::BufferUsageFlagBits::eVertexBuffer)
-						 .UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-						 .MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-						 .Build();
+		.InstanceSize(sizeof(Vertex))
+		.InstanceCount(static_cast<uint32_t>(vertices.size()))
+		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
+		.UsageFlags(vk::BufferUsageFlagBits::eVertexBuffer)
+		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Build();
 
-	m_vertexBuffer->CopyBuffer(stagingBuffer);
+	m_vertexBuffer->CopyBuffer(*stagingBuffer);
 }
 void Coral::Graphics::Mesh::CreateIndexBuffer(std::vector<u32>& indices) {
 	const auto stagingBuffer = Memory::Buffer::Builder()
-								   .InstanceSize(sizeof(u32))
-								   .InstanceCount(static_cast<u32>(indices.size()))
-								   .UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-								   .MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-								   .MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-								   .Build();
+		.InstanceSize(sizeof(u32))
+		.InstanceCount(static_cast<u32>(indices.size()))
+		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+		.Build();
 
 	stagingBuffer->Map<u32>();
 	const auto copy = std::span(indices.data(), indices.size());
@@ -158,12 +157,12 @@ void Coral::Graphics::Mesh::CreateIndexBuffer(std::vector<u32>& indices) {
 	stagingBuffer->Unmap();
 
 	m_indexBuffer = Memory::Buffer::Builder()
-						.InstanceSize(sizeof(u32))
-						.InstanceCount(static_cast<u32>(indices.size()))
-						.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-						.UsageFlags(vk::BufferUsageFlagBits::eIndexBuffer)
-						.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-						.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-						.Build();
-	m_indexBuffer->CopyBuffer(stagingBuffer);
+		.InstanceSize(sizeof(u32))
+		.InstanceCount(static_cast<u32>(indices.size()))
+		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
+		.UsageFlags(vk::BufferUsageFlagBits::eIndexBuffer)
+		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Build();
+	m_indexBuffer->CopyBuffer(*stagingBuffer);
 }

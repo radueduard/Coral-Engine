@@ -142,7 +142,7 @@ namespace Coral::Memory {
 
 		void InvalidateAt(u32 index) const;
 
-		void CopyBuffer(const std::unique_ptr<Buffer> &srcBuffer, vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize srcOffset = 0, vk::DeviceSize dstOffset = 0) const;
+		void CopyBuffer(const Buffer& srcBuffer, vk::DeviceSize instanceCount = vk::WholeSize, vk::DeviceSize srcOffset = 0, vk::DeviceSize dstOffset = 0) const;
 
 		[[nodiscard]] uint32_t InstanceCount() const;
 		[[nodiscard]] vk::DeviceSize AlignmentSize() const;

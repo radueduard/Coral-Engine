@@ -2,15 +2,17 @@
 // Created by radue on 10/13/2024.
 //
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "runtime.h"
 
 #include <iostream>
 
+#include "context.h"
 #include "physicalDevice.h"
 #include "window.h"
 
 #include "extensions/debugUtils.h"
-#include "extensions/meshShader.h"
+
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -25,7 +27,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 namespace Coral::Core {
     Runtime::Runtime(const CreateInfo &createInfo) {
-		s_runtime = this;
+		static bool firstInstance = true;
+    	if (!firstInstance) {
+    		throw std::runtime_error("Only one instance of Runtime is allowed!");
+    	}
+    	firstInstance = false;
+    	Context::m_runtime = this;
 
         m_deviceFeatures = createInfo.deviceFeatures;
         m_deviceExtensions = createInfo.deviceExtensions;
@@ -35,8 +42,10 @@ namespace Coral::Core {
         m_requiredQueueFamilies = createInfo.requiredQueueFamilies;
 
         CreateInstance();
+    	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance);
+
         Ext::DebugUtils::ImportFunctions(m_instance);
-        Ext::MeshShader::ImportFunctions(m_instance);
+        // Ext::MeshShader::ImportFunctions(m_instance);
 
         SetupDebugMessenger();
         SelectPhysicalDevice();

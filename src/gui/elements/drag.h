@@ -30,15 +30,20 @@ namespace Coral::Reef {
 	public:
 		Drag(
 			std::string name,
-			T *value,
-			const float speed,
-			T min,
-			T max,
+			std::array<T*, N> value,
+			const f32 speed,
+			std::array<T, N> min,
+			std::array<T, N> max,
 			bool* changed,
 			std::optional<std::array<ImGui::ImLabel, N>> labels = std::nullopt,
 			const Style& style = DragDefaultStyle(),
 			const Text::Style& textStyle = DragDefaultTextStyle()
-		) : Element(style), m_name(std::move(name)), m_value(value), m_speed(speed), m_min(min), m_max(max), m_changed(changed), m_labels(labels), m_textStyle(textStyle) {}
+		) : Element(style), m_name(std::move(name)), m_value(value), m_speed(speed), m_min(min), m_max(max), m_changed(changed), m_labels(labels), m_textStyle(textStyle) {
+			localValue = new T[N];
+			for (int i = 0; i < N; ++i) {
+				localValue[i] = *m_value[i];
+			}
+		}
 		~Drag() override = default;
 
 		void Subrender() override {
@@ -59,9 +64,25 @@ namespace Coral::Reef {
 
 			ImGui::SetWindowFontScale(m_textStyle.fontSize / ImGui::GetFontSize());
 
-			// ImGui::SetCursorScreenPos(ImVec2 { m_actualRenderedPosition - Math::Vector2f { m_style.padding } / 2.f });
 			ImGui::PushItemWidth(m_currentSize.width);
-			const bool changed = ImGui::DragScalarN("", GetImGuiDataType<T>(), m_value, N, m_speed, &m_min, &m_max, 0, 0, m_labels.has_value() ? m_labels->data() : nullptr);
+			const bool changed = ImGui::DragScalarN(
+				"",
+				GetImGuiDataType<T>(),
+				localValue,
+				N,
+				m_speed,
+				m_min.data(),
+				m_max.data(),
+				0,
+				0,
+				m_labels.has_value() ? m_labels->data() : nullptr
+			);
+			if (changed) {
+				for (int i = 0; i < N; ++i) {
+					*m_value[i] = localValue[i];
+				}
+			}
+
 			ImGui::PopItemWidth();
 
 			ImGui::SetWindowFontScale(1.f);
@@ -74,11 +95,13 @@ namespace Coral::Reef {
 		}
 
 	private:
+		T* localValue;
+
 		std::string m_name;
-		T *m_value;
+		std::array<T*, N> m_value;
 		f32 m_speed;
-		T m_min;
-		T m_max;
+		std::array<T, N> m_min;
+		std::array<T, N> m_max;
 		bool *m_changed = nullptr;
 		std::optional<std::array<ImGui::ImLabel, N>> m_labels;
 		Text::Style m_textStyle;

@@ -45,6 +45,24 @@ namespace Coral::Memory::Descriptor {
         return *this;
     }
 
+	Set::Builder & Set::Builder::WriteImages(const uint32_t binding, const std::vector<vk::DescriptorImageInfo>& imageInfos) {
+    	if (!m_layout.HasBinding(binding)) {
+    		std::cerr << "Binding " << binding << " not found in layout" << std::endl;
+    		return *this;
+    	}
+    	auto &bindingInfo = m_layout.Binding(binding);
+
+    	const auto write = vk::WriteDescriptorSet()
+			.setDstSet(nullptr)
+			.setDstBinding(binding)
+			.setDstArrayElement(0)
+			.setDescriptorType(bindingInfo.descriptorType)
+			.setDescriptorCount(static_cast<uint32_t>(imageInfos.size()))
+			.setImageInfo(imageInfos);
+    	m_writes.emplace_back(write);
+    	return *this;
+    }
+
     std::unique_ptr<Set> Set::Builder::Build() {
         return std::make_unique<Set>(*this);
     }

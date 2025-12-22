@@ -99,18 +99,9 @@ namespace Coral::Graphics {
             		sin(theta) * sin(phi)
             	};
             	Math::Vector3f normal = position.Normalized();
-
-            	f32 r = position.Length();
-            	f32 tangentTheta = std::acos(position.z / r);
-            	f32 tangentPhi = std::atan2(position.y, position.x);
-
-                Math::Vector3f tangent =Math::Vector3f{
-					-sin(tangentTheta) * cos(tangentPhi),
-					sin(tangentTheta) * sin(tangentPhi),
-					cos(tangentTheta)
-				}.Normalized();
-
+                Math::Vector3f tangent = { -sin(phi), 0.0f, cos(phi) };
                 Math::Vector3f bitangent = normal.Cross(tangent).Normalized();
+
                 Math::Vector2f texCoord = {static_cast<float>(j) / static_cast<float>(density), static_cast<float>(i) / static_cast<float>(density)};
                 Math::Vector4f tangent4 = Math::Vector4(tangent, normal.Cross(tangent).Dot(bitangent) < 0.0f ? -1.0f : 1.0f);
                 sphere.AddVertex({position, normal, tangent4, texCoord});

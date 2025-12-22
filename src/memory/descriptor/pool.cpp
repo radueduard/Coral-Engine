@@ -4,6 +4,8 @@
 
 #include "pool.h"
 
+#include <ranges>
+
 namespace Coral::Memory::Descriptor {
     Pool::Builder & Pool::Builder::AddPoolSize(const vk::DescriptorType type, const uint32_t count) {
         const auto poolSize = vk::DescriptorPoolSize()
@@ -37,6 +39,10 @@ namespace Coral::Memory::Descriptor {
             .setMaxSets(m_maxSets)
             .setFlags(m_flags);
 
+    	for (const auto& size : m_poolSizes) {
+			m_allocatedBindingCounts[size.type] = 0;
+		}
+
         m_pool = Context::Device()->createDescriptorPool(poolCreateInfo);
     }
 
@@ -44,15 +50,26 @@ namespace Coral::Memory::Descriptor {
         Context::Device()->destroyDescriptorPool(m_pool);
     }
 
-    vk::DescriptorSet Pool::Allocate(const SetLayout &layout) const {
+    vk::DescriptorSet Pool::Allocate(const SetLayout &layout) {
         const auto layoutHandle = *layout;
         const auto allocateInfo = vk::DescriptorSetAllocateInfo()
             .setDescriptorPool(m_pool)
             .setSetLayouts({layoutHandle});
-        return Context::Device()->allocateDescriptorSets(allocateInfo).front();
+
+    	for (const auto& binding : layout.Bindings()| std::views::values) {
+    		m_allocatedBindingCounts[binding.descriptorType]++;
+    	}
+		const auto allocatedSets = Context::Device()->allocateDescriptorSets(allocateInfo);
+    	if (allocatedSets.empty()) {
+    		throw std::runtime_error("Failed to allocate descriptor set!");
+    	}
+
+    	m_allocatedSetCount++;
+
+        return allocatedSets[0];
     }
 
-    std::vector<vk::DescriptorSet> Pool::Allocate(const std::vector<SetLayout> &layouts) const {
+    std::vector<vk::DescriptorSet> Pool::Allocate(const std::vector<SetLayout> &layouts) {
         auto layoutHandles = std::vector<vk::DescriptorSetLayout>();
         for (const auto &layout: layouts) {
             layoutHandles.emplace_back(*layout);
@@ -62,7 +79,17 @@ namespace Coral::Memory::Descriptor {
             .setDescriptorPool(m_pool)
             .setSetLayouts(layoutHandles);
 
-        return Context::Device()->allocateDescriptorSets(allocateInfo);
+    	for (const auto &layout : layouts) {
+			for (const auto& binding : layout.Bindings()| std::views::values) {
+				m_allocatedBindingCounts[binding.descriptorType]++;
+			}
+		}
+		const auto allocatedSets = Context::Device()->allocateDescriptorSets(allocateInfo);
+    	if (allocatedSets.size() != layouts.size()) {
+    		throw std::runtime_error("Failed to allocate descriptor sets!");
+    	}
+    	m_allocatedSetCount += static_cast<u32>(layouts.size());
+        return allocatedSets;
     }
 
     void Pool::Free(const vk::DescriptorSet &descriptorSet) const {

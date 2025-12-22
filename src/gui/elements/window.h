@@ -29,26 +29,29 @@ namespace Coral::Reef {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, m_style.cornerRadius);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(m_minSize.width, m_minSize.height));
             ImGui::PushStyleColor(ImGuiCol_WindowBg, static_cast<ImVec4>(m_style.backgroundColor));
-            ImGui::Begin(m_name.c_str(), nullptr,
+            bool visible = ImGui::Begin(m_name.c_str(), nullptr,
                 ImGuiWindowFlags_NoCollapse |
                 ImGuiWindowFlags_NoTitleBar |
                 ImGuiWindowFlags_NoScrollbar
             );
 
-            const auto size = Math::Vector2f(ImGui::GetContentRegionAvail());
-            if (m_baseSize != size) {
-                m_baseSize = size;
-                if (m_onResize) {
-                    m_onResize(size);
-                }
-                m_shouldResize = true;
-            }
+            if (visible) {
+				const auto size = Math::Vector2f(ImGui::GetContentRegionAvail());
+            	m_shouldResize = false;
+				if (m_baseSize != size) {
+					m_baseSize = size;
+					if (m_onResize) {
+						m_onResize(size);
+					}
+					m_shouldResize = true;
+				}
 
-            const auto position = Math::Vector2f(ImGui::GetCursorScreenPos());
-            if (m_absolutePosition != position) {
-                m_absolutePosition = position;
-                m_shouldResize = true;
-            }
+				const auto position = Math::Vector2f(ImGui::GetCursorScreenPos());
+				if (m_absolutePosition != position) {
+					m_absolutePosition = position;
+					m_shouldResize = true;
+				}
+			}
 
 			ImGui::End();
             ImGui::PopStyleColor();
@@ -71,27 +74,29 @@ namespace Coral::Reef {
 		void Render() override {
 		    // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(m_style.padding.left, m_style.padding.top));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, m_style.cornerRadius);
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(m_minSize.width, m_minSize.height));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(m_minSize));
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, static_cast<ImVec4>(m_style.backgroundColor));
 
-            ImGui::Begin(m_name.c_str(), nullptr,
+			const bool visible = ImGui::Begin(m_name.c_str(), nullptr,
             	ImGuiWindowFlags_NoCollapse |
             	ImGuiWindowFlags_NoTitleBar |
             	ImGuiWindowFlags_NoScrollbar
             );
 
-			const String childName = "##" + boost::uuids::to_string(m_uuid);
-			ImGui::BeginChild(
-			    childName.c_str(),
-			    ImVec2(m_baseSize),
-			    false,
-			    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        	if (visible) {
+        		const String childName = "##" + boost::uuids::to_string(m_uuid);
+        		ImGui::BeginChild(
+					childName.c_str(),
+					ImVec2(m_baseSize),
+					false,
+					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-        	for (const auto& child : m_children) {
-				child->Render();
-			}
+        		for (const auto& child : m_children) {
+        			child->Render();
+        		}
 
-			ImGui::EndChild();
+        		ImGui::EndChild();
+        	}
 			ImGui::End();
 
 			ImGui::PopStyleColor();

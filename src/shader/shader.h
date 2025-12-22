@@ -11,6 +11,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "spirv.hpp"
+
 namespace Coral::Shader {
 	enum class Stage : u32 {
 		Vertex                  = 1 << 0,
@@ -48,6 +50,43 @@ namespace Coral::Shader {
 	inline Stage& operator&=(Stage &lhs, Stage rhs) {
 		lhs = static_cast<Stage>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
 		return lhs;
+	}
+
+	inline Stage FromExecutionModel(const spv::ExecutionModel executionModel) {
+		switch (executionModel) {
+		case spv::ExecutionModelVertex:
+			return Stage::Vertex;
+		case spv::ExecutionModelTessellationControl:
+			return Stage::TessellationControl;
+		case spv::ExecutionModelTessellationEvaluation:
+			return Stage::TessellationEvaluation;
+		case spv::ExecutionModelGeometry:
+			return Stage::Geometry;
+		case spv::ExecutionModelFragment:
+			return Stage::Fragment;
+		case spv::ExecutionModelGLCompute:
+			return Stage::Compute;
+		case spv::ExecutionModelTaskNV:
+		case spv::ExecutionModelTaskEXT:
+			return Stage::Task;
+		case spv::ExecutionModelMeshNV:
+		case spv::ExecutionModelMeshEXT:
+			return Stage::Mesh;
+		case spv::ExecutionModelRayGenerationNV:
+			return Stage::Raygen;
+		case spv::ExecutionModelIntersectionNV:
+			return Stage::Intersection;
+		case spv::ExecutionModelAnyHitNV:
+			return Stage::AnyHit;
+		case spv::ExecutionModelClosestHitNV:
+			return Stage::ClosestHit;
+		case spv::ExecutionModelMissNV:
+			return Stage::Miss;
+		case spv::ExecutionModelCallableNV:
+			return Stage::Callable;
+		default:
+			return Stage::All;
+		}
 	}
 
 	struct InOut {
@@ -120,6 +159,9 @@ namespace Coral::Shader {
 		SlangShader(const std::string& module, const std::string& entryPoint);
 
 		void Update() override;
+
+		[[nodiscard]] const std::string& Module() const { return m_module; }
+		[[nodiscard]] const std::string& EntryPoint() const { return m_entryPoint; }
 
 	private:
 		std::filesystem::path m_path;

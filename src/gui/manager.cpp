@@ -104,8 +104,8 @@ namespace Coral::Reef {
 
         ImGui_ImplGlfw_InitForVulkan(*Core::Window::Get(), true);
         ImGui_ImplVulkan_InitInfo init_info = {
-            .Instance = Core::Runtime::Get().Instance(),
-            .PhysicalDevice = *Core::Runtime::Get().PhysicalDevice(),
+            .Instance = Context::Runtime().Instance(),
+            .PhysicalDevice = *Context::Runtime().PhysicalDevice(),
             .Device = *Context::Device(),
             .QueueFamily = m_queue.Family().Index(),
             .Queue = *m_queue,
@@ -148,6 +148,7 @@ namespace Coral::Reef {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+		ImGuizmo::BeginFrame();
     	m_frameStarted = true;
 
         static ImGuiDockNodeFlags dockSpaceFlags = ImGuiDockNodeFlags_NoWindowMenuButton;

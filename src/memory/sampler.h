@@ -16,14 +16,37 @@ namespace Coral::Memory {
 
     class Sampler final : public EngineWrapper<vk::Sampler> {
     public:
-        struct CreateInfo {
-            vk::Filter magFilter = vk::Filter::eLinear;
-            vk::Filter minFilter = vk::Filter::eLinear;
-            vk::SamplerAddressMode addressMode = vk::SamplerAddressMode::eRepeat;
-            vk::SamplerMipmapMode mipmapMode = vk::SamplerMipmapMode::eLinear;
-        };
+    	class Builder {
+    		friend class Sampler;
+    	public:
+    		Builder& MagFilter(vk::Filter filter) {
+				magFilter = filter;
+				return *this;
+			}
+			Builder& MinFilter(vk::Filter filter) {
+				minFilter = filter;
+				return *this;
+			}
+			Builder& AddressMode(vk::SamplerAddressMode mode) {
+				addressMode = mode;
+				return *this;
+			}
+			Builder& MipmapMode(vk::SamplerMipmapMode mode) {
+				mipmapMode = mode;
+				return *this;
+			}
 
-        explicit Sampler(const CreateInfo& createInfo);
+			std::unique_ptr<Sampler> Build() const {
+				return std::make_unique<Sampler>(*this);
+			}
+    	private:
+    		vk::Filter magFilter = vk::Filter::eLinear;
+    		vk::Filter minFilter = vk::Filter::eLinear;
+    		vk::SamplerAddressMode addressMode = vk::SamplerAddressMode::eRepeat;
+    		vk::SamplerMipmapMode mipmapMode = vk::SamplerMipmapMode::eLinear;
+    	};
+
+        explicit Sampler(const Builder& builder);
         ~Sampler() override;
 
         [[nodiscard]] vk::Filter MagFilter() const { return m_magFilter; }

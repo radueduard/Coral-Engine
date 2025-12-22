@@ -28,7 +28,6 @@ namespace Coral::Reef {
 
 namespace Coral::Graphics {
     class RenderPass;
-
     class Pipeline {
     	friend class RenderPass;
     public:
@@ -54,6 +53,8 @@ namespace Coral::Graphics {
             Builder &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
 
             Builder &Subpass(uint32_t);
+
+        	Builder &RenderFunction(const std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)> &function);
 
             Builder &BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)> &function);
 
@@ -97,6 +98,8 @@ namespace Coral::Graphics {
 
             vk::PipelineLayout m_pipelineLayout;
             uint32_t m_subpass = 0;
+
+        	std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)> m_function = nullptr;
         };
 
         explicit Pipeline(Builder &);
@@ -121,11 +124,19 @@ namespace Coral::Graphics {
 
         [[nodiscard]] const vk::PipelineLayout &Layout() const { return m_pipelineLayout; }
 
+    	void Render(const Core::CommandBuffer& commandBuffer) const {
+			if (m_renderFunction) {
+				m_renderFunction(*this, commandBuffer);
+			}
+		}
+
         const std::unordered_map<Shader::Stage, const Shader::Shader*>& Shaders() { return m_shaders; }
     private:
         vk::Pipeline m_pipeline;
         vk::PipelineLayout m_pipelineLayout;
         std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
         std::unordered_map<Shader::Stage, const Shader::Shader*> m_shaders;
+
+    	std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)> m_renderFunction = nullptr;
     };
 }
