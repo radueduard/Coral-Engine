@@ -29,7 +29,7 @@ groupshared uint primitiveCount;
 [numthreads(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, WORKGROUP_SIZE_Z)]
 [outputtopology("triangle")]
 [shader("mesh")]
-void generateChunkMesh(
+void renderChunkMesh(
     uint3 groupThreadID : SV_GroupThreadID,
     uint3 groupID : SV_GroupID,
     uint3 dispatchThreadID : SV_DispatchThreadID,
@@ -82,6 +82,63 @@ void generateChunkMesh(
     }
 
     SetMeshOutputCounts(vertexCount, primitiveCount);
+}
+
+RWStructuredBuffer<float3> outputVertices;
+RWStructuredBuffer<uint> outputIndices;
+
+struct Settings {
+    uint groupBufferOffset;
+}
+
+[numthreads(16, 16, 16)]
+[shader("compute")]
+void generateChunk(
+    uint3 groupThreadID : SV_GroupThreadID,
+    uint3 groupID : SV_GroupID,
+    uint3 dispatchThreadID : SV_DispatchThreadID,
+    uniform Settings settings
+) {
+    uint meshIndex = groupID.x + groupID.y * WorkgroupCount().x + groupID.z * WorkgroupCount().x * WorkgroupCount().y;
+
+    uint3 totalCount = WorkgroupCount() * uint3(16, 16, 16);
+    float3 step = 1.0 / float3(totalCount + 1);
+    float3 origin = -float3(totalCount / 2) * step;
+
+    GridCell cell;
+    uint mask = 0;
+    for (int i = 0; i < 8; i++) {
+        uint3 offset = uint3(i % 2, (i / 2) % 2, (i / 4) % 2);
+        float3 samplePos = float3(dispatchThreadID + offset) / float3(totalCount + 1);
+        cell.positions[i] = (float3(dispatchThreadID + offset) - float3(totalCount / 2)) / float3(totalCount + 1);
+        cell.densities[i] = densityField.SampleLevel(samplePos, 5);
+        if (cell.densities[i] > 0.9) {
+            mask |= (1 << i);
+        }
+    }
+
+    Array<Optional<Triangle>, 4> triangles = { none, none, none, none };
+    GetTrianglesFromCube(mask, cell, 0.9, triangles);
+
+    for (int i = 0; i < triangles.getCount(); i++) {
+        if (!triangles[i].hasValue) {
+            break;
+        }
+        Triangle tri = triangles[i].value;
+
+        uint vertexOffset;
+        InterlockedAdd(vertexCount, 3, vertexOffset);
+        uint indexOffset;
+        InterlockedAdd(primitiveCount, 3, indexOffset);
+
+        outputVertices[settings.groupBufferOffset + vertexOffset + 0] = tri.p1;
+        outputVertices[settings.groupBufferOffset + vertexOffset + 1] = tri.p2;
+        outputVertices[settings.groupBufferOffset + vertexOffset + 2] = tri.p3;
+
+        outputIndices[settings.groupBufferOffset + indexOffset + 0] = vertexOffset + 0;
+        outputIndices[settings.groupBufferOffset + indexOffset + 1] = vertexOffset + 1;
+        outputIndices[settings.groupBufferOffset + indexOffset + 2] = vertexOffset + 2;
+    }
 }
 
 [shader("pixel")]

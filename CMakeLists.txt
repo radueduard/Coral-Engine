@@ -39,7 +39,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)
 target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(${PROJECT_NAME} PRIVATE EnTT::EnTT)
 target_link_libraries(${PROJECT_NAME} PRIVATE magic_enum::magic_enum)
-target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt)
+#target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         slang::gfx
         slang::slang

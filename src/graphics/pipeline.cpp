@@ -11,7 +11,6 @@
 #include "memory/descriptor/set.h"
 #include "objects/mesh.h"
 #include "renderPass.h"
-#include "utils/functionals.h"
 
 namespace Coral::Graphics {
     Pipeline::Builder::Builder(RenderPass &renderPass) : m_renderPass(renderPass) {
@@ -112,10 +111,13 @@ namespace Coral::Graphics {
                 }
             }
             for (const auto&[size, offset, name] : shader->PushConstantRanges()) {
-                auto foundRange = Utils::FindIf(pushConstantRanges,
-                [size, offset] (const auto& range) -> bool {
-                    return range.offset == offset && range.size == size;
-                });
+                std::optional<vk::PushConstantRange> foundRange = std::nullopt;
+            	for (const auto& range : pushConstantRanges) {
+            		if (range.offset == offset && range.size == size) {
+						foundRange = range;
+						break;
+					}
+            	}
 
                 if (foundRange.has_value()) {
                     foundRange->stageFlags |= vk::ShaderStageFlags(static_cast<uint32_t>(shader->GetStage()));
@@ -145,9 +147,15 @@ namespace Coral::Graphics {
 
         std::vector<vk::VertexInputBindingDescription> bindingDescriptions = {};
         std::vector<vk::VertexInputAttributeDescription> attributeDescriptions = {};
-        if (const auto& vertexShader = Utils::FindIf(m_shaders | std::views::values, [](const auto* shader) { return shader->GetStage() == Shader::Stage::Vertex; });
-        	vertexShader.has_value())
-        {
+
+    	std::optional<const Shader::Shader*> vertexShader = std::nullopt;
+    	for (auto* shader : m_shaders | std::views::values) {
+    		if (shader->GetStage() == Shader::Stage::Vertex) {
+    			vertexShader = shader;
+    			break;
+    		}
+    	}
+        if (vertexShader.has_value()) {
             bindingDescriptions = Vertex::BindingDescriptions();
             attributeDescriptions = Vertex::AttributeDescriptions((*vertexShader)->Inputs());
         }

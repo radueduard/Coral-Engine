@@ -124,12 +124,13 @@ namespace Coral::Graphics {
         CreateSwapChain();
     }
 
-    vk::Result SwapChain::Acquire(const Core::Frame &frame) {
+    vk::Result SwapChain::Acquire(const Core::Frame &frame, bool firstTime) {
         try {
             const auto result = Context::Device()->acquireNextImageKHR(
                 m_handle,
                 UINT64_MAX,
-                frame.ImageAvailable());
+                firstTime ? frame.ImageAvailable() : nullptr,
+                firstTime ? nullptr : frame.InFlightFence());
             m_imageIndex = result.value;
             return result.result;
         } catch (const vk::OutOfDateKHRError &) {

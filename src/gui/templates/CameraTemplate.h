@@ -29,11 +29,10 @@ namespace Coral::Reef {
 							   .backgroundColor = ImVec4{163 / 255.f, 58 / 255.f, 44 / 255.f, 1.f}},
 			};
 
-			const Text::Style titleStyle {
-				.color = { 0.8f, 0.8f, 0.8f, 1.f },
-				.fontSize = 20.f,
-				.fontStyle = FontType::Black
-			};
+			const Text::Style titleStyle = Text::Style()
+				.withColor( { 0.8f, 0.8f, 0.8f, 1.f } )
+				.withFontSize(20.f)
+				.withFontStyle(FontType::Black);
 
 			return new Element({
 					.size = { Grow, Shrink },

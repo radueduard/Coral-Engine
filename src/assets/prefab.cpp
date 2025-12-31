@@ -7,9 +7,9 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <magic_enum/magic_enum.hpp>
 
-#include "ecs/components/RenderTarget.h"
 #include "ecs/components/camera.h"
 #include "ecs/components/light.h"
+#include "ecs/components/renderTarget.h"
 #include "ecs/entity.h"
 #include "gui/elements/popup.h"
 #include "manager.h"

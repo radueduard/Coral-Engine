@@ -11,7 +11,7 @@
 #include "gui/elements/separator.h"
 #include "gui/templates/importAssetPopup.h"
 
-#include "ecs/components/RenderTarget.h"
+#include "ecs/components/renderTarget.h"
 #include "ecs/entity.h"
 #include "ecs/scene.h"
 #include "gui/templates/bufferSettings.h"

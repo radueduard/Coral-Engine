@@ -65,16 +65,6 @@ namespace Coral::Utils {
     	template<u8 N> requires (N == 2 || N == 3)
 		static Math::Vector<f32, N> Direction();
 
-    	template<>
-        static Math::Vector2f Direction<2>() {
-            return NormalVector<2, f32>(Math::Vector2f(0.0f, 0.0f), Math::Vector2f(1.0f, 1.0f)).Normalized();
-        }
-
-    	template<>
-        static Math::Vector3f Direction<3>() {
-            return NormalVector<3, f32>(Math::Vector3f(0.0f, 0.0f, 0.0f), Math::Vector3f(1.0f, 1.0f, 1.0f)).Normalized();
-        }
-
     private:
         inline static auto m_rng = std::mt19937(std::random_device()());
     };

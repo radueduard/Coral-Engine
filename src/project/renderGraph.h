@@ -62,7 +62,7 @@ namespace Coral::Project {
         std::vector<std::unique_ptr<RunNode>> m_runNodes;
 
     //  temp:
-        std::unique_ptr<Reef::RenderPipelineTemplate> m_pipelineTemplate = nullptr;
+        std::unique_ptr<Reef::RenderPipelineTemplate> m_pipelineTemplate;
         Coral::Graphics::Pipeline::Builder* m_pipelineBuilder = nullptr;
 
     };

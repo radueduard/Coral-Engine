@@ -20,9 +20,9 @@
 #include <glm/gtc/quaternion.hpp>
 #include <magic_enum/magic_enum.hpp>
 
-#include "../ecs/components/RenderTarget.h"
-#include "../ecs/scene.h"
-#include "ecs/Entity.h"
+#include "ecs/components/renderTarget.h"
+#include "ecs/scene.h"
+#include "ecs/entity.h"
 #include "ecs/components/camera.h"
 #include "graphics/objects/material.h"
 #include "graphics/objects/mesh.h"
@@ -445,10 +445,10 @@ namespace Coral::Asset {
     	std::vector<Graphics::Texture::Builder> builders;
     	std::vector<stbi_uc*> datas;
     	std::mutex mtx;
-        std::for_each(std::execution::par, textures.begin(), textures.end(), [this, &builders, &datas, &mtx] (const auto& texture) {
+        std::for_each(textures.begin(), textures.end(), [this, &builders, &datas, &mtx] (const auto& texture) {
         	const auto& [strUuid, textureData] = texture;
-            const auto path = textureData["path"].get<std::string>();
-            const auto size = textureData["size"].get<uint32_t>();
+            const auto path = textureData["path"].template get<std::string>();
+            const auto size = textureData["size"].template get<uint32_t>();
             const auto textureId = _stringToUuid(strUuid);
             const auto texturePath = m_path + '/' + path;
 
@@ -459,7 +459,6 @@ namespace Coral::Asset {
             }
 
 			{
-				std::lock_guard lock(mtx);
 				auto& builder = builders.emplace_back(Graphics::Texture::Builder(textureId));
 
 				builder.Name(path.substr(path.find_last_of('/') + 1))

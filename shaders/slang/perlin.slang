@@ -48,6 +48,7 @@ void generate3D(
     float amplitude = 0.5;
 
     for (int i = 0; i < params.octaves; i++) {
-        
+        perlinTexture[pixel] += amplitude;
+        amplitude *= 0.5;
     }
 }

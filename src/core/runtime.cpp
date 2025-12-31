@@ -27,17 +27,26 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 namespace Coral::Core {
     Runtime::Runtime(const CreateInfo &createInfo) {
-		static bool firstInstance = true;
+	    static bool firstInstance = true;
     	if (!firstInstance) {
     		throw std::runtime_error("Only one instance of Runtime is allowed!");
     	}
     	firstInstance = false;
     	Context::m_runtime = this;
 
-        m_deviceFeatures = createInfo.deviceFeatures;
-        m_deviceExtensions = createInfo.deviceExtensions;
-        m_deviceLayers = createInfo.deviceLayers;
-        m_instanceExtensions = createInfo.instanceExtensions;
+    	m_deviceFeatures = createInfo.deviceFeatures;
+    	m_deviceExtensions = createInfo.deviceExtensions;
+#ifdef __APPLE__
+		m_deviceExtensions.emplace_back("VK_KHR_portability_subset");
+#endif
+
+    	m_deviceLayers = createInfo.deviceLayers;
+    	m_instanceExtensions = createInfo.instanceExtensions;
+
+#ifdef __APPLE__
+    	m_instanceExtensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+#endif
+
         m_instanceLayers = createInfo.instanceLayers;
         m_requiredQueueFamilies = createInfo.requiredQueueFamilies;
 
@@ -70,6 +79,9 @@ namespace Coral::Core {
         m_instanceExtensions.insert(m_instanceExtensions.end(), windowExtensions.begin(), windowExtensions.end());
 
         const auto createInfo = vk::InstanceCreateInfo()
+#ifdef __APPLE__
+			.setFlags(vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR)
+#endif
             .setPApplicationInfo(&appInfo)
             .setPEnabledExtensionNames(m_instanceExtensions)
             .setPEnabledLayerNames(m_instanceLayers);
@@ -107,9 +119,9 @@ namespace Coral::Core {
             };
 
             if (auto physicalDevice = std::make_unique<Core::PhysicalDevice>(createInfo); physicalDevice->isSuitable()) {
-                if (physicalDevice->m_properties.deviceType != vk::PhysicalDeviceType::eDiscreteGpu) {
-                    continue;
-                }
+                // if (physicalDevice->m_properties.deviceType != vk::PhysicalDeviceType::eDiscreteGpu) {
+                //     continue;
+                // }
 
                 // Print physical device information
                 std::cout << "Selected physical device: " << physicalDevice->m_properties.deviceName << std::endl;

@@ -148,11 +148,10 @@ namespace Coral::Reef {
 					new LabeledRow(
 						new Text(
 							String(magic_enum::enum_name(value).data()),
-							Text::Style {
-								.color = { 0.8f, 0.8f, 0.8f, 1.f },
-								.fontSize = 15.f,
-								.fontStyle = FontType::Bold,
-							}
+							Text::Style()
+								.withColor( { 0.8f, 0.8f, 0.8f, 1.f } )
+								.withFontSize(15.f)
+								.withFontStyle(FontType::Bold)
 						),
 						new Checkbox(
 							magic_enum::enum_name(value).data(),

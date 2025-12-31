@@ -80,7 +80,7 @@ namespace Coral::Project {
 				Memory::Image* guiImage = m_imageStorage.emplace_back(
 					Memory::Image::Builder()
 						.Format(vk::Format::eB8G8R8A8Unorm)
-						.Extent(extent)
+						.Extent( Math::Vector2u { 1920u, 1080u } * 2u )
 						.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
 						.UsageFlags(vk::ImageUsageFlagBits::eTransferSrc)
 						.SampleCount(vk::SampleCountFlagBits::e2)
@@ -232,7 +232,7 @@ namespace Coral::Project {
 			m_guiRenderPass = Graphics::RenderPass::Builder()
 				.OutputImageIndex(0)
 				.Attachment(0, guiPassColor)
-				.Extent({ 1920u, 1080u })
+				.Extent( Math::Vector2u { 1920u, 1080u } * 2u )
 				.Subpass(guiSubpass)
 				.ImageCount(m_frameCount)
 				.Build();
@@ -293,28 +293,28 @@ namespace Coral::Project {
 			m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
 		}
 
-		{
-			auto* meshShader = Shader::Manager::Get().GetShader("planet", "generateChunkMesh");
-			auto* pixelShader = Shader::Manager::Get().GetShader("planet", "planetPixelShader");
-
-			auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
-			(*pipelineBuilder)
-				.AddShader(meshShader)
-				.AddShader(pixelShader)
-				.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
-					.setPolygonMode(vk::PolygonMode::eFill)
-					.setCullMode(vk::CullModeFlagBits::eNone)
-					.setFrontFace(vk::FrontFace::eClockwise)
-					.setLineWidth(1.0f))
-				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer) {
-					pipeline.Bind(*commandBuffer);
-					pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().PlanetDescriptorSet());
-					commandBuffer->drawMeshTasksEXT(64, 64, 64);
-				});
-
-			m_pipelineBuilder = pipelineBuilder.get();
-			m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
-		}
+		// {
+		// 	auto* meshShader = Shader::Manager::Get().GetShader("planet", "generateChunkMesh");
+		// 	auto* pixelShader = Shader::Manager::Get().GetShader("planet", "planetPixelShader");
+		//
+		// 	auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
+		// 	(*pipelineBuilder)
+		// 		.AddShader(meshShader)
+		// 		.AddShader(pixelShader)
+		// 		.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
+		// 			.setPolygonMode(vk::PolygonMode::eFill)
+		// 			.setCullMode(vk::CullModeFlagBits::eNone)
+		// 			.setFrontFace(vk::FrontFace::eClockwise)
+		// 			.setLineWidth(1.0f))
+		// 		.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer) {
+		// 			pipeline.Bind(*commandBuffer);
+		// 			pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().PlanetDescriptorSet());
+		// 			commandBuffer->drawMeshTasksEXT(64, 64, 64);
+		// 		});
+		//
+		// 	m_pipelineBuilder = pipelineBuilder.get();
+		// 	m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
+		// }
 
 		// ------------------
 

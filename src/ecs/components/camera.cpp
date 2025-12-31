@@ -29,7 +29,7 @@ namespace Coral::ECS {
     	const auto& entity = SceneManager::Get().Registry().get<class Entity*>(Entity());
     	auto& transform = entity->Get<Transform>();
 
-		const auto rotation = Math::Quaternion(Math::Radians(transform.rotation));
+		const auto rotation = Math::Quaternion(Math::Radians<f32, 3>(transform.rotation));
 		const auto forward = rotation * FORWARD;
 		const auto up = UP;
 		const auto right = -Math::Vector3<f32>::Cross(forward, up).Normalized();
@@ -45,7 +45,7 @@ namespace Coral::ECS {
     	const auto& entity = SceneManager::Get().Registry().get<class Entity*>(Entity());
     	auto& transform = entity->Get<Transform>();
 
-		const auto rotation = Math::Quaternion(Math::Radians(transform.rotation));
+		const auto rotation = Math::Quaternion(Math::Radians<f32, 3>(transform.rotation));
     	auto forward = rotation * FORWARD;
     	const auto right = -forward.Cross(UP).Normalized();
 
@@ -57,7 +57,7 @@ namespace Coral::ECS {
 			Math::Quaternion<>::FromAxisAngle(-yaw, UP)).Normalized();
     	forward = Math::Rotate(rotate, forward).Normalized();
 
-    	transform.rotation = Math::Degrees(Math::Quaternion<>::ToEulerAngles(Math::LookAt(forward, UP)));
+    	transform.rotation = Math::Degrees<f32, 3>(Math::Quaternion<>::ToEulerAngles(Math::LookAt(forward, UP)));
 
     	m_moved = true;
     }
@@ -92,7 +92,7 @@ namespace Coral::ECS {
 
         m_view = Math::LookAt(
             transform.position,
-            transform.position + Math::Quaternion(Math::Radians(transform.rotation)) * FORWARD,
+            transform.position + Math::Quaternion(Math::Radians<f32, 3>(transform.rotation)) * FORWARD,
             UP);
         m_inverseView = m_view.Inverse();
     	m_moved = false;

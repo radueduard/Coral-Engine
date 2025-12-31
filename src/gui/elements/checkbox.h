@@ -20,12 +20,11 @@ namespace Coral::Reef {
 		};
 
 		static Text::Style DefaultTextStyle() {
-			return {
-				.color = Colors::white,
-				.fontSize = 10.f,
-				.fontStyle = FontType::Bold,
-			};
-		};
+			return Text::Style()
+				.withColor(Colors::white)
+				.withFontSize(10.f)
+				.withFontStyle(FontType::Bold);
+		}
 
 		explicit Checkbox(
 			String name,

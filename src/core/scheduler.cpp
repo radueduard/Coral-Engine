@@ -92,24 +92,39 @@ namespace Coral::Core {
     void Scheduler::Draw() {
         const auto& frame = CurrentFrame();
 
-        const auto& fence = frame.InFlightFence();
-        if (const auto result = Context::Device()->waitForFences(1, &fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess) {
-            throw std::runtime_error("Failed to wait fence: " + vk::to_string(result));
-        }
+		const auto& fence = frame.InFlightFence();
+		if (const auto result = Context::Device()->waitForFences(1, &fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess) {
+			throw std::runtime_error("Failed to wait fence: " + vk::to_string(result));
+		}
 
-        if (const auto result = Context::Device()->resetFences(1, &fence); result != vk::Result::eSuccess) {
-            throw std::runtime_error("Failed to reset fence: " + vk::to_string(result));
-        }
+		if (const auto result = Context::Device()->resetFences(1, &fence); result != vk::Result::eSuccess) {
+			throw std::runtime_error("Failed to reset fence: " + vk::to_string(result));
+		}
 
-        if (const auto result = m_swapChain->Acquire(frame);
+
+		bool firstTime = true;
+acquire:
+        if (const auto result = m_swapChain->Acquire(frame, firstTime);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
             m_swapChain->Resize(Window::Get().Extent());
             m_renderGraph->Resize(Window::Get().Extent());
-        	m_currentFrame = 0;
-            return;
+
+        	// m_currentFrame = 0;
+        	firstTime = false;
+            goto acquire;
         }
 
     	m_renderGraph->Execute(frame);
+
+		if (!firstTime) {
+			if (const auto result = Context::Device()->waitForFences(1, &fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess) {
+				throw std::runtime_error("Failed to wait fence: " + vk::to_string(result));
+			}
+
+			if (const auto result = Context::Device()->resetFences(1, &fence); result != vk::Result::eSuccess) {
+				throw std::runtime_error("Failed to reset fence: " + vk::to_string(result));
+			}
+		}
 
         frame.FinalImageTransferCommandBuffer().Run([&](const CommandBuffer& commandBuffer) {
             const Memory::Image& outputImage = m_renderGraph->OutputImage(frame.ImageIndex());
@@ -209,11 +224,13 @@ namespace Coral::Core {
             );
         }, frame.ReadyToPresent());
 
+
         if (const auto result = m_swapChain->Present(frame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
+
             m_swapChain->Resize(Window::Get().Extent());
             m_renderGraph->Resize(Window::Get().Extent());
-        	m_currentFrame = 0;
+        	// m_currentFrame = 0;
         	return;
         }
 

@@ -73,11 +73,10 @@ namespace Coral::Reef {
 							   .backgroundColor = ImVec4{163 / 255.f, 58 / 255.f, 44 / 255.f, 1.f}},
 			};
 
-			const Text::Style labelStyle {
-				.color = { 0.8f, 0.8f, 0.8f, 1.f },
-				.fontSize = 15.f,
-				.fontStyle = FontType::Bold,
-			};
+			const Text::Style labelStyle = Text::Style()
+				.withColor( { 0.8f, 0.8f, 0.8f, 1.f } )
+				.withFontSize(15.f)
+				.withFontStyle(FontType::Bold);
 
 			return new Element({
 					.size = { Grow, Shrink },
@@ -89,13 +88,12 @@ namespace Coral::Reef {
 				{
 					new Text(
 						" " ICON_FA_LIGHTBULB "    Light Settings",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Left,
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Left),
 						{ .size = { Grow, 23.f } }
 					),
 					new Separator(),

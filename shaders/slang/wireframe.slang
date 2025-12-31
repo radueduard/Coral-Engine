@@ -107,4 +107,5 @@ float4 fragmentMain(FragmentInput input) : SV_Target
         discard;
     }
     return float4(N * 0.5 + 0.5, max(color.r, 1.0));
+    //return float4(albedo.rgb, max(color.r, 1.0));
 }

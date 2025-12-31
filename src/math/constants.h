@@ -4,8 +4,8 @@
 #pragma once
 
 #define GLM_FORCE_RADIANS
-import <glm/ext/scalar_constants.hpp>;
-import <glm/gtc/constants.hpp>;
+#include <glm/ext/scalar_constants.hpp>
+#include <glm/gtc/constants.hpp>
 
 #include "vector.h"
 

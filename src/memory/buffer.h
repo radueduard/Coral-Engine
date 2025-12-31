@@ -72,7 +72,7 @@ namespace Coral::Memory {
 				Context::Device()->mapMemory(m_memory, offset * m_alignmentSize, instanceCount, vk::MemoryMapFlags()));
 
     		m_mappedRange =
-				vk::MappedMemoryRange().setMemory(m_memory).setSize(instanceCount).setOffset(offset * m_alignmentSize);
+				vk::MappedMemoryRange().setMemory(m_memory).setSize(m_instanceCount * m_alignmentSize).setOffset(offset * m_alignmentSize);
 
     		return std::span<T>(static_cast<T*>(m_mapped), m_instanceCount);
     	}

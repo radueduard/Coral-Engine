@@ -10,9 +10,9 @@
 #include "ecs/components/camera.h"
 #include "ecs/components/renderTarget.h"
 #include "ecs/components/transform.h"
+#include "ecs/entity.h"
 #include "ecs/scene.h"
 #include "ecs/sceneManager.h"
-#include "ecs/entity.h"
 
 #include "framebuffer.h"
 #include "memory/image.h"

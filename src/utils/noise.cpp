@@ -48,7 +48,7 @@ Coral::Utils::PerlinNoise3D::PerlinNoise3D(Math::Vector3u size, u32 octaves) : m
 
 	const auto set =
 		Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), computePipeline.DescriptorSetLayout(0))
-			.WriteImages(0, inputImageInfos)
+			// .WriteImages(0, inputImageInfos)
 			.WriteImage(1,
 				vk::DescriptorImageInfo()
 					.setImageLayout(vk::ImageLayout::eGeneral)

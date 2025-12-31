@@ -109,7 +109,7 @@ namespace Coral::ECS {
 			.Build();
 
     	m_planetSetLayout = Memory::Descriptor::SetLayout::Builder()
-    		.AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
+    		// .AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
     		.AddBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eMeshEXT)
     		.Build();
 
@@ -125,10 +125,10 @@ namespace Coral::ECS {
 			.Build();
 
 		m_planetSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_planetSetLayout)
-    		.WriteImage(0, vk::DescriptorImageInfo()
-				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setImageView(**m_planetImageView)
-				.setSampler(**m_planetSampler))
+    		// .WriteImage(0, vk::DescriptorImageInfo()
+				// .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				// .setImageView(**m_planetImageView)
+				// .setSampler(**m_planetSampler))
 			.WriteBuffer(1, m_cameraBuffer->DescriptorInfo())
 			.Build();
     }

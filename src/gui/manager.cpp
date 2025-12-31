@@ -307,7 +307,7 @@ namespace Coral::Reef {
         name += "_" + std::to_string(size);
 
         ImFontConfig config;
-        strcpy_s(config.Name, name.c_str());
+        strcpy(config.Name, name.c_str());
         config.MergeMode = false;
         config.PixelSnapH = true;
 

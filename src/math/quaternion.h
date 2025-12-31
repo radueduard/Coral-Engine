@@ -69,7 +69,7 @@ namespace Coral::Math {
         }
 
         // Converts a quaternion to Euler angles (in radians)
-        static Vector3<f32> ToEulerAngles(const Quaternion& q) {
+        static Vector3f ToEulerAngles(const Quaternion& q) {
             return Vector3(glm::eulerAngles(reinterpret_cast<const glm::qua<T>&>(q)));
         }
 

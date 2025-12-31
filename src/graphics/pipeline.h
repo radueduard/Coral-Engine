@@ -56,8 +56,6 @@ namespace Coral::Graphics {
 
         	Builder &RenderFunction(const std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)> &function);
 
-            Builder &BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)> &function);
-
             bool ShouldRebuild() {
                 if (m_shouldRebuild) {
                     m_shouldRebuild = false;

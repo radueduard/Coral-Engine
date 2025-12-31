@@ -40,7 +40,9 @@ namespace Coral {
 	            .setFragmentStoresAndAtomics(true)
 	            .setFillModeNonSolid(true)
         		.setTessellationShader(true)
-				.setGeometryShader(true)
+        		.setShaderStorageImageReadWithoutFormat(true)
+        		.setShaderStorageImageWriteWithoutFormat(true)
+				// .setGeometryShader(true)
 	            .setVertexPipelineStoresAndAtomics(true),
             .instanceLayers = {
                 "VK_LAYER_KHRONOS_validation",
@@ -50,7 +52,7 @@ namespace Coral {
             },
             .deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                VK_EXT_MESH_SHADER_EXTENSION_NAME,
+                // VK_EXT_MESH_SHADER_EXTENSION_NAME,
             },
             .deviceLayers = {
                 "VK_LAYER_KHRONOS_validation",
@@ -264,8 +266,65 @@ namespace Coral {
 	 //
   //   	Reef::Container<ImageTest> imageTestContainer = Reef::MakeContainer<ImageTest>(*colorImage);
 
-		const auto program = std::make_unique<Compute::Program>(*Shader::Manager::Get().GetShader("rasterizer", "RasterizeTriangles"));
-    	Reef::Container<ProgramSettings> programSettingsContainer = Reef::MakeContainer<ProgramSettings>(*program);
+		const auto stagingBuffer = Memory::Buffer::Builder()
+			.InstanceSize(sizeof(f32))
+			.InstanceCount(16)
+			.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+			.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+			.Build();
+
+		const auto buffer = Memory::Buffer::Builder()
+    		.InstanceSize(sizeof(f32))
+    		.InstanceCount(16)
+			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+    		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+    		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
+    		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+    		.Build();
+
+		stagingBuffer->Map<u32>();
+		for (u32 i = 0; i < 16; i++) {
+			const f32 data[16] = {15, 3, 7, 1, 12, 8, 9, 2, 6, 5, 11, 4, 0, 14, 10, 13};
+			stagingBuffer->WriteAt(i, data[i]);
+		}
+    	stagingBuffer->Flush();
+		stagingBuffer->Unmap();
+
+    	buffer->CopyBuffer(*stagingBuffer);
+		const auto pipeline = std::make_unique<Compute::Pipeline>(*Shader::Manager::Get().GetShader("sort", "bitonicSort"));
+
+    	const auto dstBuffer = Memory::Buffer::Builder()
+			.InstanceSize(sizeof(f32))
+			.InstanceCount(16)
+			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+			.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+			.Build();
+
+		const auto descriptorSet = Memory::Descriptor::Set::Builder(m_scheduler->DescriptorPool(), pipeline->DescriptorSetLayout(0))
+    		.WriteBuffer(0, buffer->DescriptorInfo())
+    		.WriteBuffer(1, dstBuffer->DescriptorInfo())
+    		.Build();
+
+  //   	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
+		// 	pipeline->Bind(commandBuffer);
+		// 	pipeline->BindDescriptorSet(0, commandBuffer, *descriptorSet);
+		// 	commandBuffer->dispatch(1, 1, 1);
+		// }, vk::QueueFlagBits::eCompute);
+
+    	// stagingBuffer->CopyBuffer(*dstBuffer);
+    	// (*m_device)->waitIdle();
+	    //
+    	// stagingBuffer->Map<f32>();
+    	// for (u32 i = 0; i < 16; i++) {
+    	// 	std::cout << stagingBuffer->ReadAt<f32>(i) << " ";
+    	// }
+    	// std::cout << std::endl;
+    	// stagingBuffer->Unmap();
+
+    	// return;
 
         while (!m_window->ShouldClose()) {
 	        auto startTime = std::chrono::high_resolution_clock::now();
@@ -289,7 +348,14 @@ namespace Coral {
 				// 	commandBuffer->dispatch(1280 / 16, 720 / 16, 16);
     //         		colorImage->TransitionLayout(commandBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
 				// }, vk::QueueFlagBits::eCompute);
+
                 m_scheduler->Draw();
+
+            	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
+					pipeline->Bind(commandBuffer);
+					pipeline->BindDescriptorSet(0, commandBuffer, *descriptorSet);
+					commandBuffer->dispatch(1, 1, 1);
+				}, vk::QueueFlagBits::eCompute);
             }
 
         	m_shaderManager->LateUpdate();

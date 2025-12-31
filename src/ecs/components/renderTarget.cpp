@@ -2,7 +2,7 @@
 // Created by radue on 11/6/2024.
 //
 
-#include "RenderTarget.h"
+#include "renderTarget.h"
 
 #include "graphics/objects/material.h"
 #include "graphics/objects/mesh.h"

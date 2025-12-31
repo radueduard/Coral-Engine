@@ -42,7 +42,7 @@ namespace Coral::Graphics {
     	[[nodiscard]] u32 CurrentImageIndex() const { return m_imageIndex; }
 
         void Resize(const Math::Vector2<f32>& newSize);
-        vk::Result Acquire(const Core::Frame &frame);
+        vk::Result Acquire(const Core::Frame &frame, bool firstTime = true);
         vk::Result Present(const Core::Frame &frame);
 
     private:

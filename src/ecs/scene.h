@@ -54,7 +54,7 @@ namespace Coral::ECS {
 
         Reef::EntityInspector* m_inspectorTemplate;
 
-        std::unique_ptr<Entity> m_root = nullptr;
+        std::unique_ptr<Entity> m_root;
         entt::entity m_selectedObject = entt::null;
 
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_setLayout;

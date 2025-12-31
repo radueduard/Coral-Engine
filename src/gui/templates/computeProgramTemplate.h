@@ -37,11 +37,13 @@ namespace Coral::Reef {
 				}
 				sets.push_back(
 					new LabeledRow {
-						new Text(std::format("Set {}", sets.size()), Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 18.f,
-							.fontStyle = FontType::Black
-						}, { .size = { 40.f, Grow } }),
+						new Text(
+							std::format("Set {}", sets.size()),
+							Text::Style()
+								.withColor(Colors::grey[300])
+								.withFontSize(18.f)
+								.withFontStyle(FontType::Black),
+							{ .size = { 40.f, Grow } }),
 						new Element({
 								.size = { Grow, Shrink },
 								.padding = { 5.f, 5.f, 5.f, 5.f },
@@ -64,23 +66,21 @@ namespace Coral::Reef {
 					.direction = Axis::Vertical,
 				},{
 					new Text(" " ICON_FA_GEAR " Compute Program",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black
-						},
+					Text::Style()
+						.withColor(Colors::grey[300])
+						.withFontSize(20.f)
+						.withFontStyle(FontType::Black),
 						{ .size = { 0.f, 20.f } }
 					),
 					new Separator(),
 					new Text(
 						"Shader",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Center,
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Center),
 						{ .size = { 0.f, 20.f } }
 					),
 					new Separator(),
@@ -101,7 +101,7 @@ namespace Coral::Reef {
 					new Separator(),
 					new LabeledRow {
 						new Text("Group Count"),
-						new Drag(
+						new Drag<u32, 3>(
 							"Group Count",
 							{ &data.m_groupCount.x, &data.m_groupCount.y, &data.m_groupCount.z },
 							1.f,
@@ -117,13 +117,12 @@ namespace Coral::Reef {
 					new Separator(),
 					new Text(
 						"Descriptor Sets",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Center,
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Center),
 						{ .size = { 0.f, 20.f } }
 					),
 					new Separator(),

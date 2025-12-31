@@ -6,7 +6,7 @@
 
 #include "baseMeshes.h"
 #include "ecs/components/camera.h"
-#include "ecs/components/RenderTarget.h"
+#include "ecs/components/renderTarget.h"
 
 namespace Coral::Graphics {
     std::unique_ptr<Mesh> Cube(const int patchSize) {

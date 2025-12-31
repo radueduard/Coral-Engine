@@ -55,7 +55,7 @@ namespace Coral::ECS {
 			m_changed = false;
 
 			this->position = position;
-			this->rotation = Math::Degrees(Math::Quaternion<>::ToEulerAngles(rotation));
+			this->rotation = Math::Degrees<f32, 3>(Math::Quaternion<>::ToEulerAngles(rotation));
 			this->scale = scale;
 		}
 
@@ -66,9 +66,11 @@ namespace Coral::ECS {
         [[nodiscard]] Math::Matrix4<f32> Matrix() {
     		if (m_changed) {
     			const auto translation = Math::Translate(position);
-    			const auto rotationMatrix = Math::Quaternion(Math::Radians(rotation)).ToMatrix();
+    			const auto rotationMatrix = Math::Quaternion(Math::Radians<f32, 3>(rotation)).ToMatrix();
     			const auto scaleMatrix = Math::Scale(scale);
-    			m_matrix = scaleMatrix * rotationMatrix * translation;
+    			m_matrix = scaleMatrix;
+    			m_matrix *= rotationMatrix;
+    			m_matrix *= translation;
     			m_changed = false;
     		}
     		return m_matrix;

@@ -10,7 +10,7 @@
 #include "element.h"
 #include "imgui.h"
 #include "gui/manager.h"
-#include <color/color.h>
+#include "color/color.h"
 
 namespace Coral::Reef {
 	class Text : public Element {
@@ -36,15 +36,17 @@ namespace Coral::Reef {
 		};
 
 		struct Style {
-			Color color = Colors::white;
-			f32 fontSize = 15.f;
-			FontType fontStyle = FontType::Regular;
-			String fontFamily = "Roboto";
+			Color color;
+			f32 fontSize;
+			FontType fontStyle;
+			String fontFamily;
 			Overflow overflow = Overflow::Clip;
-			u32 maxLines = 0;
-			Axis direction = Axis::Horizontal;
-			VerticalAlignment verticalAlignment = VerticalAlignment::Middle;
-			HorizontalAlignment horizontalAlignment = HorizontalAlignment::Left;
+			u32 maxLines;
+			Axis direction;
+			VerticalAlignment verticalAlignment;
+			HorizontalAlignment horizontalAlignment;
+
+			Style();
 
 			Style& withColor(const Color& c) {
 				color = c;
@@ -84,7 +86,7 @@ namespace Coral::Reef {
 			}
 		};
 
-		explicit Text(String text, const Text::Style& textStyle = {}, const Reef::Style& elementStyle = {
+		explicit Text(String text, const Text::Style& textStyle = Text::Style(), const Reef::Style& elementStyle = {
 			.backgroundColor = Colors::transparent,
 		}) : Element(elementStyle, {}), m_text(std::move(text)), m_textStyle(std::move(textStyle)) {}
 
@@ -203,4 +205,16 @@ namespace Coral::Reef {
 		std::tuple<std::function<T()>...> m_args;
 		std::tuple<T...> m_evaluatedArgs;
 	};
+
+	inline Text::Style::Style() :
+		color(Colors::white),
+		fontSize(15.f),
+		fontStyle(FontType::Regular),
+		fontFamily("Roboto"),
+		overflow(Overflow::Clip),
+		maxLines(0),
+		direction(Axis::Horizontal),
+		verticalAlignment(VerticalAlignment::Middle),
+		horizontalAlignment(HorizontalAlignment::Left) {}
+
 }
