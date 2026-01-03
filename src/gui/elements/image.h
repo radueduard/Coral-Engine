@@ -74,7 +74,7 @@ namespace Coral::Reef {
 			const Math::Vector2f uv1 = { 0.f, 1.f };
 			const Math::Vector2f uv2 = { 1.f, 0.f };
 
-			const auto& camera = ECS::SceneManager::Get().GetLoadedScene().MainCamera();
+			const auto& camera = ECS::SceneManager::Get().GetLoadedScene().PrimaryCamera();
 
 			Math::Matrix4f viewMatrix = camera.View();
 			Math::Matrix4f projectionMatrix = camera.Projection();
@@ -93,11 +93,11 @@ namespace Coral::Reef {
 				m_currentSize.width - m_style.padding.left - m_style.padding.right,
 				m_currentSize.height - m_style.padding.top - m_style.padding.bottom);
 
-			ImGuizmo::DrawGrid(
-				&viewMatrix[0][0],
-				&projectionMatrix[0][0],
-				&modelMatrix[0][0],
-				gridSize);
+			// ImGuizmo::DrawGrid(
+			// 	&viewMatrix[0][0],
+			// 	&projectionMatrix[0][0],
+			// 	&modelMatrix[0][0],
+			// 	gridSize);
 
 			ImGui::RoundedImage(
 				m_textures[m_currentTextureIndex],

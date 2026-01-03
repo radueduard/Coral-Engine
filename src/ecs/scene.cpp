@@ -109,13 +109,16 @@ namespace Coral::ECS {
 			.Build();
 
     	m_planetSetLayout = Memory::Descriptor::SetLayout::Builder()
-    		// .AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
-    		.AddBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eMeshEXT)
+    		.AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eMeshEXT)
+    		.AddBinding(1, vk::DescriptorType::eUniformBuffer,
+    			vk::ShaderStageFlagBits::eMeshEXT
+    			| vk::ShaderStageFlagBits::eTaskEXT
+    		)
     		.Build();
 
-		constexpr u32 resolution = 32;
-    	// m_planetNoise = std::make_unique<Utils::DirectionsNoise<3, 3>>(Math::Vector3u(resolution), 5);
-		m_planetNoise = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(resolution), 4);
+		constexpr u32 resolution = 1024;
+    	// m_planetNoise = std::make_unique<Utils::CircleNoise<3>>(Math::Vector3u(resolution), 0.5f);
+		m_planetNoise = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(resolution), 9);
 
     	m_planetImageView = Memory::ImageView::Builder(m_planetNoise->Image())
     		.ViewType(vk::ImageViewType::e3D)
@@ -125,16 +128,26 @@ namespace Coral::ECS {
 			.Build();
 
 		m_planetSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_planetSetLayout)
-    		// .WriteImage(0, vk::DescriptorImageInfo()
-				// .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				// .setImageView(**m_planetImageView)
-				// .setSampler(**m_planetSampler))
+    		.WriteImage(0, vk::DescriptorImageInfo()
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(**m_planetImageView)
+				.setSampler(**m_planetSampler))
 			.WriteBuffer(1, m_cameraBuffer->DescriptorInfo())
+			.Build();
+
+    	const auto albedoUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_albedo.png");
+
+    	m_planetMaterial = Graphics::Material::Builder()
+			.Name("Planet Material")
+			.AddTexture(PBR::Usage::Albedo, Asset::Manager::Get().GetTexture(albedoUUID))
+			.RoughnessFactor(1.0f)
+			.MetallicFactor(0.0f)
+			.DoubleSided(false)
 			.Build();
     }
 
 	void Scene::Update(const float deltaTime) {
-		auto& mainCamera = MainCamera();
+		auto& mainCamera = ViewCamera();
 
 		if (Input::IsMouseButtonHeld(MouseButton::MouseButtonRight)) {
 			Math::Vector3f displacement { 0.0f, 0.0f, 0.0f };
@@ -179,7 +192,7 @@ namespace Coral::ECS {
 		}
     }
 
-    Camera& Scene::MainCamera() {
+    Camera& Scene::PrimaryCamera() {
     	auto& registry = SceneManager::Get().Registry();
 		for (const auto cameras = registry.view<Camera>(); const auto camera : cameras) {
 			if (registry.get<Camera>(camera).Primary()) {
@@ -188,6 +201,17 @@ namespace Coral::ECS {
 		}
 		throw std::runtime_error("No primary camera found");
 	}
+
+	Camera& Scene::ViewCamera() {
+		auto& registry = SceneManager::Get().Registry();
+		for (const auto cameras = registry.view<Camera>(); const auto camera : cameras) {
+			if (registry.get<Camera>(camera).Primary()) {
+				return registry.get<Camera>(camera);
+			}
+		}
+		throw std::runtime_error("No view camera found");
+	}
+
 	Entity* Scene::SelectedEntity() const {
 	    if (m_selectedObject == entt::null) {
 		    return nullptr;

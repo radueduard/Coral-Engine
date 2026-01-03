@@ -9,6 +9,7 @@
 
 #include <entt/entt.hpp>
 
+#include "graphics/objects/material.h"
 #include "utils/noise.h"
 
 namespace Coral::Memory {
@@ -45,10 +46,13 @@ namespace Coral::ECS {
 
     	const Memory::Buffer& CameraBuffer() const { return *m_cameraBuffer; }
 
-        Camera& MainCamera();
-    	Entity* SelectedEntity() const;
+		static Camera& PrimaryCamera();
+		static Camera& ViewCamera();
+
+		Entity* SelectedEntity() const;
 
     	[[nodiscard]] Memory::Descriptor::Set& PlanetDescriptorSet() const { return *m_planetSet; }
+    	[[nodiscard]] Graphics::Material& PlanetMaterial() const { return *m_planetMaterial; }
 
     private:
 
@@ -67,5 +71,6 @@ namespace Coral::ECS {
 
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_planetSetLayout;
     	std::unique_ptr<Memory::Descriptor::Set> m_planetSet;
+    	std::unique_ptr<Graphics::Material> m_planetMaterial;
     };
 }

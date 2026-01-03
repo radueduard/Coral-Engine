@@ -184,11 +184,11 @@ namespace Coral::Shader {
 
     	TargetDesc targetDesc;
     	targetDesc.format = SLANG_SPIRV;
-    	targetDesc.profile = globalSession->findProfile("spirv_1_4");
+    	targetDesc.profile = globalSession->findProfile("spirv_1_6");
 
     	const char* searchPaths[] = { "shaders/slang" };
 
-		constexpr PreprocessorMacroDesc fancyFlag = { "ENABLE_FANCY_FEATURE", "1" };
+		// constexpr PreprocessorMacroDesc fancyFlag = { "ENABLE_FANCY_FEATURE", "1" };
 
 		const SessionDesc sessionDesc {
     		.targets = &targetDesc,
@@ -196,8 +196,8 @@ namespace Coral::Shader {
 			.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
     		.searchPaths = searchPaths,
     		.searchPathCount = 1,
-    		.preprocessorMacros = &fancyFlag,
-    		.preprocessorMacroCount = 1,
+    		// .preprocessorMacros = &fancyFlag,
+    		// .preprocessorMacroCount = 1,
 		};
 
     	Slang::ComPtr<ISession> session;
@@ -257,6 +257,8 @@ namespace Coral::Shader {
 			std::cerr << "Failed to get entry point code: " << e.what() << std::endl;
 			throw;
 		}
+
+		// std::cout << "Diagnostics: " << static_cast<const char*>(diagnostics->getBufferPointer()) << std::endl;
 
 		IEntryPoint* entryPoint = entryPoints[m_entryPoint];
 

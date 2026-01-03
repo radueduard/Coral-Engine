@@ -336,7 +336,8 @@ namespace Coral::Asset {
             const auto mesh = m_scene->mMeshes[assimpId];
 			const auto aabb = mesh->mAABB;
 
-            auto builder = Graphics::Mesh::Builder(_stringToUuid(uuid))
+            auto builder = Graphics::Mesh::Builder(_stringToUuid(uuid));
+        	builder
                 .Name(mesh->mName.C_Str())
         		.AABB(Math::AABB(Math::Vector3<f32>(aabb.mMin), Math::Vector3<f32>(aabb.mMax)));
 
@@ -413,7 +414,7 @@ namespace Coral::Asset {
             auto emissiveFactor = materialData["emissiveFactor"].get<std::array<float, 3>>();
             auto baseColorFactor = materialData["baseColorFactor"].get<std::array<float, 4>>();
 
-            auto builder = Graphics::Material::Builder(_stringToUuid(uuid))
+            auto builder = Graphics::Material::Builder()
                 .Name(materialData["name"].get<std::string>())
                 .AlphaCutoff(materialData["alphaCutoff"].get<float>())
                 .DoubleSided(materialData["doubleSided"].get<uint32_t>())
@@ -445,7 +446,7 @@ namespace Coral::Asset {
     	std::vector<Graphics::Texture::Builder> builders;
     	std::vector<stbi_uc*> datas;
     	std::mutex mtx;
-        std::for_each(textures.begin(), textures.end(), [this, &builders, &datas, &mtx] (const auto& texture) {
+        std::ranges::for_each(textures, [this, &builders, &datas, &mtx] (const auto& texture) {
         	const auto& [strUuid, textureData] = texture;
             const auto path = textureData["path"].template get<std::string>();
             const auto size = textureData["size"].template get<uint32_t>();

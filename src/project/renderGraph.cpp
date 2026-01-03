@@ -9,7 +9,6 @@
 
 #include "core/scheduler.h"
 #include "ecs/entity.h"
-#include "extensions/debugUtils.h"
 #include "graphics/pipeline.h"
 #include "graphics/renderPass.h"
 #include "gui/container.h"
@@ -80,7 +79,7 @@ namespace Coral::Project {
 				Memory::Image* guiImage = m_imageStorage.emplace_back(
 					Memory::Image::Builder()
 						.Format(vk::Format::eB8G8R8A8Unorm)
-						.Extent( Math::Vector2u { 1920u, 1080u } * 2u )
+						.Extent( Math::Vector2u { 1920u, 1080u } )
 						.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
 						.UsageFlags(vk::ImageUsageFlagBits::eTransferSrc)
 						.SampleCount(vk::SampleCountFlagBits::e2)
@@ -232,7 +231,7 @@ namespace Coral::Project {
 			m_guiRenderPass = Graphics::RenderPass::Builder()
 				.OutputImageIndex(0)
 				.Attachment(0, guiPassColor)
-				.Extent( Math::Vector2u { 1920u, 1080u } * 2u )
+				.Extent( Math::Vector2u { 1920u, 1080u } )
 				.Subpass(guiSubpass)
 				.ImageCount(m_frameCount)
 				.Build();
@@ -294,22 +293,25 @@ namespace Coral::Project {
 		}
 
 		// {
-		// 	auto* meshShader = Shader::Manager::Get().GetShader("planet", "generateChunkMesh");
+		// 	auto* amplificationShader = Shader::Manager::Get().GetShader("planet", "cullChunks");
+		// 	auto* meshShader = Shader::Manager::Get().GetShader("planet", "renderChunkMesh");
 		// 	auto* pixelShader = Shader::Manager::Get().GetShader("planet", "planetPixelShader");
 		//
 		// 	auto pipelineBuilder = std::make_unique<Graphics::Pipeline::Builder>(*m_renderPasses.at("color"));
 		// 	(*pipelineBuilder)
+		// 		.AddShader(amplificationShader)
 		// 		.AddShader(meshShader)
 		// 		.AddShader(pixelShader)
 		// 		.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
 		// 			.setPolygonMode(vk::PolygonMode::eFill)
-		// 			.setCullMode(vk::CullModeFlagBits::eNone)
+		// 			.setCullMode(vk::CullModeFlagBits::eBack)
 		// 			.setFrontFace(vk::FrontFace::eClockwise)
 		// 			.setLineWidth(1.0f))
 		// 		.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer) {
 		// 			pipeline.Bind(*commandBuffer);
 		// 			pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().PlanetDescriptorSet());
-		// 			commandBuffer->drawMeshTasksEXT(64, 64, 64);
+		// 			pipeline.BindDescriptorSet(1, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().PlanetMaterial().DescriptorSet());
+		// 			commandBuffer->drawMeshTasksEXT(8, 8, 8);
 		// 		});
 		//
 		// 	m_pipelineBuilder = pipelineBuilder.get();

@@ -38,6 +38,8 @@ namespace Coral::Memory {
 
 			Builder& DeviceAlignment(vk::DeviceSize deviceAlignment);
 
+        	Builder& Data(const void* data, vk::DeviceSize size);
+
 			std::unique_ptr<Buffer> Build();
 
 			String m_name;
@@ -46,6 +48,9 @@ namespace Coral::Memory {
         	UnorderedSet<vk::BufferUsageFlagBits> m_usageFlagSet = {};
         	UnorderedSet<vk::MemoryPropertyFlagBits> m_memoryPropertyFlagSet = {};
             vk::DeviceSize m_deviceAlignment = 0;
+
+        	const void* m_data = nullptr;
+        	vk::DeviceSize m_dataSize = 0;
         };
 
         explicit Buffer(const Builder& builder);

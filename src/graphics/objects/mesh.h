@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <boost/uuid/nil_generator.hpp>
 #include <memory>
 #include <set>
 #include <vector>
@@ -14,6 +15,8 @@
 #include "color/color.h"
 #include "math/aabb.h"
 #include "math/vector.h"
+
+#include "memory/buffer.h"
 
 namespace Coral::Memory {
 	class Buffer;
@@ -35,9 +38,9 @@ namespace Coral::Graphics {
             COLOR = 1 << 5
         };
 
-        Math::Vector3f position = {0.0f, 0.0f, 0.0f};
-        Math::Vector3f normal = {0.0f, 0.0f, 0.0f};
-        Math::Vector4f tangent = {0.0f, 0.0f, 0.0f, 1.0f};
+        alignas(16) Math::Vector3f position = {0.0f, 0.0f, 0.0f};
+        alignas(16)Math::Vector3f normal = {0.0f, 0.0f, 0.0f};
+        alignas(16)Math::Vector4f tangent = {0.0f, 0.0f, 0.0f, 1.0f};
         Math::Vector2f texCoord0 = { 0.0f, 0.0f };
         Math::Vector2f texCoord1 = {0.0f, 0.0f};
         Color color0 = Colors::white;
@@ -55,7 +58,7 @@ namespace Coral::Graphics {
         class Builder {
             friend class Mesh;
         public:
-            explicit Builder(const boost::uuids::uuid &uuid);
+            explicit Builder(const UUID &uuid = boost::uuids::nil_uuid());
 			~Builder();
 
             Builder& Name(const std::string &name);
@@ -66,6 +69,9 @@ namespace Coral::Graphics {
 
 			Builder& AABB(const Math::AABB &aabb);
 
+        	Builder& VertexBuffer(std::unique_ptr<Memory::Buffer> vertexBuffer);
+        	Builder& IndexBuffer(std::unique_ptr<Memory::Buffer> indexBuffer);
+
 			std::unique_ptr<Mesh> Build();
 
 		private:
@@ -74,6 +80,9 @@ namespace Coral::Graphics {
         	std::optional<Math::AABB> m_aabb = std::nullopt;
             std::vector<Vertex> m_vertices;
             std::vector<u32> m_indices;
+
+        	std::unique_ptr<Memory::Buffer> m_vertexBuffer = nullptr;
+			std::unique_ptr<Memory::Buffer> m_indexBuffer = nullptr;
         };
 
         explicit Mesh(Builder &builder);
@@ -94,8 +103,8 @@ namespace Coral::Graphics {
         std::unique_ptr<Memory::Buffer> m_indexBuffer;
         std::unique_ptr<Memory::Buffer> m_vertexBuffer;
 
-        void CreateVertexBuffer(std::vector<Vertex> &vertices);
+        void CreateVertexBuffer(const std::vector<Vertex> &vertices);
 
-		void CreateIndexBuffer(std::vector<u32> &indices);
+		void CreateIndexBuffer(const std::vector<u32> &indices);
 	};
 }

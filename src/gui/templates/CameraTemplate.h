@@ -51,7 +51,7 @@ namespace Coral::Reef {
 							data.m_primary,
 							[&data] (const bool value) {
 								if (value) {
-									ECS::SceneManager::Get().GetLoadedScene().MainCamera().Primary() = false;
+									ECS::SceneManager::Get().GetLoadedScene().PrimaryCamera().Primary() = false;
 									data.Primary() = true;
 								} else {
 									data.Primary() = false;

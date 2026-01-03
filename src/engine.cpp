@@ -16,6 +16,8 @@
 #include "assets/manager.h"
 #include "compute/pipeline.h"
 #include "compute/program.h"
+#include "compute/programs/bitonicMergeSort.h"
+#include "compute/programs/generateTextureMesh.h"
 #include "ecs/scene.h"
 #include "gui/container.h"
 #include "shader/manager.h"
@@ -44,15 +46,16 @@ namespace Coral {
         		.setShaderStorageImageWriteWithoutFormat(true)
 				// .setGeometryShader(true)
 	            .setVertexPipelineStoresAndAtomics(true),
-            .instanceLayers = {
+            .instanceLayers = std::vector {
                 "VK_LAYER_KHRONOS_validation",
             },
             .instanceExtensions = {
-                VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+                VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
             },
             .deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                // VK_EXT_MESH_SHADER_EXTENSION_NAME,
+                VK_EXT_MESH_SHADER_EXTENSION_NAME,
+            	VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME
             },
             .deviceLayers = {
                 "VK_LAYER_KHRONOS_validation",
@@ -75,14 +78,15 @@ namespace Coral {
         };
 
         m_scheduler = std::make_unique<Core::Scheduler>(schedulerCreateInfo);
-    	m_sceneManager = std::make_unique<ECS::SceneManager>();
     	m_assetManager = Reef::MakeContainer<Asset::Manager>();
+    	m_sceneManager = std::make_unique<ECS::SceneManager>();
     }
 
 	class ImageTest : public Reef::Layer {
 	public:
 		explicit ImageTest(const Memory::Image& image) : m_image(image) {
 			m_imageView = Memory::ImageView::Builder(image)
+				.ViewType(vk::ImageViewType::e2D)
 				.Build();
 
 			m_sampler = Memory::Sampler::Builder()
@@ -266,63 +270,20 @@ namespace Coral {
 	 //
   //   	Reef::Container<ImageTest> imageTestContainer = Reef::MakeContainer<ImageTest>(*colorImage);
 
-		const auto stagingBuffer = Memory::Buffer::Builder()
-			.InstanceSize(sizeof(f32))
-			.InstanceCount(16)
-			.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-			.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-			.Build();
 
-		const auto buffer = Memory::Buffer::Builder()
-    		.InstanceSize(sizeof(f32))
-    		.InstanceCount(16)
-			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-    		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-    		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-    		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-    		.Build();
+		// const Utils::PerlinNoise2D noise({ 512u, 512u }, 6);
+  //   	Reef::Container<ImageTest> noiseTestContainer = Reef::MakeContainer<ImageTest>(noise.Image());
 
-		stagingBuffer->Map<u32>();
-		for (u32 i = 0; i < 16; i++) {
-			const f32 data[16] = {15, 3, 7, 1, 12, 8, 9, 2, 6, 5, 11, 4, 0, 14, 10, 13};
-			stagingBuffer->WriteAt(i, data[i]);
-		}
-    	stagingBuffer->Flush();
-		stagingBuffer->Unmap();
+		const auto image = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(1024u), 9);
 
-    	buffer->CopyBuffer(*stagingBuffer);
-		const auto pipeline = std::make_unique<Compute::Pipeline>(*Shader::Manager::Get().GetShader("sort", "bitonicSort"));
+    	Compute::GenerateTextureMesh generateTextureMeshProgram(image->Image(), Math::Vector3u(16u, 16u, 16u));
+		const auto mesh = generateTextureMeshProgram.Execute();
+		const auto& material = m_sceneManager->GetLoadedScene().PlanetMaterial();
 
-    	const auto dstBuffer = Memory::Buffer::Builder()
-			.InstanceSize(sizeof(f32))
-			.InstanceCount(16)
-			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-			.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-			.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-			.Build();
-
-		const auto descriptorSet = Memory::Descriptor::Set::Builder(m_scheduler->DescriptorPool(), pipeline->DescriptorSetLayout(0))
-    		.WriteBuffer(0, buffer->DescriptorInfo())
-    		.WriteBuffer(1, dstBuffer->DescriptorInfo())
-    		.Build();
-
-  //   	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
-		// 	pipeline->Bind(commandBuffer);
-		// 	pipeline->BindDescriptorSet(0, commandBuffer, *descriptorSet);
-		// 	commandBuffer->dispatch(1, 1, 1);
-		// }, vk::QueueFlagBits::eCompute);
-
-    	// stagingBuffer->CopyBuffer(*dstBuffer);
-    	// (*m_device)->waitIdle();
-	    //
-    	// stagingBuffer->Map<f32>();
-    	// for (u32 i = 0; i < 16; i++) {
-    	// 	std::cout << stagingBuffer->ReadAt<f32>(i) << " ";
-    	// }
-    	// std::cout << std::endl;
-    	// stagingBuffer->Unmap();
+    	auto entity = std::make_unique<ECS::Entity>("Generated Planet Mesh");
+    	auto& renderTarget = entity->Add<ECS::RenderTarget>();
+    	renderTarget.Add(mesh.get(), &material);
+    	m_sceneManager->GetLoadedScene().Root().AddChild(std::move(entity));
 
     	// return;
 
@@ -350,12 +311,6 @@ namespace Coral {
 				// }, vk::QueueFlagBits::eCompute);
 
                 m_scheduler->Draw();
-
-            	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
-					pipeline->Bind(commandBuffer);
-					pipeline->BindDescriptorSet(0, commandBuffer, *descriptorSet);
-					commandBuffer->dispatch(1, 1, 1);
-				}, vk::QueueFlagBits::eCompute);
             }
 
         	m_shaderManager->LateUpdate();
@@ -366,6 +321,7 @@ namespace Coral {
             const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - startTime).count();
             m_window->SetTitle("Coral - " + std::to_string(1000000.f / static_cast<float>(elapsed)) + "fps");
         }
+
         Context::Device()->waitIdle();
     }
 }

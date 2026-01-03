@@ -12,7 +12,8 @@ namespace Coral::Graphics {
     std::unique_ptr<Mesh> Cube(const int patchSize) {
 	    // Create a cube mesh with 24 vertices and 36 indices
 
-    	auto builder = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"))
+    	auto builder = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"));
+    	builder
 			.Name("Cube")
 			// Front face
 			.AddVertex({{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}})
@@ -84,10 +85,11 @@ namespace Coral::Graphics {
     }
 
     std::unique_ptr<Mesh> Sphere() {
-        auto sphere = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002"))
+        auto sphere = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002"));
+    	sphere
             .Name("Sphere");
 
-        int density = 20;
+        int density = 10;
         for (int i = 0; i <= density; i++) {
             const float theta = static_cast<float>(i) * glm::pi<float>() / static_cast<float>(density);
             for (int j = 0; j <= density; j++) {

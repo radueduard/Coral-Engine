@@ -114,6 +114,7 @@ namespace Coral::ECS {
         Math::Vector2<u32> m_viewportSize { 0u, 0u };
 
         bool m_primary = true;
+
         bool m_moved = true;
         bool m_changed = false;
 

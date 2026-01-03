@@ -69,7 +69,11 @@ size_t Coral::Graphics::Vertex::Offset(const Attribute attribute) {
 	}
 }
 
-Coral::Graphics::Mesh::Builder::Builder(const boost::uuids::uuid& uuid) : m_uuid(uuid) {}
+Coral::Graphics::Mesh::Builder::Builder(const UUID& uuid) {
+	if (uuid == boost::uuids::nil_uuid()) {
+		m_uuid = Coral::UUIDGenerator()();
+	}
+}
 Coral::Graphics::Mesh::Builder::~Builder() = default;
 Coral::Graphics::Mesh::Builder& Coral::Graphics::Mesh::Builder::Name(const std::string& name) {
 	m_name = name;
@@ -87,22 +91,37 @@ Coral::Graphics::Mesh::Builder& Coral::Graphics::Mesh::Builder::AABB(const Math:
 	m_aabb = aabb;
 	return *this;
 }
+Coral::Graphics::Mesh::Builder&
+Coral::Graphics::Mesh::Builder::VertexBuffer(std::unique_ptr<Memory::Buffer> vertexBuffer) {
+	m_vertexBuffer = std::move(vertexBuffer);
+	return *this;
+}
+Coral::Graphics::Mesh::Builder&
+Coral::Graphics::Mesh::Builder::IndexBuffer(std::unique_ptr<Memory::Buffer> indexBuffer) {
+	m_indexBuffer = std::move(indexBuffer);
+	return *this;
+}
 std::unique_ptr<Coral::Graphics::Mesh> Coral::Graphics::Mesh::Builder::Build() { return std::make_unique<Mesh>(*this); }
 Coral::Graphics::Mesh::Mesh(Builder& builder) {
 	m_uuid = builder.m_uuid;
 	m_name = builder.m_name;
 
-	if (builder.m_aabb) {
-		m_aabb = builder.m_aabb.value();
-	}
-	else {
-		m_aabb = Math::AABB(builder.m_vertices[0].position, builder.m_vertices[0].position);
-		for (const auto& vertex : builder.m_vertices) {
-			m_aabb.Grow(vertex.position);
+	if (builder.m_vertexBuffer && builder.m_indexBuffer) {
+		m_vertexBuffer = std::move(builder.m_vertexBuffer);
+		m_indexBuffer = std::move(builder.m_indexBuffer);
+	} else {
+		if (builder.m_aabb) {
+			m_aabb = builder.m_aabb.value();
 		}
+		else {
+			m_aabb = Math::AABB(builder.m_vertices[0].position, builder.m_vertices[0].position);
+			for (const auto& vertex : builder.m_vertices) {
+				m_aabb.Grow(vertex.position);
+			}
+		}
+		CreateVertexBuffer(builder.m_vertices);
+		CreateIndexBuffer(builder.m_indices);
 	}
-	CreateVertexBuffer(builder.m_vertices);
-	CreateIndexBuffer(builder.m_indices);
 }
 Coral::Graphics::Mesh::~Mesh() = default;
 const Coral::UUID& Coral::Graphics::Mesh::Id() const { return m_uuid; }
@@ -115,54 +134,23 @@ void Coral::Graphics::Mesh::Bind(const vk::CommandBuffer& commandBuffer) const {
 void Coral::Graphics::Mesh::Draw(const vk::CommandBuffer& commandBuffer, const uint32_t instanceCount) const {
 	commandBuffer.drawIndexed(m_indexBuffer->InstanceCount(), instanceCount, 0, 0, 0);
 }
-void Coral::Graphics::Mesh::CreateVertexBuffer(std::vector<Vertex>& vertices) {
-	const auto stagingBuffer = Memory::Buffer::Builder()
-		.InstanceSize(sizeof(Vertex))
-		.InstanceCount(static_cast<uint32_t>(vertices.size()))
-		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-		.Build();
 
-	stagingBuffer->Map<Vertex>();
-	const auto copy = std::span(vertices.data(), vertices.size());
-	stagingBuffer->Write(copy);
-	stagingBuffer->Flush();
-	stagingBuffer->Unmap();
-
+void Coral::Graphics::Mesh::CreateVertexBuffer(const std::vector<Vertex>& vertices) {
 	m_vertexBuffer = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(Vertex))
 		.InstanceCount(static_cast<uint32_t>(vertices.size()))
-		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
 		.UsageFlags(vk::BufferUsageFlagBits::eVertexBuffer)
-		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Data(vertices.data(), sizeof(Vertex) * vertices.size())
 		.Build();
-
-	m_vertexBuffer->CopyBuffer(*stagingBuffer);
 }
-void Coral::Graphics::Mesh::CreateIndexBuffer(std::vector<u32>& indices) {
-	const auto stagingBuffer = Memory::Buffer::Builder()
-		.InstanceSize(sizeof(u32))
-		.InstanceCount(static_cast<u32>(indices.size()))
-		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-		.Build();
 
-	stagingBuffer->Map<u32>();
-	const auto copy = std::span(indices.data(), indices.size());
-	stagingBuffer->Write(copy);
-	stagingBuffer->Flush();
-	stagingBuffer->Unmap();
-
+void Coral::Graphics::Mesh::CreateIndexBuffer(const std::vector<u32>& indices) {
 	m_indexBuffer = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(u32))
 		.InstanceCount(static_cast<u32>(indices.size()))
-		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
 		.UsageFlags(vk::BufferUsageFlagBits::eIndexBuffer)
-		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Data(indices.data(), sizeof(u32) * indices.size())
 		.Build();
-	m_indexBuffer->CopyBuffer(*stagingBuffer);
 }

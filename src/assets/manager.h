@@ -43,13 +43,15 @@ namespace Coral::Asset {
         void RemoveMaterial(const boost::uuids::uuid& id);
 
         void AddTexture(std::unique_ptr<Graphics::Texture> texture);
-		bool HasTexture(const boost::uuids::uuid& id) const;
+		[[nodiscard]] bool HasTexture(const boost::uuids::uuid& id) const;
 		const Graphics::Texture* GetTexture(const boost::uuids::uuid& id);
         void RemoveTexture(const boost::uuids::uuid& id);
 
 		void AddPrefab(std::unique_ptr<Prefab> prefab);
-		const Prefab& GetPrefab(const boost::uuids::uuid& id) const;
+		[[nodiscard]] const Prefab& GetPrefab(const boost::uuids::uuid& id) const;
 		void RemovePrefab(const boost::uuids::uuid& id);
+
+		boost::uuids::uuid LoadTextureFromFile(const std::filesystem::path& path);
 
         Graphics::Mesh* GetRandomMesh();
 

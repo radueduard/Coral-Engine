@@ -2,148 +2,191 @@ module planet;
 
 import marchingCubes;
 import transform;
-
-Sampler3D<float> densityField;
- 
-struct Camera {
-    float4x4 view;
-    float4x4 projection;
-    float4x4 inverseView;
-    float4x4 inverseProjection;
-};
-
-ConstantBuffer<Camera> camera;
+import camera;
+import mappings;
 
 struct Vertex {
     float4 position : SV_Position;
     float3 normal;
+    float2 uv;
 };
+
+struct AABB {
+    float3 min;
+    float3 max;
+};
+
+
+layout(binding = 0) Sampler3D<float> densityField;
+layout(binding = 1) ConstantBuffer<Camera> camera;
+
+struct MeshPayload {
+    uint3 dispatchThreadID;
+    uint3 groupCount;
+};
+
+[numthreads(1, 1, 1)]
+[shader("amplification")]
+void cullChunks(
+    uint3 dispatchThreadID : SV_DispatchThreadID
+) {
+    const AABB sceneBounds = { float3(-25.0, -25.0, -25.0), float3(25.0, 25.0, 25.0) };
+    AABB chunkBounds = {
+        sceneBounds.min + float3(dispatchThreadID) * (sceneBounds.max - sceneBounds.min) / float3(WorkgroupCount()),
+        sceneBounds.min + float3(dispatchThreadID + 1) * (sceneBounds.max - sceneBounds.min) / float3(WorkgroupCount())
+    };
+
+    if (!camera.IsBoxInFrustum(chunkBounds.min, chunkBounds.max)) {
+        return;
+    }
+
+    uint3 groupCount = WorkgroupCount();
+    var payload = MeshPayload(dispatchThreadID, groupCount);
+    DispatchMesh(16, 16, 16, payload);
+}
+
 
 groupshared uint vertexCount;
 groupshared uint primitiveCount;
 
-#define WORKGROUP_SIZE_X 2
-#define WORKGROUP_SIZE_Y 2
-#define WORKGROUP_SIZE_Z 2
-
-[numthreads(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, WORKGROUP_SIZE_Z)]
+[numthreads(3, 3, 3)]
 [outputtopology("triangle")]
 [shader("mesh")]
 void renderChunkMesh(
-    uint3 groupThreadID : SV_GroupThreadID,
-    uint3 groupID : SV_GroupID,
-    uint3 dispatchThreadID : SV_DispatchThreadID,
+    uint3 localThreadID : SV_GroupThreadID,
+    uint3 localGroupID : SV_GroupID,
+
     OutputVertices<Vertex, 256> vertices,
     OutputIndices<uint3, 256> primitives, 
+    in payload MeshPayload payload
 ) {
+
     vertexCount = 0;
     primitiveCount = 0;
+    GroupMemoryBarrierWithGroupSync();
     
-    const float threshold = 0.9;
 
-    uint3 threadCount = uint3(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, WORKGROUP_SIZE_Z);
-    uint3 groupCount = WorkgroupCount();
-    uint3 totalCount = threadCount * groupCount;
-    float3 step = 1.0 / float3(totalCount + 1);
-    float3 origin = -float3(totalCount / 2) * step;
+    const float threshold = 0.5;
+
+    uint3 localGroupCount = WorkgroupCount();
+    uint3 localThreadCount = WorkgroupSize();
+
+    uint3 globalGroupCount = payload.groupCount;
+
+    uint3 totalGroupCount = localGroupCount * globalGroupCount;
+    uint3 totalThreadCount = totalGroupCount * localThreadCount;
+
+    uint3 localGroupId = localGroupID * localThreadCount + localThreadID;
+    uint3 dispatchThreadID = localGroupId + payload.dispatchThreadID * (localGroupCount * localThreadCount);
+    
+    // Calculate chunk-relative position
+    float3 chunkMin = float3(payload.dispatchThreadID) / float3(payload.groupCount);
+    float3 chunkMax = float3(payload.dispatchThreadID + 1) / float3(payload.groupCount);
+    float3 chunkSize = chunkMax - chunkMin;
+    
+    float3 localStep = chunkSize / float3(localGroupCount * localThreadCount);
+    
+    float3 step = 1.0 / float3(totalThreadCount);
+    float3 origin = float3(totalThreadCount / 2) * step;
  
     GridCell cell;
-    uint mask = 0;
     for (int i = 0; i < 8; i++) {
         uint3 offset = uint3(i % 2, (i / 2) % 2, (i / 4) % 2);
-        float3 samplePos = float3(dispatchThreadID + offset) / float3(totalCount + 1);
-        cell.positions[i] = (float3(dispatchThreadID + offset) - float3(totalCount / 2)) / float3(totalCount + 1);
-        cell.densities[i] = densityField.SampleLevel(samplePos, 5);
-        if (cell.densities[i] > threshold) {
-            mask |= (1 << i);
-        }
+        
+        // Texture sampling in [0, 1] space
+        float3 samplePos = chunkMin + float3(localGroupId + offset) * localStep;
+        samplePos = clamp(samplePos, 0.0, 1.0);
+        
+        // World position calculation
+        const AABB sceneBounds = { float3(-25.0, -25.0, -25.0), float3(25.0, 25.0, 25.0) };
+        cell.positions[i] = lerp(sceneBounds.min, sceneBounds.max, samplePos);
+            
+        float noise = densityField.SampleLevel(samplePos, 0);
+        float radius = 15.0;
+        cell.densities[i] = radius - length(cell.positions[i]) + noise * 15.0;
     }
 
-    Array<Optional<Triangle>, 4> triangles = { none, none, none, none };
-    GetTrianglesFromCube(mask, cell, threshold, triangles);
+    Array<float3, 12> initialVertices; 
+    Array<uint3, 5> initialPrimitives;
+    uint localVertexCount = 0;
+    uint localPrimitiveCount = 0;
+
+    let earlyReturn = GetTrianglesFromCube (
+        cell, 
+        threshold, 
+        initialVertices, 
+        initialPrimitives, 
+        localVertexCount, 
+        localPrimitiveCount
+    );
+
+    int vertexOffset = 0;
+    int primitiveOffset = 0;
+
+    if (!earlyReturn) {
+        InterlockedAdd(vertexCount, localVertexCount, vertexOffset);
+        InterlockedAdd(primitiveCount, localPrimitiveCount, primitiveOffset);
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+
+    SetMeshOutputCounts(vertexCount, primitiveCount);
+
+    if (earlyReturn) {
+        return;
+    }
 
     let mvp = mul(camera.projection, camera.view);
 
-    for (int i = 0; i < triangles.getCount(); i++) {
-        if (!triangles[i].hasValue) {
-            break;
-        }
-        Triangle tri = triangles[i].value;
-        float3 normal = normalize(cross(tri.p2 - tri.p1, tri.p3 - tri.p1));
+    Array<Vertex, 12> transformedVertices;
+    for (int i = 0; i < localVertexCount; i++) {
+        float2 uv = cubicToUV(initialVertices[i]);
 
-        int vertexOffset;
-        int primitiveOffset;
-        InterlockedAdd(vertexCount, 3, vertexOffset);
-        InterlockedAdd(primitiveCount, 1, primitiveOffset);
-        vertices[vertexOffset + 0] = Vertex(mul(mvp, float4(tri.p1, 1.0)), normal);
-        vertices[vertexOffset + 1] = Vertex(mul(mvp, float4(tri.p2, 1.0)), normal);
-        vertices[vertexOffset + 2] = Vertex(mul(mvp, float4(tri.p3, 1.0)), normal);
-        primitives[primitiveOffset] = uint3(vertexOffset + 0, vertexOffset + 1, vertexOffset + 2);
+        transformedVertices[i] = Vertex(mul(mvp, float4(initialVertices[i], 1.0)), float3(0.0, 0.0, 0.0), uv);
     }
 
-    SetMeshOutputCounts(vertexCount, primitiveCount);
-}
 
-RWStructuredBuffer<float3> outputVertices;
-RWStructuredBuffer<uint> outputIndices;
+    for (int i = 0; i < localPrimitiveCount; i++) {
+        uint3 tri = initialPrimitives[i];
+        uint idx0 = tri.x;
+        uint idx1 = tri.y;
+        uint idx2 = tri.z;
 
-struct Settings {
-    uint groupBufferOffset;
-}
+        float3 normal = normalize(cross(
+            initialVertices[idx1] - initialVertices[idx0],
+            initialVertices[idx2] - initialVertices[idx0]
+        ));
 
-[numthreads(16, 16, 16)]
-[shader("compute")]
-void generateChunk(
-    uint3 groupThreadID : SV_GroupThreadID,
-    uint3 groupID : SV_GroupID,
-    uint3 dispatchThreadID : SV_DispatchThreadID,
-    uniform Settings settings
-) {
-    uint meshIndex = groupID.x + groupID.y * WorkgroupCount().x + groupID.z * WorkgroupCount().x * WorkgroupCount().y;
-
-    uint3 totalCount = WorkgroupCount() * uint3(16, 16, 16);
-    float3 step = 1.0 / float3(totalCount + 1);
-    float3 origin = -float3(totalCount / 2) * step;
-
-    GridCell cell;
-    uint mask = 0;
-    for (int i = 0; i < 8; i++) {
-        uint3 offset = uint3(i % 2, (i / 2) % 2, (i / 4) % 2);
-        float3 samplePos = float3(dispatchThreadID + offset) / float3(totalCount + 1);
-        cell.positions[i] = (float3(dispatchThreadID + offset) - float3(totalCount / 2)) / float3(totalCount + 1);
-        cell.densities[i] = densityField.SampleLevel(samplePos, 5);
-        if (cell.densities[i] > 0.9) {
-            mask |= (1 << i);
-        }
+        transformedVertices[idx0].normal += normal;
+        transformedVertices[idx1].normal += normal;
+        transformedVertices[idx2].normal += normal;
     }
 
-    Array<Optional<Triangle>, 4> triangles = { none, none, none, none };
-    GetTrianglesFromCube(mask, cell, 0.9, triangles);
+    for (int i = 0; i < localVertexCount; i++) {
+        transformedVertices[i].normal = normalize(transformedVertices[i].normal);
+        vertices[vertexOffset + i] = transformedVertices[i];
+    }
 
-    for (int i = 0; i < triangles.getCount(); i++) {
-        if (!triangles[i].hasValue) {
-            break;
-        }
-        Triangle tri = triangles[i].value;
-
-        uint vertexOffset;
-        InterlockedAdd(vertexCount, 3, vertexOffset);
-        uint indexOffset;
-        InterlockedAdd(primitiveCount, 3, indexOffset);
-
-        outputVertices[settings.groupBufferOffset + vertexOffset + 0] = tri.p1;
-        outputVertices[settings.groupBufferOffset + vertexOffset + 1] = tri.p2;
-        outputVertices[settings.groupBufferOffset + vertexOffset + 2] = tri.p3;
-
-        outputIndices[settings.groupBufferOffset + indexOffset + 0] = vertexOffset + 0;
-        outputIndices[settings.groupBufferOffset + indexOffset + 1] = vertexOffset + 1;
-        outputIndices[settings.groupBufferOffset + indexOffset + 2] = vertexOffset + 2;
+    for (int i = 0; i < localPrimitiveCount; i++) {
+        primitives[primitiveOffset + i] = uint3(
+            vertexOffset + initialPrimitives[i].x,
+            vertexOffset + initialPrimitives[i].y,
+            vertexOffset + initialPrimitives[i].z
+        );
     }
 }
+
+import material;
+
+layout(set = 1) Material material;
 
 [shader("pixel")]
-float4 planetPixelShader(Vertex input) : SV_Target {
+float4 planetPixelShader(
+    Vertex input
+) : SV_Target {
+    float3 albedo = material.albedoTexture.Sample(input.uv * 100).xyz;
+
     float3 lightDir = normalize(float3(1, 1, -1));
     float lighting = dot(input.normal, lightDir) * 0.5 + 0.5;
-    return float4(lighting, lighting, lighting, 1.0);
+    return float4(albedo * lighting, 1.0);
 }

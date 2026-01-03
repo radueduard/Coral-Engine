@@ -212,6 +212,14 @@ namespace Coral::Utils {
 		Math::Vector<u32, N> m_size;
 	};
 
+	class PerlinNoise2D : public Noise {
+	public:
+		explicit PerlinNoise2D(Math::Vector2u size, u32 octaves);
+
+	private:
+		Math::Vector2u m_size;
+	};
+
 	class PerlinNoise3D : public Noise {
 	public:
 		explicit PerlinNoise3D(Math::Vector3u size, u32 octaves);

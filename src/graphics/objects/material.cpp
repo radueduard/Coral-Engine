@@ -12,7 +12,36 @@
 #include "memory/gpuStructs.h"
 
 namespace Coral::Graphics {
-    Material::Material(const Builder &builder) : m_uuid(builder.m_uuid), m_name(builder.m_name), m_textures(builder.m_textures) {
+	Material::Builder::Builder() {
+		m_uuid = boost::uuids::random_generator()();
+		auto stringGenerator = boost::uuids::string_generator();
+		for (auto usage : magic_enum::enum_values<PBR::Usage>()) {
+			switch (usage) {
+				case PBR::Usage::Albedo:
+					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000002"));
+					break;
+				case PBR::Usage::Normal:
+					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000003"));
+					break;
+				case PBR::Usage::Metalic:
+					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					break;
+				case PBR::Usage::Roughness:
+					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					break;
+				case PBR::Usage::Emissive:
+					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					break;
+				case PBR::Usage::AmbientOcclusion:
+					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000002"));
+					break;
+				default:
+					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					break;
+			}
+		}
+	}
+	Material::Material(const Builder &builder) : m_uuid(builder.m_uuid), m_name(builder.m_name), m_textures(builder.m_textures) {
 		auto descriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
 			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment)				// parameters
 			.AddBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		// albedo texture

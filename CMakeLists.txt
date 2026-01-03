@@ -51,6 +51,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         #    Boost::random
 )
 
+target_link_libraries(${PROJECT_NAME} PRIVATE glslang::glslang)
+
 # Dear ImGui
 set(IMGUI_DIR external/imgui)
 add_subdirectory(${IMGUI_DIR} imgui)

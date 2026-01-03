@@ -11,18 +11,52 @@
 #include "physicalDevice.h"
 #include "window.h"
 
-#include "extensions/debugUtils.h"
-
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    const VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData) {
 
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    // Choose color
+    const char* color = "\x1b[37m";
+    if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+        color = "\x1b[34m";
+    } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+        color = "\x1b[31m";
+    } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        color = "\x1b[33m";
+    }
 
-    return VK_FALSE;
+    // Build severity label
+    std::string severityLabel;
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+        severityLabel = "ERROR";
+    } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        severityLabel = "WARNING";
+    } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+        severityLabel = "INFO";
+    } else {
+        severityLabel = "VERBOSE";
+    }
+
+    // Build type label(s)
+    std::string typeLabel;
+    bool first = true;
+    if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) {
+        typeLabel += "GENERAL"; first = false;
+    }
+    if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+        if (!first) typeLabel += "|"; typeLabel += "VALIDATION"; first = false;
+    }
+    if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+        if (!first) typeLabel += "|"; typeLabel += "PERFORMANCE"; first = false;
+    }
+    // Print colored message with source location
+    std::cout << color << "[" << severityLabel << "][" << typeLabel << "] "
+              << pCallbackData->pMessage << "\x1b[0m" << std::endl;
+
+    return messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? VK_TRUE : VK_FALSE;
 }
 
 namespace Coral::Core {
@@ -52,9 +86,6 @@ namespace Coral::Core {
 
         CreateInstance();
     	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance);
-
-        Ext::DebugUtils::ImportFunctions(m_instance);
-        // Ext::MeshShader::ImportFunctions(m_instance);
 
         SetupDebugMessenger();
         SelectPhysicalDevice();
@@ -90,22 +121,31 @@ namespace Coral::Core {
     }
 
     void Runtime::SetupDebugMessenger() {
+    	const auto validationFeatures = std::vector {
+    		vk::ValidationFeatureEnableEXT::eDebugPrintf,
+    		vk::ValidationFeatureEnableEXT::eBestPractices
+    	};
+
+    	const auto validationCreateInfo = vk::ValidationFeaturesEXT()
+			.setEnabledValidationFeatures(validationFeatures);
+
         const auto debugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT()
+    		.setPNext(&validationCreateInfo)
             .setMessageSeverity(
                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose)
-                // vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
             .setMessageType(
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation)
             .setPfnUserCallback(reinterpret_cast<vk::PFN_DebugUtilsMessengerCallbackEXT>(debugCallback));
 
-        Ext::DebugUtils::createDebugUtilsMessengerEXT(m_instance, debugCreateInfo, nullptr, &m_debugMessenger);
+    	m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(debugCreateInfo);
     }
 
     void Runtime::destroyDebugMessenger() const {
-        Ext::DebugUtils::destroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
+    	m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger);
     }
 
     void Runtime::SelectPhysicalDevice() {

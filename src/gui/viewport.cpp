@@ -50,7 +50,7 @@ namespace Coral::Reef {
 	            Context::Scheduler().RenderGraph().Resize(newSize, true);
             	if (ECS::SceneManager::Get().IsSceneLoaded()) {
             		auto& scene = ECS::SceneManager::Get().GetLoadedScene();
-					scene.MainCamera().Resize(newSize);
+					scene.PrimaryCamera().Resize(newSize);
 
 					for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {
 						ImGui_ImplVulkan_RemoveTexture(m_viewportTextures[i]);
