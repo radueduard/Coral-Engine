@@ -54,7 +54,8 @@ namespace Coral {
             },
             .deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                VK_EXT_MESH_SHADER_EXTENSION_NAME,
+            	VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+                // VK_EXT_MESH_SHADER_EXTENSION_NAME,
             	// VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME
             },
             .deviceLayers = {
@@ -280,22 +281,23 @@ namespace Coral {
 
     	auto entity = std::make_unique<ECS::Entity>("Generated Planet Mesh");
     	auto& renderTarget = entity->Add<ECS::RenderTarget>();
+    	Math::Vector3u chunkCount { 3u, 3u, 3u };
 
   		const Compute::GenerateTextureMesh generateTextureMeshProgram(
   			image->Image(),
-  			Math::Vector3u(8u, 8u, 8u)
+  			chunkCount
   		);
 
     	const auto& material = m_sceneManager->GetLoadedScene().PlanetMaterial();
 
     	std::vector<std::unique_ptr<Graphics::Mesh>> meshes;
 
-    	for (u32 i = 0; i < 8; i++) {
-			for (u32 j = 0; j < 8; j++) {
-				for (u32 k = 0; k < 8; k++) {
+    	for (u32 i = 0; i < chunkCount.x; i++) {
+			for (u32 j = 0; j < chunkCount.y; j++) {
+				for (u32 k = 0; k < chunkCount.z; k++) {
 					auto mesh = generateTextureMeshProgram.Execute(
 						Math::Vector3u(i, j, k),
-						Math::Vector3u(8u, 8u, 8u)
+						chunkCount
 					);
 					if (!mesh) {
 						continue;

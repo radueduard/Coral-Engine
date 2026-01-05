@@ -64,15 +64,7 @@ namespace Coral::Core {
             glfwSetWindowTitle(m_window, title.c_str());
         }
 
-    	static const Window& Get() {
-			if (s_window == nullptr) {
-				throw std::runtime_error("Window::Get : Window is not initialized");
-			}
-			return *s_window;
-		}
-
     private:
-    	inline static Window* s_window = nullptr;
     	static void FramebufferResize(GLFWwindow* window, int width, int height);
 
         GLFWwindow* m_window;

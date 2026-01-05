@@ -37,9 +37,9 @@ namespace Coral::Project {
                 : renderGraph(renderGraph) {}
 			virtual ~RunNode() = default;
 
-        	void ExecuteNode(const Core::Frame& frame, const Core::Queue& queue) const;
+        	void ExecuteNode(const Core::Frame& frame, const Core::Queue& queue);
 
-        	virtual void Run(const Core::CommandBuffer& commandBuffer, u32 frameIndex) const = 0;
+        	virtual void Run(const Core::CommandBuffer& commandBuffer, u32 frameIndex) = 0;
         	virtual std::string LastPassName() const = 0;
         };
 
@@ -47,7 +47,7 @@ namespace Coral::Project {
     		RenderPassRunNode(const RenderGraph& renderGraph, std::vector<std::string> passes)
 				:RunNode(renderGraph), passes(passes) {}
 
-    		void Run(const Core::CommandBuffer& commandBuffer, u32 frameIndex) const override;
+    		void Run(const Core::CommandBuffer& commandBuffer, u32 frameIndex) override;
     		std::string LastPassName() const override {
 				if (passes.empty()) {
 					return "";
@@ -62,7 +62,7 @@ namespace Coral::Project {
 			ShadowRunNode(const RenderGraph& renderGraph, const Graphics::DynamicRender& shadowRender, const Math::Vector2u& shadowMapSize, const u32 cascadeCount)
 				:RunNode(renderGraph), shadowRender(shadowRender), shadowMapSize(shadowMapSize), cascadeCount(cascadeCount) {}
 
-    		void Run(const Core::CommandBuffer& commandBuffer, u32 frameIndex) const override;
+    		void Run(const Core::CommandBuffer& commandBuffer, u32 frameIndex) override;
 
     		std::string LastPassName() const override {
 				return "";
@@ -72,6 +72,9 @@ namespace Coral::Project {
     		const Graphics::DynamicRender& shadowRender;
     		Math::Vector2u shadowMapSize;
     		u32 cascadeCount;
+
+    		std::vector<std::unique_ptr<Memory::ImageView>> shadowMapViews {};
+    		std::map<std::pair<entt::entity, u32>, Memory::ImageView*> cascadeMapViews {};
     	};
 
         explicit RenderGraph(const CreateInfo& createInfo);

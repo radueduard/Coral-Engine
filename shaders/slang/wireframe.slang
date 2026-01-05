@@ -19,7 +19,7 @@ struct VertexOutput
     float3 bitangent : BITANGENT;
     float2 uv0 : TEXCOORD0;
     float2 uv1 : TEXCOORD1;
-
+    float3 eye : EYE;
 };
 
 ConstantBuffer<Camera> camera;
@@ -36,6 +36,7 @@ VertexOutput vertexMain(VertexInput input, uniform float4x4 model)
     output.uv0 = input.uv0;
     output.uv1 = input.uv1;
     output.position = mul(camera.projection, mul(camera.view, worldPosition));
+    output.eye = camera.view[3].xyz;
     return output;
 }
 
@@ -48,6 +49,7 @@ struct FragmentInput
     float3 bitangent : BITANGENT;
     float2 uv0 : TEXCOORD0;
     float2 uv1 : TEXCOORD1;
+    float3 eye : EYE;
 };
 
 struct Material {
@@ -87,7 +89,7 @@ float4 fragmentMain(FragmentInput input) : SV_Target
     float3 lightDir = normalize(float3(0.5, 0.5, 0.5));
     float3 L = lightDir;
     float3 N = applyNormalMap(normalize(input.normal), normalize(input.tangent), normalize(input.bitangent), normal.rgb);
-    float3 V = normalize(camera.inverseView[3].xyz - input.worldPosition);
+    float3 V = normalize(input.eye - input.worldPosition);
     float3 H = normalize(L + V);
 
     float diffuse = max(dot(N, L), 0.0) * roughness;

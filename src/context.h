@@ -15,6 +15,7 @@ namespace Coral
 
 	namespace Core
 	{
+		class Window;
 		class Runtime;
 		class Device;
 		class Scheduler;
@@ -28,6 +29,7 @@ namespace Coral
 	class Context
 	{
 	public:
+		static Core::Window& Window() { return *m_window; }
 		static const Core::Runtime& Runtime() { return *m_runtime; }
 		static Core::Device& Device() { return *m_device; }
 		static Core::Scheduler& Scheduler() { return *m_scheduler; }
@@ -41,7 +43,9 @@ namespace Coral
 		friend class Core::Scheduler;
 		friend class Reef::Manager;
 		friend class Coral::Scene;
+		friend class Core::Window;
 
+		inline static Core::Window* m_window = nullptr;
 		inline static Core::Runtime* m_runtime = nullptr;
 		inline static Core::Device* m_device = nullptr;
 		inline static Core::Scheduler* m_scheduler = nullptr;

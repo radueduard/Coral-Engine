@@ -93,7 +93,7 @@ namespace Coral::ECS {
     	m_root->AddChild(std::move(firstCamera));
 
     	m_setLayout = Memory::Descriptor::SetLayout::Builder()
-			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 			.Build();
 
 		m_cameraBuffer = Memory::Buffer::Builder()

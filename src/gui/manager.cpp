@@ -102,7 +102,7 @@ namespace Coral::Reef {
         }
         style.AntiAliasedFill = true;
 
-        ImGui_ImplGlfw_InitForVulkan(*Core::Window::Get(), true);
+        ImGui_ImplGlfw_InitForVulkan(*Context::Window(), true);
         ImGui_ImplVulkan_InitInfo init_info = {
             .Instance = Context::Runtime().Instance(),
             .PhysicalDevice = *Context::Runtime().PhysicalDevice(),

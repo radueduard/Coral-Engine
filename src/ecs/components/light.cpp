@@ -16,7 +16,7 @@ Coral::ECS::Light::Light(const Type type, const Data& data, bool castsShadows) :
 		for (u32 i = 0; i < Context::Scheduler().Frames().size(); i++) {
 			auto shadowMap = Memory::Image::Builder()
 								 .Extent(Math::Vector2u{2048u, 2048u})
-								 .Format(vk::Format::eD32Sfloat)
+								 .Format(vk::Format::eD32SfloatS8Uint)
 								 .UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
 								 .UsageFlags(vk::ImageUsageFlagBits::eSampled)
 								 .MipLevels(1)
@@ -48,7 +48,7 @@ Coral::ECS::Light::Light(const Type type, const Data& data, bool castsShadows) :
 		for (u32 i = 0; i < Context::Scheduler().Frames().size(); i++) {
 			auto shadowMap = Memory::Image::Builder()
 								 .Extent(Math::Vector2u{2048u, 2048u})
-								 .Format(vk::Format::eD32Sfloat)
+								 .Format(vk::Format::eD32SfloatS8Uint)
 								 .UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
 								 .UsageFlags(vk::ImageUsageFlagBits::eSampled)
 								 .MipLevels(1)
@@ -61,6 +61,21 @@ Coral::ECS::Light::Light(const Type type, const Data& data, bool castsShadows) :
 		break;
 	}
 	}
+
+	auto cameraCI = Camera::CreateInfo {
+		.projectionData = Camera::ProjectionData(
+			Camera::Orthographic {
+				.left = -10.0f,
+				.right = 10.0f,
+				.top = 10.0f,
+				.bottom = -10.0f,
+				.near = 0.1f,
+				.far = 100.0f,
+			}
+		),
+		.size = Math::Vector2u{2048u, 2048u},
+	};
+	m_shadowCamera = std::make_unique<Camera>(cameraCI);
 }
 const Coral::Memory::Image& Coral::ECS::Light::ShadowMap(const u32 frameIndex) const {
 	return *m_shadowMaps.at(frameIndex);

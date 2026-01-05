@@ -8,7 +8,13 @@
 #include "component.h"
 #include "math/vector.h"
 
+namespace Coral::ECS {
+	class Camera;
+}
 namespace Coral::Memory {
+	namespace Descriptor {
+		class Set;
+	}
 	class Image;
 }
 namespace Coral::ECS {
@@ -65,11 +71,12 @@ namespace Coral::ECS {
 		Data m_data;
 		bool m_castsShadows = false;
 		std::vector<std::unique_ptr<Memory::Image>> m_shadowMaps;
+		std::unique_ptr<Camera> m_shadowCamera;
 
 		bool CastsShadows() const {
 			return m_castsShadows;
 		}
 
-		const Memory::Image& ShadowMap(const u32 frameIndex) const;
+		const Memory::Image& ShadowMap(u32 frameIndex) const;
 	};
 }

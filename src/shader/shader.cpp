@@ -190,12 +190,20 @@ namespace Coral::Shader {
 
 		// constexpr PreprocessorMacroDesc fancyFlag = { "ENABLE_FANCY_FEATURE", "1" };
 
+		auto slangOptions {
+			std::to_array<CompilerOptionEntry>({
+				{ CompilerOptionName::EmitSpirvDirectly, { CompilerOptionValueKind::Int, 1 } }
+			})
+		};
+
 		const SessionDesc sessionDesc {
     		.targets = &targetDesc,
     		.targetCount = 1,
 			.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
     		.searchPaths = searchPaths,
     		.searchPathCount = 1,
+			.compilerOptionEntries = slangOptions.data(),
+			.compilerOptionEntryCount = static_cast<u32>(slangOptions.size()),
     		// .preprocessorMacros = &fancyFlag,
     		// .preprocessorMacroCount = 1,
 		};

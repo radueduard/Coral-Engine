@@ -1,12 +1,12 @@
 //
 // Created by radue on 1/4/2026.
 //
-
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "dynamicRender.h"
 
 #include <ranges>
 
-#include "ecs/components/RenderTarget.h"
+#include "ecs/components/renderTarget.h"
 #include "pipeline.h"
 
 void Coral::Graphics::DynamicRender::Render(const Core::CommandBuffer& commandBuffer, const vk::RenderingInfo& info) const {

@@ -21,16 +21,36 @@
 
 
 namespace Coral::Project {
-	void RenderGraph::ShadowRunNode::Run(const Core::CommandBuffer& commandBuffer, const u32 frameIndex) const {
+	void RenderGraph::ShadowRunNode::Run(const Core::CommandBuffer& commandBuffer, const u32 frameIndex) {
 		ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::Light>).each(
 			[&](ECS::Entity* entity, const ECS::Light& light) {
 				if (light.CastsShadows()) {
 					for (u32 i = 0; i < cascadeCount; i++) {
-						auto view = Memory::ImageView::Builder(light.ShadowMap(frameIndex))
-							.ViewType(vk::ImageViewType::e2D)
-							.BaseArrayLayer(i)
-							.LayerCount(1)
-							.Build();
+						if (!cascadeMapViews.contains(std::make_pair(entity->Id(), i))) {
+							auto& view = shadowMapViews.emplace_back(Memory::ImageView::Builder(light.ShadowMap(frameIndex))
+								.ViewType(vk::ImageViewType::e2D)
+								.BaseArrayLayer(i)
+								.LayerCount(1)
+								.Build());
+							cascadeMapViews.emplace(std::make_pair(entity->Id(), i), view.get());
+						}
+
+						const auto& view = cascadeMapViews.at(std::make_pair(entity->Id(), i));
+
+						commandBuffer->setViewport(0, vk::Viewport()
+							.setX(0.0f)
+							.setY(0.0f)
+							.setWidth(2048.0f)
+							.setHeight(2048.0f)
+							.setMinDepth(0.0f)
+							.setMaxDepth(1.0f)
+						);
+
+						commandBuffer->setScissor(0, vk::Rect2D()
+							.setOffset({ 0, 0 })
+							.setExtent({ 2048, 2048 })
+						);
+
 						shadowRender.Render(commandBuffer, vk::RenderingInfo()
 							.setLayerCount(1)
 							.setViewMask(0)
@@ -39,13 +59,17 @@ namespace Coral::Project {
 								.setExtent({ 2048, 2048 }))
 							.setPDepthAttachment(&vk::RenderingAttachmentInfo()
 								.setImageView(**view)
-								.setImageLayout(vk::ImageLayout::eDepthAttachmentOptimal)
+								.setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 								.setLoadOp(vk::AttachmentLoadOp::eClear)
 								.setStoreOp(vk::AttachmentStoreOp::eStore)
 								.setClearValue(vk::ClearValue().setDepthStencil(vk::ClearDepthStencilValue(1.0f, 0)))
 							)
-							.setPStencilAttachment(nullptr)
-						);
+							.setPStencilAttachment(&vk::RenderingAttachmentInfo()
+								.setImageView(**view)
+								.setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+								.setLoadOp(vk::AttachmentLoadOp::eClear)
+								.setStoreOp(vk::AttachmentStoreOp::eStore)
+								.setClearValue(vk::ClearValue().setDepthStencil(vk::ClearDepthStencilValue(1.0f, 0)))));
 					}
 				}
 			}
@@ -53,7 +77,7 @@ namespace Coral::Project {
 	}
 
 
-	void RenderGraph::RunNode::ExecuteNode(const Core::Frame& frame, const Core::Queue& queue) const {
+	void RenderGraph::RunNode::ExecuteNode(const Core::Frame& frame, const Core::Queue& queue) {
 		const auto& commandBuffer = *commandBuffers[frame.ImageIndex()];
 
 		commandBuffer->reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -94,7 +118,7 @@ namespace Coral::Project {
 			// Recreate framebuffers
 		}
 	}
-	void RenderGraph::RenderPassRunNode::Run(const Core::CommandBuffer& commandBuffer, const u32 frameIndex) const {
+	void RenderGraph::RenderPassRunNode::Run(const Core::CommandBuffer& commandBuffer, const u32 frameIndex) {
 		for (const auto& renderPass : passes) {
 			renderGraph.m_renderPasses.at(renderPass)->Begin(commandBuffer, frameIndex);
 			renderGraph.m_renderPasses.at(renderPass)->Draw(commandBuffer);
@@ -108,7 +132,7 @@ namespace Coral::Project {
 
 		m_pipelineTemplate = std::make_unique<Reef::RenderPipelineTemplate>();
 
-		auto windowSize = Core::Window::Get().Extent();
+		auto windowSize = Context::Window().Extent();
 		Math::Vector3u extent = { static_cast<u32>(windowSize.width), static_cast<u32>(windowSize.height), 1u };
 
 		auto idGui = boost::uuids::nil_uuid();
@@ -163,7 +187,7 @@ namespace Coral::Project {
 				Memory::Image* guiImage = m_imageStorage.emplace_back(
 					Memory::Image::Builder()
 						.Format(vk::Format::eB8G8R8A8Unorm)
-						.Extent( Math::Vector2u { 1920u, 1080u } )
+						.Extent(Context::Window().Extent())
 						.UsageFlags(vk::ImageUsageFlagBits::eColorAttachment)
 						.UsageFlags(vk::ImageUsageFlagBits::eTransferSrc)
 						.SampleCount(vk::SampleCountFlagBits::e2)
@@ -317,7 +341,7 @@ namespace Coral::Project {
 			m_guiRenderPass = Graphics::RenderPass::Builder()
 				.OutputImageIndex(0)
 				.Attachment(0, guiPassColor)
-				.Extent( Math::Vector2u { 1920u, 1080u } )
+				.Extent(Context::Window().Extent())
 				.Subpass(guiSubpass)
 				.ImageCount(m_frameCount)
 				.Build();
@@ -484,7 +508,7 @@ namespace Coral::Project {
 	void RenderGraph::Execute(const Core::Frame& frame) const {
 		const auto& queue = *m_queues.at(vk::QueueFlagBits::eGraphics);
 
-		const RunNode* currentNode = m_rootNode.get();
+		RunNode* currentNode = m_rootNode.get();
 		while (currentNode != nullptr) {
 			currentNode->ExecuteNode(frame, queue);
 			currentNode = currentNode->nextNode.get();

@@ -21,6 +21,9 @@ namespace Coral::Memory::Descriptor {
     class SetLayout;
 }
 
+namespace Coral::Graphics {
+	class RenderPass;
+}
 
 namespace Coral::Reef {
 	class RenderPipelineTemplate;
@@ -59,6 +62,7 @@ namespace Coral::Graphics {
 
         class BuilderRenderPass : public Builder {
             friend class Pipeline;
+        	friend class RenderPass;
             friend class Reef::RenderPipelineTemplate;
         public:
             explicit BuilderRenderPass(RenderPass&);
@@ -159,8 +163,8 @@ namespace Coral::Graphics {
 			vk::PipelineTessellationStateCreateInfo m_tessellation;
 
 			std::vector <vk::DynamicState> m_dynamicStates = {
-				// vk::DynamicState::eViewport,
-				// vk::DynamicState::eScissor,
+				vk::DynamicState::eViewport,
+				vk::DynamicState::eScissor,
 			};
 			vk::PipelineDynamicStateCreateInfo m_dynamicState;
 

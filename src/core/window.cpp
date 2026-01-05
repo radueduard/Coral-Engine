@@ -8,22 +8,16 @@
 #include <iostream>
 #include <stb_image.h>
 
-auto get_elapsed() -> double {
-	return Coral::Core::Window::Get().TimeElapsed();
-};
-
-auto get_deltaTime() -> double {
-	return Coral::Core::Window::Get().DeltaTime();
-};
-
-auto get_fixedDeltaTime() -> double {
-	return Coral::Core::Window::Get().FixedDeltaTime();
-};
-
+#include "context.h"
 
 namespace Coral::Core {
     Window::Window(const CreateInfo& createInfo) : m_info(createInfo) {
-		s_window = this;
+		static bool firstTime = true;
+    	if (!firstTime) {
+    		throw std::runtime_error("Window already created!");
+    	}
+    	firstTime = false;
+    	Context::m_window = this;
 
         if (const auto result = glfwInit(); result == GLFW_FALSE) {
             std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -79,6 +73,11 @@ namespace Coral::Core {
         glfwSetScrollCallback(m_window, Input::Callbacks::scrollCallback);
         glfwSetFramebufferSizeCallback(m_window, FramebufferResize);
 
+    	Math::Vector2u extent;
+    	glfwGetFramebufferSize(m_window, reinterpret_cast<int*>(&extent.width), reinterpret_cast<int*>(&extent.height));
+    	std::cout << extent.width << " " << extent.height << std::endl;
+    	std::cout << m_info.extent.width << " " << m_info.extent.height << std::endl;
+		m_info.extent = extent;
     }
 
     Window::~Window() {
