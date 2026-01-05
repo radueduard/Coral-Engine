@@ -1,11 +1,5 @@
 module wireframe;
-
-struct Camera {
-    float4x4 view;
-    float4x4 projection;
-    float4x4 inverseView;
-    float4x4 inverseProjection;
-}
+import camera;
 
 struct VertexInput
 {
@@ -83,7 +77,7 @@ float3 applyNormalMap(float3 normal, float3 tangent, float3 bitangent, float3 no
 [[shader("fragment")]]
 float4 fragmentMain(FragmentInput input) : SV_Target
 {
-    float4 albedo = albedoMap.Sample(input.uv0);
+    float4 albedo = albedoMap.Sample(input.uv0 * 100);
     float4 normal = normalMap.Sample(input.uv0);
     float metallic = metallicMap.Sample(input.uv1).g;
     float roughness = roughnessMap.Sample(input.uv1).b;

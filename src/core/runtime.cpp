@@ -121,21 +121,22 @@ namespace Coral::Core {
     }
 
     void Runtime::SetupDebugMessenger() {
-    	const auto validationFeatures = std::vector {
-    		vk::ValidationFeatureEnableEXT::eDebugPrintf,
-    		vk::ValidationFeatureEnableEXT::eBestPractices
-    	};
-
-    	const auto validationCreateInfo = vk::ValidationFeaturesEXT()
-			.setEnabledValidationFeatures(validationFeatures);
+    	// const auto validationFeatures = std::vector {
+   //  		vk::ValidationFeatureEnableEXT::eDebugPrintf,
+   //  		vk::ValidationFeatureEnableEXT::eBestPractices
+   //  	};
+	  //
+   //  	const auto validationCreateInfo = vk::ValidationFeaturesEXT()
+			// .setEnabledValidationFeatures(validationFeatures);
 
         const auto debugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT()
-    		.setPNext(&validationCreateInfo)
+    		// .setPNext(&validationCreateInfo)
             .setMessageSeverity(
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
+                | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+                | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+                // | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
+            )
             .setMessageType(
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation)

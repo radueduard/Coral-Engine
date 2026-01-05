@@ -62,6 +62,7 @@ namespace Coral::Compute {
 
     	const auto createInfo = vk::ComputePipelineCreateInfo()
 			.setLayout(m_pipelineLayout)
+    		.setFlags(vk::PipelineCreateFlagBits::eDispatchBase)
 			.setStage(shaderStage);
 
     	const auto pipeline = Context::Device()->createComputePipeline(nullptr, createInfo);

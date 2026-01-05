@@ -14,12 +14,12 @@
 
 
 namespace Coral::Reef {
-	class RenderPipelineTemplate : public ReadWriteTemplate<Graphics::Pipeline::Builder> {
+	class RenderPipelineTemplate : public ReadWriteTemplate<Graphics::Pipeline::BuilderRenderPass> {
 	public:
 		RenderPipelineTemplate() = default;
 		~RenderPipelineTemplate() override = default;
 
-		Element* Build(Graphics::Pipeline::Builder& data) override {
+		Element* Build(Graphics::Pipeline::BuilderRenderPass& data) override {
 			return new Element({
 					.size = { Grow, Shrink },
 					.padding = { 10.f, 10.f, 10.f, 10.f },

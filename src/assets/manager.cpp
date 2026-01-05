@@ -186,7 +186,7 @@ namespace Coral::Asset {
     	AddMesh(Graphics::Cube());
     	AddMesh(Graphics::Sphere());
 
-    	AddMaterial(Graphics::Material::Builder()
+    	AddMaterial(Graphics::Material::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"))
 			.Name("default")
 			.AddTexture(PBR::Usage::Albedo, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")))
 			.AddTexture(PBR::Usage::Normal, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000003")))

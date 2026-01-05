@@ -12,8 +12,13 @@
 #include "memory/gpuStructs.h"
 
 namespace Coral::Graphics {
-	Material::Builder::Builder() {
-		m_uuid = boost::uuids::random_generator()();
+	Material::Builder::Builder(const boost::uuids::uuid& uuid) {
+		if (uuid == boost::uuids::nil_uuid()) {
+			m_uuid = boost::uuids::random_generator()();
+		} else {
+			m_uuid = uuid;
+		}
+
 		auto stringGenerator = boost::uuids::string_generator();
 		for (auto usage : magic_enum::enum_values<PBR::Usage>()) {
 			switch (usage) {

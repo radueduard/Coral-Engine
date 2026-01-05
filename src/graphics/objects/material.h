@@ -20,7 +20,7 @@ namespace Coral::Graphics {
         class Builder {
             friend class Material;
         public:
-            explicit Builder();
+            explicit Builder(const boost::uuids::uuid& uuid = boost::uuids::nil_uuid());
 
 			Builder& Name(const std::string& name) {
                 m_name = name;

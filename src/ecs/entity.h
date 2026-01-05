@@ -115,7 +115,7 @@ namespace Coral::ECS {
     	void AddLight() {
         	static int counter = 0;
 			auto child = std::make_unique<Entity>("Light" + std::to_string(counter++));
-			child->Add<Light>();
+			child->Add<Light>(Light::Type::Directional, Light::Data { Light::Directional { .direction = Math::Vector3<f32>(-1.f, -1.f, -1.f) } }, true);
 			AddChild(std::move(child));
 		}
 
@@ -124,7 +124,7 @@ namespace Coral::ECS {
         	auto child = std::make_unique<Entity>("Cube" + std::to_string(counter++));
         	auto& renderTarget = child->Add<RenderTarget>();
         	renderTarget.Add(Asset::Manager::Get().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")),
-							 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000000")));
+							 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
         	AddChild(std::move(child));
         }
 
@@ -133,7 +133,7 @@ namespace Coral::ECS {
         	auto child = std::make_unique<Entity>("Sphere" + std::to_string(counter++));
         	auto& renderTarget = child->Add<RenderTarget>();
         	renderTarget.Add(Asset::Manager::Get().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")),
-							 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000000")));
+							 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
         	AddChild(std::move(child));
         }
 

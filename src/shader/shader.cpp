@@ -184,7 +184,7 @@ namespace Coral::Shader {
 
     	TargetDesc targetDesc;
     	targetDesc.format = SLANG_SPIRV;
-    	targetDesc.profile = globalSession->findProfile("spirv_1_6");
+    	targetDesc.profile = globalSession->findProfile("spirv_1_5");
 
     	const char* searchPaths[] = { "shaders/slang" };
 

@@ -4,9 +4,13 @@
 
 #pragma once
 
-#include "math/vector.h"
 #include "color/color.h"
+#include "component.h"
+#include "math/vector.h"
 
+namespace Coral::Memory {
+	class Image;
+}
 namespace Coral::ECS {
 	struct Light final : Component {
 		struct Point {
@@ -49,7 +53,8 @@ namespace Coral::ECS {
 			~Data() {}
 		};
 
-		Light(const Type type = Type::Directional, const Data& data = Data {}) : m_type(type), m_data(data) {}
+		explicit Light(const Type type = Type::Directional, const Data& data = Data {}, bool castsShadows = false);
+
 		Light(const Light&) = delete;
 		Light& operator=(const Light&) = delete;
 
@@ -58,5 +63,13 @@ namespace Coral::ECS {
 		bool m_changed = true;
 		Type m_type;
 		Data m_data;
+		bool m_castsShadows = false;
+		std::vector<std::unique_ptr<Memory::Image>> m_shadowMaps;
+
+		bool CastsShadows() const {
+			return m_castsShadows;
+		}
+
+		const Memory::Image& ShadowMap(const u32 frameIndex) const;
 	};
 }

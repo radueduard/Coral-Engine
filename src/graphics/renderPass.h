@@ -156,7 +156,7 @@ namespace Coral::Graphics {
         std::vector<Attachment> m_attachments;
         std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;
 
-        std::vector<struct Subpass> m_subpasses;
+        std::vector<Subpass> m_subpasses;
         std::vector<vk::SubpassDependency> m_dependencies;
 
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;

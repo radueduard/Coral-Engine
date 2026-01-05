@@ -14,7 +14,10 @@ Coral::Compute::GenerateTextureMesh::GenerateTextureMesh (
 	const Math::Vector3u& chunkCount
 ) : m_image(image), m_chunkCount(chunkCount) {}
 
-std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Execute() const {
+std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Execute(
+	const Math::Vector3u& offset,
+	const Math::Vector3u& fullCount
+) const {
 	const u32 chunkCountTotal = m_chunkCount.x * m_chunkCount.y * m_chunkCount.z;
 
 	const u32 initialCounts[2] = { 0, 0 };
@@ -73,22 +76,31 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		computePipeline.Bind(commandBuffer);
 		computePipeline.BindDescriptorSet(0, commandBuffer, *generateSet);
 
-		const struct {
+		const struct  {
 			alignas(16) Math::Vector3f gridMin;
 			alignas(16) Math::Vector3f gridMax;
-		} pushConstants {
+			alignas(16) Math::Vector3u chunkCount;
+		} pushConstants = {
 			.gridMin = Math::Vector3f { -25.f, -25.f, -25.f },
-			.gridMax = Math::Vector3f { 25.f, 25.f, 25.f }
+			.gridMax = Math::Vector3f { 25.f, 25.f, 25.f },
+			.chunkCount = fullCount * m_chunkCount
 		};
 
 		computePipeline.PushConstants(commandBuffer, vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
-		commandBuffer->dispatch(m_chunkCount.x, m_chunkCount.y, m_chunkCount.z);
+		commandBuffer->dispatchBase(
+			offset.x * m_chunkCount.x, offset.y * m_chunkCount.y, offset.z * m_chunkCount.z,
+			m_chunkCount.x, m_chunkCount.y, m_chunkCount.z
+		);
 	}, vk::QueueFlagBits::eCompute);
 
 	auto mappedCounts = counts->Map<u32>();
 	auto vertexCount = mappedCounts[0];
 	auto indexCount = mappedCounts[1];
 	counts->Unmap();
+
+	if (vertexCount == 0 || indexCount == 0) {
+		return nullptr;
+	}
 
 	std::cout << "Generated mesh with " << vertexCount << " vertices and " << indexCount << " indices." << std::endl;
 
@@ -108,17 +120,17 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
 		.Build();
 
-	Context::Device().RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
-		vertexBuffer->CopyBuffer(*vertexBufferWithDuplicates, vertexCount);
-		indexBuffer->CopyBuffer(*indexBufferWithDuplicates, indexCount);
-	}, vk::QueueFlagBits::eTransfer);
+	vertexBuffer->CopyBuffer(*vertexBufferWithDuplicates, vertexCount);
+	indexBuffer->CopyBuffer(*indexBufferWithDuplicates, indexCount);
 
 	return Graphics::Mesh::Builder()
-		.Name("GeneratedTextureMesh")
+		.Name("GeneratedTextureMesh" + std::to_string(offset.x) + "_" + std::to_string(offset.y) + "_" + std::to_string(offset.z))
 		.VertexBuffer(std::move(vertexBuffer))
 		.IndexBuffer(std::move(indexBuffer))
 		.AABB(Math::AABB { Math::Vector3f { -25.f, -25.f, -25.f }, Math::Vector3f { 25.f, 25.f, 25.f } })
 		.Build();
+
+	// return nullptr;
 }
 
 

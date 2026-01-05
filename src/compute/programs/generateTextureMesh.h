@@ -14,7 +14,7 @@ namespace Coral::Compute {
 		explicit GenerateTextureMesh(const Memory::Image& image, const Math::Vector3u& chunkCount);
 		~GenerateTextureMesh() = default;
 
-		std::unique_ptr<Graphics::Mesh> Execute() const;
+		std::unique_ptr<Graphics::Mesh> Execute(const Math::Vector3u& offset, const Math::Vector3u& fullCount) const;
 
 	private:
 		const Memory::Image& m_image;

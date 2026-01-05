@@ -22,6 +22,7 @@ groupshared uint indexOffset;
 struct Payload {
     float4 gridMin;
     float4 gridMax;
+    uint4 globalGroupCount;
 };
 
 [shader("compute")]
@@ -35,7 +36,7 @@ func TextureToMesh3D(
     uniform Payload payload,
 
     uint3 threadId : SV_GroupThreadID,
-    uint3 cellId : SV_DispatchThreadID,
+    uint3 groupId : SV_GroupID
 ) {
     vertexCount = 0;
     indexCount = 0;
@@ -43,7 +44,9 @@ func TextureToMesh3D(
 
     uint3 groupSize = WorkgroupSize();
     uint3 groupCount = WorkgroupCount();
-    uint3 threadCount = groupSize * groupCount;
+    uint3 threadCount = groupSize * payload.globalGroupCount.xyz;
+
+    uint3 cellId = threadId + groupSize * groupId;
 
     float3 uvw = float3(cellId) / float3(threadCount - 1); // used to sample density texture
     float3 texStep = 1.0 / float3(threadCount - 1);

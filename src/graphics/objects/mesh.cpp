@@ -71,7 +71,9 @@ size_t Coral::Graphics::Vertex::Offset(const Attribute attribute) {
 
 Coral::Graphics::Mesh::Builder::Builder(const UUID& uuid) {
 	if (uuid == boost::uuids::nil_uuid()) {
-		m_uuid = Coral::UUIDGenerator()();
+		m_uuid = UUIDGenerator()();
+	} else {
+		m_uuid = uuid;
 	}
 }
 Coral::Graphics::Mesh::Builder::~Builder() = default;

@@ -142,11 +142,9 @@ namespace Coral::Graphics {
 				needsUpdate |= shader->HasReloaded();
 			}
         	if (needsUpdate) {
-        		if (std::ranges::all_of(pipeline->Shaders() | std::views::values, [](const Shader::Shader* shader) { return true; })) {
-        			builder->m_shaders = std::move(pipeline->m_shaders);
-        			pipeline = builder->Build();
-        		}
-        	}
+        		builder->m_shaders = std::move(pipeline->m_shaders);
+        		pipeline = builder->Build();
+			}
         }
     }
 

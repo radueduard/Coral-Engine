@@ -55,7 +55,7 @@ namespace Coral {
             .deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
                 VK_EXT_MESH_SHADER_EXTENSION_NAME,
-            	VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME
+            	// VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME
             },
             .deviceLayers = {
                 "VK_LAYER_KHRONOS_validation",
@@ -119,15 +119,17 @@ namespace Coral {
 		explicit ProgramSettings(Compute::Program& program) : m_program(program) {}
 
 		void OnGUIAttach() override {
-			AddDockable("Compute Program Settings", new Reef::Window(
-				"Compute Program Settings",
-				{
-					.padding = { 10.f, 10.f, 10.f, 10.f },
-				},
-				{
-					m_programTemplate.Build(m_program)
-				},
-				nullptr));
+			AddDockable("Compute Program Settings",
+				new Reef::Window(
+					"Compute Program Settings",
+					{
+						.padding = { 10.f, 10.f, 10.f, 10.f },
+					},
+					{
+						m_programTemplate.Build(m_program)
+					}
+				)
+			);
 		}
 	private:
 		Compute::Program& m_program;
@@ -276,13 +278,34 @@ namespace Coral {
 
 		const auto image = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(1024u), 9);
 
-    	Compute::GenerateTextureMesh generateTextureMeshProgram(image->Image(), Math::Vector3u(16u, 16u, 16u));
-		const auto mesh = generateTextureMeshProgram.Execute();
-		const auto& material = m_sceneManager->GetLoadedScene().PlanetMaterial();
-
     	auto entity = std::make_unique<ECS::Entity>("Generated Planet Mesh");
     	auto& renderTarget = entity->Add<ECS::RenderTarget>();
-    	renderTarget.Add(mesh.get(), &material);
+
+  		const Compute::GenerateTextureMesh generateTextureMeshProgram(
+  			image->Image(),
+  			Math::Vector3u(8u, 8u, 8u)
+  		);
+
+    	const auto& material = m_sceneManager->GetLoadedScene().PlanetMaterial();
+
+    	std::vector<std::unique_ptr<Graphics::Mesh>> meshes;
+
+    	for (u32 i = 0; i < 8; i++) {
+			for (u32 j = 0; j < 8; j++) {
+				for (u32 k = 0; k < 8; k++) {
+					auto mesh = generateTextureMeshProgram.Execute(
+						Math::Vector3u(i, j, k),
+						Math::Vector3u(8u, 8u, 8u)
+					);
+					if (!mesh) {
+						continue;
+					}
+					renderTarget.Add(mesh.get(), &material);
+					meshes.emplace_back(std::move(mesh));
+				}
+			}
+		}
+
     	m_sceneManager->GetLoadedScene().Root().AddChild(std::move(entity));
 
     	// return;

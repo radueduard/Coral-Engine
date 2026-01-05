@@ -121,21 +121,25 @@ namespace Coral::Core {
      //        .setMaintenance4(true)
      //        .setPNext(&deviceMeshShaderFeatures);
 
+    	auto dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures()
+			.setDynamicRendering(true)
+			.setPNext(&deviceMeshShaderFeatures);
+
     	auto vk12Features = vk::PhysicalDeviceVulkan12Features()
 			.setShaderInt8(true)
     		.setRuntimeDescriptorArray(true)
     		.setTimelineSemaphore(true)
-			.setPNext(&deviceMeshShaderFeatures);
+			.setPNext(&dynamicRenderingFeatures);
 			// .setPNext(&maintenance4Features);
 
-    	auto vk13Features = vk::PhysicalDeviceVulkan13Features()
-			.setShaderDemoteToHelperInvocation(true)
-			.setPNext(&vk12Features);
+   //  	auto vk13Features = vk::PhysicalDeviceVulkan13Features()
+			// .setShaderDemoteToHelperInvocation(true)
+			// .setPNext(&vk12Features);
 
         const auto deviceCreateInfo = vk::DeviceCreateInfo()
             .setQueueCreateInfos(queueCreateInfos)
             .setPEnabledFeatures(&Context::Runtime().m_deviceFeatures)
-            .setPNext(&vk13Features)
+            .setPNext(&vk12Features)
             .setPEnabledExtensionNames(Context::Runtime().m_deviceExtensions)
             .setPEnabledLayerNames(Context::Runtime().m_deviceLayers);
 

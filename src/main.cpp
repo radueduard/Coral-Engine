@@ -45,8 +45,6 @@ int main()
 	const PFN_vkGetInstanceProcAddr getInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>( "vkGetInstanceProcAddr" );
 	VULKAN_HPP_DEFAULT_DISPATCHER.init( getInstanceProcAddr );
 
-
-
     Coral::Engine().Run();
     return 0;
 }
