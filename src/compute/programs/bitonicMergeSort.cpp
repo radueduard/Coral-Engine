@@ -9,7 +9,7 @@
 #include "core/scheduler.h"
 
 Coral::Compute::BitonicMergeSorter::BitonicMergeSorter(const std::vector<u32>& elements) {
-	m_pipeline = std::make_unique<Pipeline>(*Shader::Manager::Get().GetShader("sort", "bitonicSort"));
+	m_pipeline = std::make_unique<Pipeline>(*Context::ShaderManager().SlangShader("sort", "bitonicSort"));
 	m_buffer = Memory::Buffer::Builder()
 		.InstanceCount(static_cast<u32>(elements.size()))
 		.InstanceSize(sizeof(u32))

@@ -23,7 +23,7 @@ Coral::Utils::PerlinNoise2D::PerlinNoise2D(Math::Vector2u size, u32 octaves) {
 		.setImageLayout(vk::ImageLayout::eGeneral)
 		.setImageView(**outputImageView);
 
-	const auto* shader = Shader::Manager::Get().GetShader("perlin2D", "generate");
+	const auto* shader = Context::ShaderManager().SlangShader("perlin2D", "generate");
 	const auto computePipeline = Compute::Pipeline(*shader);
 
 	const auto set =
@@ -79,10 +79,10 @@ Coral::Utils::PerlinNoise3D::PerlinNoise3D(Math::Vector3u size, u32 octaves) : m
 		.ViewType(vk::ImageViewType::e3D)
 		.Build();
 
-	const auto* generateNoiseShader = Shader::Manager::Get().GetShader("perlin3D", "generate");
+	const auto* generateNoiseShader = Context::ShaderManager().SlangShader("perlin3D", "generate");
 	const auto generateNoisePipeline = Compute::Pipeline(*generateNoiseShader);
 
-	const auto* blurShader = Shader::Manager::Get().GetShader("blur", "Gaussian3D");
+	const auto* blurShader = Context::ShaderManager().SlangShader("blur", "Gaussian3D");
 	const auto blurPipeline = Compute::Pipeline(*blurShader);
 
 	const auto generateNoiseSet =

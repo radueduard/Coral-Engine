@@ -3,6 +3,7 @@
 //
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VMA_IMPLEMENTATION
 #include "device.h"
 
 #include <iostream>

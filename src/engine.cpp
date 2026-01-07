@@ -9,24 +9,68 @@
 #include "core/device.h"
 #include "core/physicalDevice.h"
 #include "core/scheduler.h"
+#include "assets/manager.h"
+#include "ecs/sceneManager.h"
+#include "shader/manager.h"
 
 #include "engine.h"
 
 #include "assets/importer.h"
-#include "assets/manager.h"
-#include "compute/pipeline.h"
 #include "compute/program.h"
-#include "compute/programs/bitonicMergeSort.h"
 #include "compute/programs/generateTextureMesh.h"
 #include "ecs/scene.h"
 #include "gui/container.h"
-#include "shader/manager.h"
 
 #include "gui/elements/popup.h"
-#include "gui/templates/computeProgramTemplate.h"
+#include "shader/slangCompiler.h"
 
 namespace Coral {
-    Engine::Engine() {
+	class ImageTest : public Reef::Layer {
+	public:
+		explicit ImageTest(const Memory::Image& image) : m_image(image) {
+			m_imageView = Memory::ImageView::Builder(image)
+				.ViewType(vk::ImageViewType::e2D)
+				.Build();
+
+			m_sampler = Memory::Sampler::Builder()
+				.Build();
+
+			m_textureID = ImGui_ImplVulkan_AddTexture(
+				**m_sampler,
+				**m_imageView,
+				static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+		}
+
+    	void OnGUIAttach() override {
+			AddDockable("Test Image", new Reef::Window(
+				"Test Image",
+				{},
+				{
+					new Reef::Image((m_textureID))
+				},
+				nullptr));
+    	}
+    private:
+    	const Memory::Image& m_image;
+    	std::unique_ptr<Memory::ImageView> m_imageView;
+    	std::unique_ptr<Memory::Sampler> m_sampler;
+    	ImTextureID m_textureID;
+    };
+
+    void Engine::Run() const {
+    	std::unique_ptr<Utils::FileSystemObserver> m_fileSystemObserver = nullptr;
+    	std::unique_ptr<Shader::SlangCompiler> m_slangCompiler = nullptr;
+
+    	std::unique_ptr<Core::Window> m_window = nullptr;
+    	std::unique_ptr<Core::Runtime> m_runtime = nullptr;
+    	std::unique_ptr<Core::Device> m_device = nullptr;
+    	std::unique_ptr<Shader::Manager> m_shaderManager = nullptr;
+    	std::unique_ptr<Core::Scheduler> m_scheduler = nullptr;
+    	std::unique_ptr<ECS::SceneManager> m_sceneManager = nullptr;
+    	Reef::Container<Asset::Manager> m_assetManager = nullptr;
+
+		m_fileSystemObserver = std::make_unique<Utils::FileSystemObserver>();
+
         const auto windowCreateInfo = Core::Window::CreateInfo {
             .title = "Coral",
             .extent = { 1920u, 1080u },
@@ -71,7 +115,7 @@ namespace Coral {
         m_runtime = std::make_unique<Core::Runtime>(runtimeCreateInfo);
         m_device = std::make_unique<Core::Device>();
 
-    	m_shaderManager = std::make_unique<Shader::Manager>(std::filesystem::path("shaders"));
+    	m_shaderManager = std::make_unique<Shader::Manager>();
         const auto schedulerCreateInfo = Core::Scheduler::CreateInfo {
             .minImageCount = m_runtime->PhysicalDevice().SurfaceCapabilities().minImageCount,
             .imageCount = 3,
@@ -81,63 +125,7 @@ namespace Coral {
         m_scheduler = std::make_unique<Core::Scheduler>(schedulerCreateInfo);
     	m_assetManager = Reef::MakeContainer<Asset::Manager>();
     	m_sceneManager = std::make_unique<ECS::SceneManager>();
-    }
 
-	class ImageTest : public Reef::Layer {
-	public:
-		explicit ImageTest(const Memory::Image& image) : m_image(image) {
-			m_imageView = Memory::ImageView::Builder(image)
-				.ViewType(vk::ImageViewType::e2D)
-				.Build();
-
-			m_sampler = Memory::Sampler::Builder()
-				.Build();
-
-			m_textureID = ImGui_ImplVulkan_AddTexture(
-				**m_sampler,
-				**m_imageView,
-				static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
-		}
-
-    	void OnGUIAttach() override {
-			AddDockable("Test Image", new Reef::Window(
-				"Test Image",
-				{},
-				{
-					new Reef::Image((m_textureID))
-				},
-				nullptr));
-    	}
-    private:
-    	const Memory::Image& m_image;
-    	std::unique_ptr<Memory::ImageView> m_imageView;
-    	std::unique_ptr<Memory::Sampler> m_sampler;
-    	ImTextureID m_textureID;
-    };
-
-	class ProgramSettings : public Reef::Layer {
-	public:
-		explicit ProgramSettings(Compute::Program& program) : m_program(program) {}
-
-		void OnGUIAttach() override {
-			AddDockable("Compute Program Settings",
-				new Reef::Window(
-					"Compute Program Settings",
-					{
-						.padding = { 10.f, 10.f, 10.f, 10.f },
-					},
-					{
-						m_programTemplate.Build(m_program)
-					}
-				)
-			);
-		}
-	private:
-		Compute::Program& m_program;
-		Reef::ComputeProgramTemplate m_programTemplate;
-	};
-
-    void Engine::Run() const {
         Input::Setup();
 
 		// Asset::Importer("assets/DamagedHelmet/DamagedHelmet.gltf").Import();
@@ -316,6 +304,9 @@ namespace Coral {
 	        auto startTime = std::chrono::high_resolution_clock::now();
         	m_window->PollEvents();
         	m_window->UpdateDeltaTime();
+
+        	m_fileSystemObserver->Update();
+
         	m_shaderManager->Update();
         	m_sceneManager->Update(m_window->DeltaTime());
         	// pipeline.Update();
@@ -338,8 +329,6 @@ namespace Coral {
                 m_scheduler->Draw();
             }
 
-        	m_shaderManager->LateUpdate();
-
             Input::Update();
 
             auto end = std::chrono::high_resolution_clock::now();
@@ -347,7 +336,7 @@ namespace Coral {
             m_window->SetTitle("Coral - " + std::to_string(1000000.f / static_cast<float>(elapsed)) + "fps");
         }
 
-        Context::Device()->waitIdle();
+        (*m_device)->waitIdle();
     }
 }
 

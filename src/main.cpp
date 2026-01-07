@@ -8,7 +8,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #endif
 
 #include "engine.h"
-#include "gui/elements/popup.h"
 
 #ifdef _WIN32
 #include <windows.h>

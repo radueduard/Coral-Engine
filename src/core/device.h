@@ -13,6 +13,8 @@
 #include "core/runtime.h"
 #include "utils/globalWrapper.h"
 
+#include <vma/vk_mem_alloc.h>
+
 namespace Coral::Core {
     class PhysicalDevice;
 }
@@ -95,6 +97,7 @@ namespace Coral::Core {
             vk::Fence fence = nullptr, vk::Semaphore waitSemaphore = nullptr, vk::Semaphore signalSemaphore = nullptr, bool wait = true);
 
     private:
+    	std::unique_ptr<VmaAllocator> m_allocator;
         std::vector<class Queue::Family> m_queueFamilies;
         std::unordered_map<uint32_t, std::unordered_map<uint32_t, vk::CommandPool>> m_commandPools;
     };

@@ -75,8 +75,6 @@ namespace Coral::Core {
 
     	Math::Vector2u extent;
     	glfwGetFramebufferSize(m_window, reinterpret_cast<int*>(&extent.width), reinterpret_cast<int*>(&extent.height));
-    	std::cout << extent.width << " " << extent.height << std::endl;
-    	std::cout << m_info.extent.width << " " << m_info.extent.height << std::endl;
 		m_info.extent = extent;
     }
 

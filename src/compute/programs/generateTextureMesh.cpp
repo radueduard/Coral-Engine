@@ -49,7 +49,7 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
 		.Build();
 
-	const auto generateShader = Shader::Manager::Get().GetShader("texToMesh", "TextureToMesh3D");
+	const auto generateShader = Context::ShaderManager().SlangShader("texToMesh", "TextureToMesh3D");
 	auto computePipeline = Compute::Pipeline(*generateShader);
 
 	auto imageView = Memory::ImageView::Builder(m_image)

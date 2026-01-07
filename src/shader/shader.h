@@ -123,6 +123,10 @@ namespace Coral::Shader {
 
 	class Shader : public EngineWrapper<vk::ShaderModule> {
 	public:
+		friend class Manager;
+		friend class EntryPoint;
+		friend class Module;
+
 		~Shader() override;
 
 		[[nodiscard]] Stage GetStage() const { return m_stage; }
@@ -132,16 +136,17 @@ namespace Coral::Shader {
 		[[nodiscard]] const std::vector<PushConstantRange>& PushConstantRanges() const { return m_pushConstantRanges; }
 
 		void PrintLayoutInfo() const;
-
-		virtual void Update() = 0;
 		bool HasReloaded() const { return m_reloaded; }
-		void LateUpdate() { m_reloaded = false; }
 
 	protected:
+		Shader() = default;
+
+		void LoadCode(std::vector<uint32_t> spirVCode);
+
 		Stage m_stage = Stage::All;
 		std::vector<uint32_t> m_spirVCode;
-		bool m_valid = false;
 
+		bool m_valid = false;
 		bool m_reloaded = false;
 
 		std::set<InOut> m_inputs {};
@@ -152,26 +157,5 @@ namespace Coral::Shader {
 
 		void LoadSpirVShader();
 		void LoadResourceInfo(std::unordered_map<std::string, std::string> semanticMap = {});
-	};
-
-	class SlangShader final : public Shader {
-	public:
-		SlangShader(const std::string& module, const std::string& entryPoint);
-
-		void Update() override;
-
-		[[nodiscard]] const std::string& Module() const { return m_module; }
-		[[nodiscard]] const std::string& EntryPoint() const { return m_entryPoint; }
-
-	private:
-		std::filesystem::path m_path;
-		std::filesystem::file_time_type m_lastWriteTime;
-
-		std::string m_module;
-		std::string m_entryPoint;
-		bool m_changed = false;
-		std::unordered_map<std::string, std::string> m_semanticMap;
-
-		void Compile();
 	};
 }

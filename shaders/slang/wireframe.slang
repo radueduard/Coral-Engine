@@ -1,14 +1,6 @@
 module wireframe;
 import camera;
-
-struct VertexInput
-{
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-    float4 tangent : TANGENT;
-    float2 uv0 : TEXCOORD0;
-    float2 uv1 : TEXCOORD1;
-};
+import vertex;
 
 struct VertexOutput
 {
@@ -25,7 +17,7 @@ struct VertexOutput
 ConstantBuffer<Camera> camera;
 
 [shader("vertex")]
-VertexOutput vertexMain(VertexInput input, uniform float4x4 model)
+VertexOutput vertexMain(Vertex input, uniform float4x4 model)
 {
     VertexOutput output;
     float4 worldPosition = mul(model, float4(input.position, 1.0));
@@ -102,6 +94,6 @@ float4 fragmentMain(FragmentInput input) : SV_Target
     if (albedo.a < material.alphaCutoff || material.doubleSided != 0) {
         discard;
     }
-    // return float4(N * 0.5 + 0.5, max(color.r, 1.0));
-    return float4(albedo.rgb, max(color.r, 1.0));
+    return float4(N * 0.5 + 0.5, max(color.r, 1.0));
+    // return float4(albedo.rgb, 1.0);
 }
