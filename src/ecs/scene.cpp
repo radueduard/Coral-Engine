@@ -161,7 +161,7 @@ namespace Coral::ECS {
 				.Extent(Math::Vector2u { 2048u, 2048u })
 				.Format(vk::Format::eD32Sfloat)
 				.UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
-				.UsageFlags(vk::ImageUsageFlagBits::eStorage)
+				.UsageFlags(vk::ImageUsageFlagBits::eSampled)
 				.LayerCount(16)
 				.InitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 				.Build();
@@ -175,9 +175,12 @@ namespace Coral::ECS {
 				.Build();
 		}
 
+    	m_shadowMapSampler = Memory::Sampler::Builder()
+    		.Build();
+
     	m_shadowDescriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
 			.AddBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
-			.AddBinding(1, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eFragment)
+			.AddBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
 			.Build();
 
     	m_shadowDescriptorSets.resize(Context::Scheduler().Frames().size());
@@ -185,9 +188,9 @@ namespace Coral::ECS {
     		m_shadowDescriptorSets[i] = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_shadowDescriptorSetLayout)
 				.WriteBuffer(0, m_lightCameraBuffer->DescriptorInfo())
 				.WriteImage(1, vk::DescriptorImageInfo()
-					.setImageLayout(vk::ImageLayout::eGeneral)
+					.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 					.setImageView(**m_shadowMapViews[i])
-					.setSampler(VK_NULL_HANDLE))
+					.setSampler(**m_shadowMapSampler))
 				.Build();
     	}
     }

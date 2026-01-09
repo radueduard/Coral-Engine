@@ -84,6 +84,7 @@ namespace Coral::ECS {
 
     	std::vector<std::unique_ptr<Memory::Image>> m_shadowMapArray;
 		std::vector<std::unique_ptr<Memory::ImageView>> m_shadowMapViews;
+    	std::unique_ptr<Memory::Sampler> m_shadowMapSampler;
 
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_shadowDescriptorSetLayout;
     	std::vector<std::unique_ptr<Memory::Descriptor::Set>> m_shadowDescriptorSets;

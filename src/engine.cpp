@@ -271,7 +271,7 @@ namespace Coral {
 
     	auto entity = std::make_unique<ECS::Entity>("Generated Planet Mesh");
     	auto& renderTarget = entity->Add<ECS::RenderTarget>();
-    	Math::Vector3u chunkCount { 8u, 8u, 8u };
+    	Math::Vector3u chunkCount { 4u, 4u, 4u };
 
   		const Compute::GenerateTextureMesh generateTextureMeshProgram(
   			image->Image(),

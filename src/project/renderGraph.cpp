@@ -73,7 +73,7 @@ namespace Coral::Project {
 
 		Context::Scene().ShadowMap(frameIndex).TransitionLayout(
 			commandBuffer,
-			vk::ImageLayout::eGeneral);
+			vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
 

@@ -61,7 +61,7 @@ float3 applyNormalMap(float3 normal, float3 tangent, float3 bitangent, float3 no
 struct ShadowMappingData
 {
     StructuredBuffer<Camera> lightCameras;
-    RWTexture2DArray<float> depthTextures;
+    Sampler2DArray<float> depthTextures;
 };
 
 layout(set = 2) ShadowMappingData shadowMappingData;
@@ -112,20 +112,20 @@ float microfacetDistribution(PBRInfo pbrInputs)
     return roughnessSq / (M_PI * f * f);
 }
 
-float textureProjection(float3 shadowCoord, float2 offset, RWTexture2DArray<float> shadowMap, uint index)
+float textureProjection(float3 shadowCoord, float2 offset, Sampler2DArray<float> shadowMap, uint index)
 {
     float shadow = 1.0;
     if (-1.0 < shadowCoord.z && shadowCoord.z < 1.0)
     {
 
-        float depth = shadowMap.Load(int3(int2(shadowCoord.xy + offset), index)).r;
+        float depth = shadowMap.Sample(float3(shadowCoord.xy + offset, index));
         if (0.0 < shadowCoord.z && depth < shadowCoord.z - 0.01)
             shadow = .25;
     }
     return shadow;
 }
 
-float filterPCF(Camera lightCamera, RWTexture2DArray<float> shadowMap, float3 worldPosition, uint index)
+float filterPCF(Camera lightCamera, Sampler2DArray<float> shadowMap, float3 worldPosition, uint index)
 {
     uint shadowWidth, shadowHeight, shadowElements;
     shadowMappingData.depthTextures.GetDimensions(shadowWidth, shadowHeight, shadowElements);
@@ -134,11 +134,11 @@ float filterPCF(Camera lightCamera, RWTexture2DArray<float> shadowMap, float3 wo
     lightSpacePos.xyz /= lightSpacePos.w;
     float2 uv = lightSpacePos.xy * 0.5 + 0.5;
     float2 texelSize = 1.0 / float2(shadowWidth, shadowHeight);
-    float3 shadowCoord = float3(uv * float2(shadowWidth, shadowHeight), lightSpacePos.z);
+    float3 shadowCoord = float3(uv, lightSpacePos.z);
     float shadow = 0.0;
     for (int y = -1; y <= 1; y++) {
         for (int x = -1; x <= 1; x++) {
-            shadow += textureProjection(shadowCoord, float2(x, y), shadowMap, index);
+            shadow += textureProjection(shadowCoord, float2(x, y) * texelSize, shadowMap, index);
         }
     }
     shadow /= 9.0;
