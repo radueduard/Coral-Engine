@@ -1,16 +1,16 @@
 module material;
 
 public struct MaterialData {
-    float alphaCutoff;
-    uint doubleSided;
-    float roughnessFactor;
-    float metallicFactor;
-    float3 emissiveFactor;
-    float4 baseColorFactor;
+    public float alphaCutoff;
+    public uint doubleSided;
+    public float roughnessFactor;
+    public float metallicFactor;
+    public float3 emissiveFactor;
+    public float4 baseColorFactor;
 }
 
 public struct Material {
-    public ConstantBuffer<MaterialData> materialData;
+    public ConstantBuffer<MaterialData> parameters;
     public Sampler2D albedoTexture;
     public Sampler2D normalTexture;
     public Sampler2D metallicTexture;

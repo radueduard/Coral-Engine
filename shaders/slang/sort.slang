@@ -63,72 +63,74 @@ public void local_bms<T : IComparable, int N>(uint h, in uint t, inout T[N] loca
 	}
 }
 
-public void global_compare_and_swap<T: IComparable>(uint2 idx, inout RWStructuredBuffer<T> value, inout RWStructuredBuffer<uint> newIndices) {
+public void global_compare_and_swap<T: IComparable>(uint2 idx, inout RWStructuredBuffer<T> value, inout RWStructuredBuffer<uint> remapTable) {
 	if (value[idx.x] > value[idx.y]) {
 		T tmp = value[idx.x];
 		value[idx.x] = value[idx.y];
 		value[idx.y] = tmp;
-		uint tmp_idx = newIndices[idx.x];
-		newIndices[idx.x] = newIndices[idx.y];
-		newIndices[idx.y] = tmp_idx;
+
+		uint tmp_idx = remapTable[idx.x];
+		remapTable[idx.x] = remapTable[idx.y];
+		remapTable[idx.y] = tmp_idx;
 	}
 }
 
-public void big_flip<T : IComparable>(in uint h, in uint t_prime, inout RWStructuredBuffer<T> value, inout RWStructuredBuffer<uint> newIndices) {
+public void big_flip<T : IComparable>(in uint h, in uint t_prime, inout RWStructuredBuffer<T> value, inout RWStructuredBuffer<uint> remapTable) {
 	uint hh = h >> 1;
 
 	uint q = ((2 * t_prime) / h) * h;
 	uint x = q + (t_prime % hh);
 	uint y = q + h - (t_prime % hh) - 1;
 
-	global_compare_and_swap(uint2(x, y), value);
+	global_compare_and_swap(uint2(x, y), value, remapTable);
 }
 
-public void big_disperse<T : IComparable>(in uint h, in uint t_prime, inout RWStructuredBuffer<T> value, inout RWStructuredBuffer<uint> newIndices) {
+public void big_disperse<T : IComparable>(in uint h, in uint t_prime, inout RWStructuredBuffer<T> value, inout RWStructuredBuffer<uint> remapTable) {
 	uint hh = h >> 1;
 
 	uint q = ((2 * t_prime) / h) * h;
 	uint x = q + (t_prime % (hh));
 	uint y = q + (t_prime % (hh)) + hh;
 	
-	global_compare_and_swap(uint2(x,y), value);
+	global_compare_and_swap(uint2(x,y), value, remapTable);
 }
 
-public void local_compare_and_swap<T : IComparable, int N>(uint2 idx, inout T[N] local_value, inout uint[N] local_new_indices) {
+public void local_compare_and_swap<T : IComparable, int N>(uint2 idx, inout T[N] local_value, inout uint[N] local_remapTable) {
 	if (local_value[idx.x] > local_value[idx.y]) {
 		T tmp = local_value[idx.x];
 		local_value[idx.x] = local_value[idx.y];
 		local_value[idx.y] = tmp;
-		uint tmp_idx = local_new_indices[idx.x];
-		local_new_indices[idx.x] = local_new_indices[idx.y];
-		local_new_indices[idx.y] = tmp_idx;
+
+		uint tmp_idx = local_remapTable[idx.x];
+		local_remapTable[idx.x] = local_remapTable[idx.y];
+		local_remapTable[idx.y] = tmp_idx;
 	}
 }
 
-public void local_flip<T : IComparable, int N>(uint h, uint t, inout T[N] local_value, inout uint[N] local_new_indices) {
+public void local_flip<T : IComparable, int N>(uint h, uint t, inout T[N] local_value, inout uint[N] local_remapTable) {
 	GroupMemoryBarrierWithGroupSync();
 
 	uint hh = h >> 1;
 	uint2 indices = uint2(h * ((2 * t) / h)) + uint2(t % hh, h - 1 - (t % hh));
 	
-	local_compare_and_swap<T, N>(indices, local_value, local_new_indices);
+	local_compare_and_swap<T, N>(indices, local_value, local_remapTable);
 }
 
-public void local_disperse<T : IComparable, int N>(uint h, uint t, inout T[N] local_value, inout uint[N] local_new_indices) {
+public void local_disperse<T : IComparable, int N>(uint h, uint t, inout T[N] local_value, inout uint[N] local_remapTable) {
 	for (; h > 1 ; h /= 2) {
 		GroupMemoryBarrierWithGroupSync();
 
 		uint hh = h >> 1;
 		uint2 indices = uint2(h * ((2 * t) / h)) + uint2(t % hh, hh + (t % hh));
 
-		local_compare_and_swap(indices, local_value, local_new_indices);
+		local_compare_and_swap(indices, local_value, local_remapTable);
 	}
 }
 
-public void local_bms<T : IComparable, int N>(uint h, in uint t, inout T[N] local_value, inout uint[N] local_new_indices) {
+public void local_bms<T : IComparable, int N>(uint h, in uint t, inout T[N] local_value, inout uint[N] local_remapTable) {
 	for (uint hh = 2; hh <= h; hh <<= 1) {
-		local_flip(hh, t, local_value, local_new_indices);
-		local_disperse(hh / 2 , t, local_value, local_new_indices);
+		local_flip(hh, t, local_value, local_remapTable);
+		local_disperse(hh / 2 , t, local_value, local_remapTable);
 	}
 }
 

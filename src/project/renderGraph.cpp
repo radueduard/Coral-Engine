@@ -22,20 +22,15 @@
 
 namespace Coral::Project {
 	void RenderGraph::ShadowRunNode::Run(const Core::CommandBuffer& commandBuffer, const u32 frameIndex) {
+		Context::Scene().ShadowMap(frameIndex).TransitionLayout(
+			commandBuffer,
+			vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
 		ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::Light>).each(
-			[&](const ECS::Entity* entity, const ECS::Light& light) {
+			[&](const ECS::Entity* entity, ECS::Light& light) {
 				if (light.CastsShadows()) {
 					for (u32 i = 0; i < cascadeCount; i++) {
-						if (!cascadeMapViews.contains(std::make_pair(entity->Id(), i))) {
-							auto& view = shadowMapViews.emplace_back(Memory::ImageView::Builder(light.ShadowMap(frameIndex))
-								.ViewType(vk::ImageViewType::e2D)
-								.BaseArrayLayer(i)
-								.LayerCount(1)
-								.Build());
-							cascadeMapViews.emplace(std::make_pair(entity->Id(), i), view.get());
-						}
-
-						const auto& view = cascadeMapViews.at(std::make_pair(entity->Id(), i));
+						const auto& view = light.ShadowMap(frameIndex);
 
 						commandBuffer->setViewport(0, vk::Viewport()
 							.setX(0.0f)
@@ -52,25 +47,33 @@ namespace Coral::Project {
 						);
 
 						auto attachment = vk::RenderingAttachmentInfo()
-							.setImageView(**view)
+							.setImageView(*view)
 							.setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 							.setLoadOp(vk::AttachmentLoadOp::eClear)
 							.setStoreOp(vk::AttachmentStoreOp::eStore)
 							.setClearValue(vk::ClearValue()
 								.setDepthStencil(vk::ClearDepthStencilValue(1.0f, 0)));
 
-						shadowRender.Render(commandBuffer, vk::RenderingInfo()
-							.setLayerCount(1)
-							.setViewMask(0)
-							.setRenderArea(vk::Rect2D()
-								.setOffset({ 0, 0 })
-								.setExtent({ 2048, 2048 }))
-							.setPDepthAttachment(&attachment)
-							.setPStencilAttachment(&attachment));
+						shadowRender.Render(commandBuffer,
+							vk::RenderingInfo()
+								.setLayerCount(1)
+								.setViewMask(0)
+								.setRenderArea(vk::Rect2D()
+									.setOffset({ 0, 0 })
+									.setExtent({ 2048, 2048 }))
+								.setPDepthAttachment(&attachment)
+								// .setPStencilAttachment(&attachment)
+								,
+							&light
+						);
 					}
 				}
 			}
 		);
+
+		Context::Scene().ShadowMap(frameIndex).TransitionLayout(
+			commandBuffer,
+			vk::ImageLayout::eGeneral);
 	}
 
 
@@ -361,15 +364,17 @@ namespace Coral::Project {
 
 		{
 			auto vertexShader = Context::ShaderManager().SlangShader("depth", "vertex");
-			auto fragmentShader = Context::ShaderManager().SlangShader("depth", "fragment");
+			// auto fragmentShader = Context::ShaderManager().SlangShader("depth", "fragment");
 
 			auto pipelineBuilder = std::make_unique<Graphics::Pipeline::BuilderDynamic>(vk::PipelineRenderingCreateInfo()
 				.setColorAttachmentFormats({})
-				.setDepthAttachmentFormat(vk::Format::eD32SfloatS8Uint)
-				.setStencilAttachmentFormat(vk::Format::eD32SfloatS8Uint));
+				.setDepthAttachmentFormat(vk::Format::eD32Sfloat)
+				// .setStencilAttachmentFormat(vk::Format::eD32SfloatS8Uint)
+			);
+
 			(*pipelineBuilder)
 				.AddShader(vertexShader)
-				.AddShader(fragmentShader)
+				// .AddShader(fragmentShader)
 				.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
 					.setPolygonMode(vk::PolygonMode::eFill)
 					.setCullMode(vk::CullModeFlagBits::eNone)
@@ -378,9 +383,10 @@ namespace Coral::Project {
 				.InputAssemblyState(vk::PipelineInputAssemblyStateCreateInfo()
 					.setTopology(vk::PrimitiveTopology::eTriangleList)
 					.setPrimitiveRestartEnable(vk::False))
-				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer) {
+				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer, void* usrData) {
+					const auto light = static_cast<ECS::Light*>(usrData);
 					pipeline.Bind(*commandBuffer);
-					pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().DescriptorSet());
+					pipeline.BindDescriptorSet(0, *commandBuffer, light->ShadowDescriptorSet());
 					ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
 						[&](const ECS::Entity* entity, const ECS::RenderTarget& renderTarget) {
 							Math::Matrix4<f32> matrix = Math::Matrix4<f32>::Identity();
@@ -402,8 +408,8 @@ namespace Coral::Project {
 
 		// TODO: Delete this:
 		{
-			auto* vertexShader = Context::ShaderManager().SlangShader("wireframe", "vertexMain");
-			auto* fragmentShader = Context::ShaderManager().SlangShader("wireframe", "fragmentMain");
+			auto* vertexShader = Context::ShaderManager().SlangShader("pbr", "vertex");
+			auto* fragmentShader = Context::ShaderManager().SlangShader("pbr", "fragment");
 
 			auto pipelineBuilder = std::make_unique<Graphics::Pipeline::BuilderRenderPass>(*m_renderPasses.at("color"));
 			(*pipelineBuilder)
@@ -417,9 +423,11 @@ namespace Coral::Project {
 				.InputAssemblyState(vk::PipelineInputAssemblyStateCreateInfo()
 					.setTopology(vk::PrimitiveTopology::eTriangleList)
 					.setPrimitiveRestartEnable(vk::False))
-				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer) {
+				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer, void*) {
+					const u32 index = Context::Scheduler().CurrentFrame().ImageIndex();
 					pipeline.Bind(*commandBuffer);
 					pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().DescriptorSet());
+					pipeline.BindDescriptorSet(2, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().ShadowDescriptorSet(index));
 					ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
 						[&](const ECS::Entity* entity, const ECS::RenderTarget& renderTarget) {
 							Math::Matrix4<f32> matrix = Math::Matrix4<f32>::Identity();

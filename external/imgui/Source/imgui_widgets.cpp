@@ -2735,7 +2735,10 @@ bool ImGui::DragScalarN(const char* label, ImGuiDataType data_type, void* p_data
         if (i > 0)
             SameLine(0, g.Style.ItemInnerSpacing.x);
 
-        value_changed |= DragScalar(data_type, p_data, v_speed, p_min, p_max, format, flags, labels ? labels[i] : ImLabel());
+        value_changed |= DragScalar(data_type, p_data, v_speed,
+        	static_cast<const uint8_t*>(p_min) + i * type_size,
+        	static_cast<const uint8_t*>(p_max) + i * type_size,
+        	format, flags, labels ? labels[i] : ImLabel());
 
         PopID();
         PopItemWidth();

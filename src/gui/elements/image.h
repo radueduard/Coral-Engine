@@ -106,7 +106,7 @@ namespace Coral::Reef {
 				ImVec2(uv1), ImVec2(uv2));
 
 			const auto selectedEntity = ECS::SceneManager::Get().GetLoadedScene().SelectedEntity();
-			if (!selectedEntity || selectedEntity->Id() == camera.Entity())
+			if (!selectedEntity || selectedEntity->Id() == camera.Entity().Id())
 				return;
 
 			static ImGuizmo::OPERATION currentGizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
@@ -130,6 +130,7 @@ namespace Coral::Reef {
 					Math::Vector3f(0.5f, 0.5f, 0.5f);
 
 			Math::Matrix4f entityModelMatrix = transform.Matrix();
+
 			ImGuizmo::Manipulate(
 				&viewMatrix[0][0],
 				&projectionMatrix[0][0],

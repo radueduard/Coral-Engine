@@ -10,7 +10,11 @@
 namespace Coral::Reef {
 	class Conditional final : public Element {
 	public:
-		explicit Conditional(const std::function<u8()>& condition, const std::vector<Element*>& children) : m_condition(condition) {
+		explicit Conditional(
+			const std::function<u8()>& condition,
+			bool* changed,
+			const std::vector<Element*>& children)
+		: m_condition(condition), m_changed(changed) {
 			for (auto* child : children) {
 				m_elements.emplace_back(child);
 			}
@@ -30,11 +34,13 @@ namespace Coral::Reef {
 					AddChild(m_elements[m_state].release());
 				});
 				m_lastState = m_state;
+				*m_changed = true;
 			}
 		}
 
 	private:
 		u8 m_state;
+		bool* m_changed;
 		u8 m_lastState;
 		std::vector<std::unique_ptr<Element>> m_elements;
 		std::function<u8()> m_condition;

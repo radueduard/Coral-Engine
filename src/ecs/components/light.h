@@ -12,11 +12,15 @@ namespace Coral::ECS {
 	class Camera;
 }
 namespace Coral::Memory {
+	class ImageView;
+	class Buffer;
 	namespace Descriptor {
+		class SetLayout;
 		class Set;
 	}
 	class Image;
 }
+
 namespace Coral::ECS {
 	struct Light final : Component {
 		struct Point {
@@ -59,24 +63,36 @@ namespace Coral::ECS {
 			~Data() {}
 		};
 
-		explicit Light(const Type type = Type::Directional, const Data& data = Data {}, bool castsShadows = false);
+		explicit Light(Type type = Type::Directional, const Data& data = Data {}, bool castsShadows = false);
 
 		Light(const Light&) = delete;
 		Light& operator=(const Light&) = delete;
 
 		~Light() override = default;
 
+		void Setup() override;
+		void Update() override;
+
 		bool m_changed = true;
 		Type m_type;
 		Data m_data;
 		bool m_castsShadows = false;
-		std::vector<std::unique_ptr<Memory::Image>> m_shadowMaps;
-		std::unique_ptr<Camera> m_shadowCamera;
+
+		u32 m_index = 0;
+		std::vector<std::unique_ptr<Memory::ImageView>> m_shadowMaps;
+
+		Memory::Descriptor::Set& ShadowDescriptorSet() const {
+			return *m_shadowDescriptorSet;
+		}
 
 		bool CastsShadows() const {
 			return m_castsShadows;
 		}
 
-		const Memory::Image& ShadowMap(u32 frameIndex) const;
+		const Memory::ImageView& ShadowMap(u32 frameIndex) const;
+	private:
+		std::unique_ptr<Memory::Buffer> m_lightCameraBuffer;
+		std::unique_ptr<Memory::Descriptor::SetLayout> m_shadowDescriptorSetLayout;
+		std::unique_ptr<Memory::Descriptor::Set> m_shadowDescriptorSet;
 	};
 }

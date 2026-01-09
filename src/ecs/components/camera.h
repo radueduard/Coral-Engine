@@ -7,7 +7,11 @@
 #include "component.h"
 #include "math/matrix.h"
 #include "math/vector.h"
+#include "memory/gpuStructs.h"
 
+namespace Coral::Memory {
+	class Buffer;
+}
 namespace Coral::Reef {
     class CameraTemplate;
 }
@@ -39,12 +43,12 @@ namespace Coral::ECS {
         } perspective;
 
         struct Orthographic {
-            f32 left = -1.0f;
-            f32 right = 1.0f;
-            f32 top = 1.0f;
-            f32 bottom = -1.0f;
-            f32 near = 0.1f;
-            f32 far = 100.0f;
+            f32 left = -10.0f;
+            f32 right = 10.0f;
+            f32 top = 10.0f;
+            f32 bottom = -10.0f;
+            f32 near = -10.f;
+            f32 far = 10.0f;
         } orthographic;
 
         union Projection {
@@ -82,13 +86,16 @@ namespace Coral::ECS {
 
         void Resize(const Math::Vector2<u32>& size);
 
-        [[nodiscard]] bool Primary() const { return m_primary; }
+		[[nodiscard]] bool Primary() const { return m_primary; }
         bool& Primary() { return m_primary; }
 
         [[nodiscard]] const Math::Matrix4<f32>& Projection() const { return m_projection; }
         [[nodiscard]] const Math::Matrix4<f32>& InverseProjection() const { return m_inverseProjection; }
         [[nodiscard]] const Math::Matrix4<f32>& View() const { return m_view; }
         [[nodiscard]] const Math::Matrix4<f32>& InverseView() const { return m_inverseView; }
+
+    	void Update() override;
+
         [[nodiscard]] bool& Moved() { return m_moved; }
 		[[nodiscard]] bool& Changed() { return m_changed; }
 
@@ -98,6 +105,8 @@ namespace Coral::ECS {
         [[nodiscard]] ProjectionData& GetProjectionData() { return m_projectionData; }
 
     	[[nodiscard]] Math::Vector3f Position() const { return { -m_inverseView[3][0], -m_inverseView[3][1], -m_inverseView[3][2] }; }
+
+    	[[nodiscard]] Memory::Buffer& Buffer() const { return *m_cameraBuffer; }
 
     	void Move(const Math::Vector3<f32>& amount);
     	void Rotate(f32 yaw, f32 pitch);
@@ -112,6 +121,8 @@ namespace Coral::ECS {
 
         ProjectionData m_projectionData {};
         Math::Vector2<u32> m_viewportSize { 0u, 0u };
+
+		std::unique_ptr<Memory::Buffer> m_cameraBuffer;
 
         bool m_primary = true;
 

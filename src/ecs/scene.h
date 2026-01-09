@@ -40,30 +40,36 @@ namespace Coral::ECS {
 
 		void Update(float deltaTime);
 
-        [[nodiscard]] Entity& Root() const { return *m_root; }
+    	[[nodiscard]] ECS::Entity& Entity(entt::entity entityId) const;
+        [[nodiscard]] ECS::Entity& Root() const { return *m_root; }
 
     	[[nodiscard]] Memory::Descriptor::Set& DescriptorSet() const { return *m_set; }
-
-    	const Memory::Buffer& CameraBuffer() const { return *m_cameraBuffer; }
 
 		static Camera& PrimaryCamera();
 		static Camera& ViewCamera();
 
-		Entity* SelectedEntity() const;
+		ECS::Entity* SelectedEntity() const;
 
     	[[nodiscard]] Memory::Descriptor::Set& PlanetDescriptorSet() const { return *m_planetSet; }
     	[[nodiscard]] Graphics::Material& PlanetMaterial() const { return *m_planetMaterial; }
+
+    	std::pair<std::vector<std::unique_ptr<Memory::ImageView>>, u32> GetShadowMap();
+
+    	Memory::Buffer& LightCameraBuffer() const { return *m_lightCameraBuffer; }
+
+    	Memory::Descriptor::Set& ShadowDescriptorSet(const u32 index) const { return *m_shadowDescriptorSets[index]; }
+
+    	Memory::Image& ShadowMap(const u32 index) const { return *m_shadowMapArray[index]; }
 
     private:
 
         Reef::EntityInspector* m_inspectorTemplate;
 
-        std::unique_ptr<Entity> m_root;
+        std::unique_ptr<ECS::Entity> m_root;
         entt::entity m_selectedObject = entt::null;
 
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_setLayout;
     	std::unique_ptr<Memory::Descriptor::Set> m_set;
-    	std::unique_ptr<Memory::Buffer> m_cameraBuffer;
 
     	std::unique_ptr<Utils::Noise> m_planetNoise;
     	std::unique_ptr<Memory::ImageView> m_planetImageView;
@@ -72,5 +78,14 @@ namespace Coral::ECS {
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_planetSetLayout;
     	std::unique_ptr<Memory::Descriptor::Set> m_planetSet;
     	std::unique_ptr<Graphics::Material> m_planetMaterial;
+
+    	u32 m_shadowCastingLightCount;
+    	std::unique_ptr<Memory::Buffer> m_lightCameraBuffer;
+
+    	std::vector<std::unique_ptr<Memory::Image>> m_shadowMapArray;
+		std::vector<std::unique_ptr<Memory::ImageView>> m_shadowMapViews;
+
+    	std::unique_ptr<Memory::Descriptor::SetLayout> m_shadowDescriptorSetLayout;
+    	std::vector<std::unique_ptr<Memory::Descriptor::Set>> m_shadowDescriptorSets;
     };
 }

@@ -5,8 +5,11 @@
 #pragma once
 
 #include "entt/entity/entity.hpp"
+#include "utils/types.h"
 
 namespace Coral::ECS {
+	class Entity;
+
 	class Component {
 	public:
 		Component() = default;
@@ -15,9 +18,12 @@ namespace Coral::ECS {
 		Component(const Component&) = delete;
 		Component& operator=(const Component&) = delete;
 
-		[[nodiscard]] entt::entity Entity() const { return m_entity; }
+		[[nodiscard]] ECS::Entity& Entity() const;
 
-	private:
+		virtual void Setup() {}
+		virtual void Update() {}
+
+	protected:
 		friend class Entity;
 		void SetEntity(const entt::entity entity) {
 			m_entity = entity;
@@ -25,4 +31,4 @@ namespace Coral::ECS {
 
 		entt::entity m_entity { entt::null };
 	};
-}
+} // namespace Coral::ECS

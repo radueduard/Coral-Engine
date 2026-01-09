@@ -5,14 +5,10 @@
 #pragma once
 
 #include <boost/uuid/random_generator.hpp>
-
-#include "utils/fileSystemObserver.h"
 #include "utils/types.h"
 
 namespace Coral
 {
-	class Scene;
-
 	namespace Core
 	{
 		class Window;
@@ -30,6 +26,15 @@ namespace Coral
 		class Manager;
 	}
 
+	namespace Utils {
+		class FileSystemObserver;
+	}
+
+	namespace ECS {
+		class Entity;
+		class Scene;
+	}
+
 	class Context
 	{
 	public:
@@ -38,7 +43,7 @@ namespace Coral
 		static Core::Device& Device() { return *m_device; }
 		static Core::Scheduler& Scheduler() { return *m_scheduler; }
 		static Reef::Manager& GUIManager() { return *m_guiManager; }
-		static Coral::Scene& Scene() { return *m_scene; }
+		static ECS::Scene& Scene() { return *m_scene; }
 		static Utils::FileSystemObserver& FileSystemObserver() { return *m_fileSystemObserver; }
 		static Shader::Manager& ShaderManager() { return *m_shaderManager; }
 
@@ -48,7 +53,7 @@ namespace Coral
 		friend class Core::Device;
 		friend class Core::Scheduler;
 		friend class Reef::Manager;
-		friend class Scene;
+		friend class ECS::Scene;
 		friend class Core::Window;
 		friend class Utils::FileSystemObserver;
 		friend class Shader::Manager;
@@ -58,7 +63,7 @@ namespace Coral
 		inline static Core::Device* m_device = nullptr;
 		inline static Core::Scheduler* m_scheduler = nullptr;
 		inline static Reef::Manager* m_guiManager = nullptr;
-		inline static Coral::Scene* m_scene = nullptr;
+		inline static ECS::Scene* m_scene = nullptr;
 		inline static Utils::FileSystemObserver* m_fileSystemObserver = nullptr;
 		inline static Shader::Manager* m_shaderManager = nullptr;
 

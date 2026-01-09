@@ -4,6 +4,8 @@
 
 #include "buffer.h"
 
+#include <iostream>
+
 Coral::Memory::Buffer::Builder::Builder() { m_name = to_string(boost::uuids::random_generator()()); }
 Coral::Memory::Buffer::Builder::~Builder() = default;
 Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::InstanceSize(const u32 instanceSize) {
@@ -27,6 +29,14 @@ Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::DeviceAlignment(
 	m_deviceAlignment = deviceAlignment;
 	return *this;
 }
+
+Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::Data(const void* value) {
+	m_value = value;
+	m_usageFlagSet.emplace(vk::BufferUsageFlagBits::eTransferDst);
+
+	return *this;
+}
+
 Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::Data(const void* data, vk::DeviceSize size) {
 	m_data = data;
 	m_dataSize = size;
@@ -87,6 +97,29 @@ Coral::Memory::Buffer::Buffer(const Builder& builder) : m_instanceCount(builder.
 			stagingBuffer->Unmap();
 
 			CopyBuffer(*stagingBuffer, (builder.m_dataSize + m_alignmentSize - 1) / m_alignmentSize);
+		}
+	} else if (builder.m_value != nullptr) {
+		if (m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostVisible && m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) {
+			Map<uint8_t>();
+			for (u32 i = 0; i < m_instanceCount; ++i) {
+				std::memcpy(static_cast<uint8_t*>(m_mapped) + i * m_alignmentSize, builder.m_value, builder.m_instanceSize);
+			}
+			Unmap();
+		} else {
+			const auto stagingBuffer = Builder()
+				.InstanceSize(m_alignmentSize)
+				.InstanceCount(m_instanceCount)
+				.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+				.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+				.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+				.Build();
+			stagingBuffer->Map<uint8_t>();
+			for (u32 i = 0; i < m_instanceCount; ++i) {
+				std::memcpy(static_cast<uint8_t*>(stagingBuffer->m_mapped) + i * m_alignmentSize, builder.m_value, builder.m_instanceSize);
+			}
+			stagingBuffer->Unmap();
+
+			CopyBuffer(*stagingBuffer);
 		}
 	}
 }

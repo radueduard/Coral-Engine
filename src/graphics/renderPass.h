@@ -96,7 +96,7 @@ namespace Coral::Graphics {
 
         void Begin(const Core::CommandBuffer& commandBuffer, uint32_t imageIndex);
         void Update(float deltaTime);
-        void Draw(const Core::CommandBuffer& commandBuffer) const;
+        void Draw(const Core::CommandBuffer& commandBuffer, void* usrData = nullptr) const;
         void End(const Core::CommandBuffer& commandBuffer);
 
         [[nodiscard]] const std::vector<Attachment>& Attachments() const { return m_attachments; }

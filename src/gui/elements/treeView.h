@@ -17,7 +17,7 @@
 #include "ecs/sceneManager.h"
 
 namespace Coral::Reef {
-    template<typename T, typename IdType> requires std::is_base_of_v<NarryTree<T, IdType>, T>
+    template<typename T, typename IdType> requires std::is_base_of_v<Tree<T, IdType>, T>
     class TreeView final : public Element {
     public:
         TreeView(T& tree, std::function<void(T&)> onItemClick, const Style& style = Style(), const Text::Style& textStyle = {})

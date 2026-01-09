@@ -89,6 +89,7 @@ namespace Coral::Reef {
 							}
 							return static_cast<u8>(data.GetProjectionData().type);
 						},
+						&data.m_changed,
 						{
 							new Element({
 								.direction = Axis::Vertical,
@@ -163,8 +164,8 @@ namespace Coral::Reef {
 										"Projection planes",
 										{ &data.m_projectionData.data.orthographic.near, &data.m_projectionData.data.orthographic.far },
 										0.1f,
-										{0.0001f, 100.f},
-										{10.f, 10000.f},
+										{-100.f, 0.f},
+										{0.f, 100.f},
 										&data.m_changed,
 										labels,
 										DragDefaultStyle()
@@ -198,8 +199,8 @@ namespace Coral::Reef {
 									new Drag<f32, 2>(
 										"Projection planes",
 										{ &data.m_projectionData.data.perspective.near, &data.m_projectionData.data.perspective.far },
-										0.1f,
-										{ 0.01f, 100.f },
+										0.001f,
+										{ 0.001f, 100.f },
 										{ 10.0f, 10000.0f },
 										&data.m_changed,
 										labels,

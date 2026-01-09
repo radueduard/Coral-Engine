@@ -124,6 +124,7 @@ namespace Coral::Reef {
 							}
 							return static_cast<u8>(lastType);
 						},
+						&data.m_changed,
 						{
 							new Element({
 								.direction = Axis::Vertical,

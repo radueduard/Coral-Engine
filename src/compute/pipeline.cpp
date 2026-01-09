@@ -8,6 +8,7 @@
 #include <utility>
 #include <ranges>
 
+#include "context.h"
 #include "core/device.h"
 
 #include "memory/descriptor/set.h"

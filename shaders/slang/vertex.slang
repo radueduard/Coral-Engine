@@ -12,7 +12,7 @@ public struct Vertex : IComparable
     public float4 color : COLOR;
 
     func equals(other : Vertex) -> bool {
-        return all(position == other.position);
+        return all(abs(position - other.position) < 0.0001);
     }
 
     func lessThan(other : Vertex) -> bool {
@@ -31,15 +31,16 @@ public struct Vertex : IComparable
 };
 
 groupshared Vertex local_value[128];
-groupshared uint local_new_indices[128];
+groupshared uint local_remapTable[128];
 
 [numthreads(8, 8, 1)]
+[shader("compute")]
 void sort (
 	uint3 GTid : SV_GroupThreadID,
 	uint3 DTid : SV_DispatchThreadID,
 	uint3 Gid  : SV_GroupID,
 	RWStructuredBuffer<Vertex> data,
-	RWStructuredBuffer<uint> newIndices,
+	RWStructuredBuffer<uint> remapTable,
 	uniform Parameters parameters
 ) {
 	uint3 workGroupSize = WorkgroupSize();
@@ -51,22 +52,22 @@ void sort (
 	if (parameters.algorithm <= Algorithm.LocalDisperse){
 		local_value[t * 2]   = data[offset + t * 2];
 		local_value[t * 2 + 1] = data[offset + t * 2 + 1];
-		local_new_indices[t * 2]   = offset + t * 2;
-		local_new_indices[t * 2 + 1] = offset + t * 2 + 1;
+		local_remapTable[t * 2]   = remapTable[offset + t * 2];
+		local_remapTable[t * 2 + 1] = remapTable[offset + t * 2 + 1];
 	}
 
 	switch (parameters.algorithm){
 		case Algorithm.LocalBitonicMergeSort:
-			local_bms(parameters.h, t, local_value, local_new_indices);
+			local_bms(parameters.h, t, local_value, local_remapTable);
 		break;
 		case Algorithm.LocalDisperse:
-			local_disperse(parameters.h, t, local_value, local_new_indices);
+			local_disperse(parameters.h, t, local_value, local_remapTable);
 		break;
 		case Algorithm.BigFlip:
-			big_flip(parameters.h, t_prime, data, newIndices);
+			big_flip(parameters.h, t_prime, data, remapTable);
 		break;
 		case Algorithm.BigDisperse:
-			big_disperse(parameters.h, t_prime, data, newIndices);
+			big_disperse(parameters.h, t_prime, data, remapTable);
 		break;
 	}
 
@@ -74,7 +75,68 @@ void sort (
 		GroupMemoryBarrierWithGroupSync();
 		data[offset + t * 2]   = local_value[t * 2];
 		data[offset + t * 2 + 1] = local_value[t * 2 + 1];
-		newIndices[offset + t * 2]   = local_new_indices[t * 2];
-		newIndices[offset + t * 2 + 1] = local_new_indices[t * 2 + 1];
+		remapTable[offset + t * 2]   = local_remapTable[t * 2];
+		remapTable[offset + t * 2 + 1] = local_remapTable[t * 2 + 1];
 	}
+}
+
+[numthreads(128, 1, 1)]
+[shader("compute")]
+void reverseRemapTable(
+	uint3 DTid : SV_DispatchThreadID,
+	in RWStructuredBuffer<uint> reversedRemapTable,
+	in RWStructuredBuffer<uint> resultRemapTable
+) {
+	if (DTid.x >= resultRemapTable.getCount()) {
+		return;
+	}
+
+	uint index = DTid.x;
+	uint oldPosition = reversedRemapTable[index];
+	resultRemapTable[oldPosition] = index;
+}
+
+[numthreads(128, 1, 1)]
+[shader("compute")]
+void actualizeIndices(
+	uint3 DTid : SV_DispatchThreadID,
+	in RWStructuredBuffer<uint> indices,
+	in RWStructuredBuffer<uint> remapTable
+) {
+	if (DTid.x >= indices.getCount()) {
+		return;
+	}
+
+	uint index = DTid.x;
+	uint oldPosition = indices[index];
+	indices[index] = remapTable[oldPosition];
+}
+
+[numthreads(1, 1, 1)]
+[shader("compute")]
+void combineDuplicates(
+	uint3 DTid : SV_DispatchThreadID,
+	in RWStructuredBuffer<Vertex> vertices,
+	in RWStructuredBuffer<uint> remapTable
+) {
+	uint offset = DTid.x * 128;
+	uint baseVertexIndex = offset;
+	Vertex baseVertex = vertices[offset];
+	for (uint i = 1; i < 128; i++) {
+		Vertex currentVertex = vertices[offset + i];
+		if (currentVertex.equals(baseVertex)) {
+			baseVertex.normal += currentVertex.normal;
+			baseVertex.tangent.xyz += currentVertex.tangent.xyz;
+			remapTable[offset + i] = baseVertexIndex;
+		} else {
+			baseVertex.normal = normalize(baseVertex.normal);
+			baseVertex.tangent.xyz = normalize(baseVertex.tangent.xyz);
+			vertices[baseVertexIndex] = baseVertex;
+			baseVertex = currentVertex;
+			baseVertexIndex = offset + i;
+		}
+	}
+	baseVertex.normal = normalize(baseVertex.normal);
+	baseVertex.tangent.xyz = normalize(baseVertex.tangent.xyz);
+	vertices[baseVertexIndex] = baseVertex;
 }

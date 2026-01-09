@@ -7,11 +7,14 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
 
-#include "graphics/objects/material.h"
-#include "graphics/objects/mesh.h"
-#include "graphics/objects/texture.h"
 #include "gui/layer.h"
 
+
+namespace Coral::Graphics {
+	class Mesh;
+	class Material;
+	class Texture;
+}
 
 namespace Coral::Reef {
 	class BufferSettings;

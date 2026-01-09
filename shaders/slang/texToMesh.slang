@@ -93,12 +93,46 @@ func TextureToMesh3D(
     }
     GroupMemoryBarrierWithGroupSync();
 
+    Array<float3, 12> normals = { float3(0.0, 0.0, 0.0) };
+    Array<float3, 12> tangents = { float3(0.0, 0.0, 0.0) };
+    // Array<float3, 12> bitangents = { float3(0.0, 0.0, 0.0) };
+    for (int i = 0; i < localPrimitiveCount; i++) {
+        uint3 tri = initialPrimitives[i];
+        float3 v0 = initialVertices[tri.x];
+        float3 v1 = initialVertices[tri.y];
+        float3 v2 = initialVertices[tri.z];
+
+        float3 faceNormal = normalize(cross(v1 - v0, v2 - v0));
+
+        normals[tri.x] += faceNormal;
+        normals[tri.y] += faceNormal;
+        normals[tri.z] += faceNormal;
+
+        float3 faceTangent = normalize(cross(faceNormal, float3(0.0, 1.0, 0.0)));
+        if (length(faceTangent) < 0.1) {
+            faceTangent = normalize(cross(faceNormal, float3(1.0, 0.0, 0.0)));
+        }
+        tangents[tri.x] += faceTangent;
+        tangents[tri.y] += faceTangent;
+        tangents[tri.z] += faceTangent;
+
+        // float3 faceBitangent = cross(faceNormal, faceTangent);
+        // bitangents[tri.x] += faceBitangent;
+        // bitangents[tri.y] += faceBitangent;
+        // bitangents[tri.z] += faceBitangent;
+    }
+
+    for (int i = 0; i < localVertexCount; i++) {
+        normals[i] = normalize(normals[i]);
+        tangents[i] = normalize(tangents[i]);
+    }
+
     for (uint i = 0; i < localVertexCount; i++) {
-        float2 uv = cubicToUV(initialVertices[i]);
+        float2 uv = sphericalToUV(initialVertices[i]);
         vertexBuffer[vertexOffset + localVertexOffset + i] = Vertex(
             initialVertices[i], 
-            float3(0.0, 0.0, 0.0), 
-            float4(0.0, 0.0, 0.0, 0.0), 
+            normals[i], 
+            float4(tangents[i], 1),
             uv, 
             float2(0.0, 0.0), 
             float4(1.0, 1.0, 1.0, 1.0)
@@ -110,5 +144,11 @@ func TextureToMesh3D(
         indexBuffer[indexOffset + localIndexOffset + i * 3 + 0] = vertexOffset + localVertexOffset + tri.x;
         indexBuffer[indexOffset + localIndexOffset + i * 3 + 1] = vertexOffset + localVertexOffset + tri.y;
         indexBuffer[indexOffset + localIndexOffset + i * 3 + 2] = vertexOffset + localVertexOffset + tri.z;
+    }
+
+    for (uint i = 0; i < localVertexCount; i++) {
+        Vertex v = vertexBuffer[vertexOffset + localVertexOffset + i];
+        v.normal = normalize(v.normal);
+        vertexBuffer[vertexOffset + localVertexOffset + i] = v;
     }
 }

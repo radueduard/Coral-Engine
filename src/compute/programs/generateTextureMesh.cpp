@@ -4,6 +4,8 @@
 
 #include "generateTextureMesh.h"
 
+#include <fstream>
+
 #include "compute/pipeline.h"
 #include "core/scheduler.h"
 #include "memory/buffer.h"
@@ -31,13 +33,47 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		.Data(initialCounts, 2)
 		.Build();
 
+	auto defaultVertex = Graphics::Vertex {
+		.position = { std::numeric_limits<f32>::max(), std::numeric_limits<f32>::max(), std::numeric_limits<f32>::max() }
+	};
+
 	// max vertex count is 12 * 8^3 * chunkCountTotal
 	auto vertexBufferWithDuplicates = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(Graphics::Vertex))
-		.InstanceCount(12 * 512 * chunkCountTotal)
+		.InstanceCount(16 * 512 * chunkCountTotal)
 		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Data(&defaultVertex)
+		.Build();
+
+	std::vector<u32> initialIndices = std::ranges::iota_view(0u, 16u * 512u * chunkCountTotal) | std::ranges::to<std::vector<u32>>();
+
+	auto reverseRemapTableBuffer = Memory::Buffer::Builder()
+		.InstanceSize(sizeof(u32))
+		.InstanceCount(16 * 512 * chunkCountTotal)
+		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Data(initialIndices.data(), static_cast<u32>(initialIndices.size()))
+		.Build();
+
+	auto remapTableBuffer = Memory::Buffer::Builder()
+		.InstanceSize(sizeof(u32))
+		.InstanceCount(16 * 512 * chunkCountTotal)
+		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Data(initialIndices.data(), static_cast<u32>(initialIndices.size()))
+		.Build();
+
+	auto remapTableBuffer2 = Memory::Buffer::Builder()
+		.InstanceSize(sizeof(u32))
+		.InstanceCount(16 * 512 * chunkCountTotal)
+		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.Data(initialIndices.data(), static_cast<u32>(initialIndices.size()))
 		.Build();
 
 	// max index count is 15 * 8^3 * chunkCountTotal
@@ -51,6 +87,18 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 
 	const auto generateShader = Context::ShaderManager().SlangShader("texToMesh", "TextureToMesh3D");
 	auto computePipeline = Compute::Pipeline(*generateShader);
+
+	const auto sortShader = Context::ShaderManager().SlangShader("vertex", "sort");
+	auto sortPipeline = Compute::Pipeline(*sortShader);
+
+	const auto reverseRemapShader = Context::ShaderManager().SlangShader("vertex", "reverseRemapTable");
+	auto reverseRemapPipeline = Compute::Pipeline(*reverseRemapShader);
+
+	const auto actualizeIndicesShader = Context::ShaderManager().SlangShader("vertex", "actualizeIndices");
+	auto actualizeIndicesPipeline = Compute::Pipeline(*actualizeIndicesShader);
+
+	const auto combineDuplicateShader = Context::ShaderManager().SlangShader("vertex", "combineDuplicates");
+	auto combineDuplicatePipeline = Compute::Pipeline(*combineDuplicateShader);
 
 	auto imageView = Memory::ImageView::Builder(m_image)
 		.ViewType(vk::ImageViewType::e3D)
@@ -72,11 +120,36 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		.WriteBuffer(3, counts->DescriptorInfo())
 		.Build();
 
+	auto sortSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), sortPipeline.DescriptorSetLayout(0))
+		.WriteBuffer(0, vertexBufferWithDuplicates->DescriptorInfo())
+		.WriteBuffer(1, reverseRemapTableBuffer->DescriptorInfo())
+		.Build();
+
+	auto reverseRemapSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), reverseRemapPipeline.DescriptorSetLayout(0))
+		.WriteBuffer(0, reverseRemapTableBuffer->DescriptorInfo())
+		.WriteBuffer(1, remapTableBuffer->DescriptorInfo())
+		.Build();
+
+	auto actualizeIndicesSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), actualizeIndicesPipeline.DescriptorSetLayout(0))
+		.WriteBuffer(0, indexBufferWithDuplicates->DescriptorInfo())
+		.WriteBuffer(1, remapTableBuffer->DescriptorInfo())
+		.Build();
+
+	auto combineDuplicateSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), combineDuplicatePipeline.DescriptorSetLayout(0))
+		.WriteBuffer(0, vertexBufferWithDuplicates->DescriptorInfo())
+		.WriteBuffer(1, remapTableBuffer2->DescriptorInfo())
+		.Build();
+
+	auto actualizeIndicesSet2 = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), actualizeIndicesPipeline.DescriptorSetLayout(0))
+		.WriteBuffer(0, indexBufferWithDuplicates->DescriptorInfo())
+		.WriteBuffer(1, remapTableBuffer2->DescriptorInfo())
+		.Build();
+
 	Context::Device().RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
 		computePipeline.Bind(commandBuffer);
 		computePipeline.BindDescriptorSet(0, commandBuffer, *generateSet);
 
-		const struct  {
+		const struct {
 			alignas(16) Math::Vector3f gridMin;
 			alignas(16) Math::Vector3f gridMax;
 			alignas(16) Math::Vector3u chunkCount;
@@ -94,8 +167,8 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 	}, vk::QueueFlagBits::eCompute);
 
 	auto mappedCounts = counts->Map<u32>();
-	auto vertexCount = mappedCounts[0];
-	auto indexCount = mappedCounts[1];
+	const auto vertexCount = mappedCounts[0];
+	const auto indexCount = mappedCounts[1];
 	counts->Unmap();
 
 	if (vertexCount == 0 || indexCount == 0) {
@@ -104,10 +177,163 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 
 	std::cout << "Generated mesh with " << vertexCount << " vertices and " << indexCount << " indices." << std::endl;
 
+	Context::Device().RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
+		sortPipeline.Bind(commandBuffer);
+		sortPipeline.BindDescriptorSet(0, commandBuffer, *sortSet);
+
+		enum class Algorithm : u32 {
+			LocalBitonicMergeSort = 0,
+			LocalDisperse = 1,
+			BigFlip = 2,
+			BigDisperse = 3
+		};
+
+		struct PushConstants {
+			alignas(4) Algorithm algorithm;
+			alignas(4) u32 h;
+		};
+
+		const u32 n = vertexBufferWithDuplicates->InstanceCount();
+		constexpr u32 workGroupSize = 64;
+		const u32 workGroupCount = n / (workGroupSize * 2);
+
+		auto dispatch = [&](const u32 h, const Algorithm& algorithm) {
+			const PushConstants pushConstantsSort {
+				.algorithm = algorithm,
+				.h = h
+			};
+			sortPipeline.PushConstants(commandBuffer, vk::ShaderStageFlagBits::eCompute, 0, pushConstantsSort);
+			commandBuffer->dispatch(workGroupCount, 1, 1);
+
+			auto vertexBarrier = vk::BufferMemoryBarrier()
+				.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead)
+				.setDstAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)
+				.setBuffer(**vertexBufferWithDuplicates)
+				.setSize(vk::WholeSize);
+
+			auto reverseRemapBarrier = vk::BufferMemoryBarrier()
+				.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead)
+				.setDstAccessMask(vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead)
+				.setBuffer(**reverseRemapTableBuffer)
+				.setSize(vk::WholeSize);
+
+			commandBuffer->pipelineBarrier(
+				vk::PipelineStageFlagBits::eComputeShader,
+				vk::PipelineStageFlagBits::eComputeShader,
+				{},
+				{},
+				{ vertexBarrier, reverseRemapBarrier },
+				{});
+		};
+
+		u32 h = workGroupSize * 2;
+		dispatch(h, Algorithm::LocalBitonicMergeSort);
+		h *= 2;
+		for (; h <= n; h *= 2) {
+			dispatch(h, Algorithm::BigFlip);
+			for (u32 hh = h; hh > 1; hh /= 2) {
+				if (hh <= workGroupSize * 2) {
+					dispatch(hh, Algorithm::LocalDisperse);
+					break;
+				}
+				dispatch(hh, Algorithm::BigDisperse);
+			}
+		}
+
+		auto reverseRemapBarrier = vk::BufferMemoryBarrier()
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			.setBuffer(**reverseRemapTableBuffer)
+			.setSize(vk::WholeSize);
+
+		commandBuffer->pipelineBarrier(
+			vk::PipelineStageFlagBits::eComputeShader,
+			vk::PipelineStageFlagBits::eComputeShader,
+			{},
+			{},
+			{ reverseRemapBarrier },
+			{}
+		);
+
+		reverseRemapPipeline.Bind(commandBuffer);
+		reverseRemapPipeline.BindDescriptorSet(0, commandBuffer, *reverseRemapSet);
+		commandBuffer->dispatch(indexCount / 128 + 1, 1, 1);
+
+		auto indexBarrier = vk::BufferMemoryBarrier()
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setBuffer(**indexBufferWithDuplicates)
+			.setSize(vk::WholeSize);
+
+		auto remapTableBarrier = vk::BufferMemoryBarrier()
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			.setBuffer(**remapTableBuffer)
+			.setSize(vk::WholeSize);
+
+		commandBuffer->pipelineBarrier(
+			vk::PipelineStageFlagBits::eComputeShader,
+			vk::PipelineStageFlagBits::eComputeShader,
+			{},
+			{},
+			{ indexBarrier, remapTableBarrier },
+			{}
+		);
+
+		actualizeIndicesPipeline.Bind(commandBuffer);
+		actualizeIndicesPipeline.BindDescriptorSet(0, commandBuffer, *actualizeIndicesSet);
+		commandBuffer->dispatch(indexCount / 128 + 1, 1, 1);
+
+		auto vertexBarrier2 = vk::BufferMemoryBarrier()
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)
+			.setBuffer(**vertexBufferWithDuplicates)
+			.setSize(vk::WholeSize);
+
+		commandBuffer->pipelineBarrier(
+			vk::PipelineStageFlagBits::eComputeShader,
+			vk::PipelineStageFlagBits::eComputeShader,
+			{},
+			{},
+			{ vertexBarrier2 },
+			{}
+		);
+
+		combineDuplicatePipeline.Bind(commandBuffer);
+		combineDuplicatePipeline.BindDescriptorSet(0, commandBuffer, *combineDuplicateSet);
+		commandBuffer->dispatch(vertexCount / 128 + 1, 1, 1);
+
+		auto remapTableBarrier2 = vk::BufferMemoryBarrier()
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			.setBuffer(**remapTableBuffer2)
+			.setSize(vk::WholeSize);
+
+		indexBarrier = vk::BufferMemoryBarrier()
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setBuffer(**indexBufferWithDuplicates)
+			.setSize(vk::WholeSize);
+
+		commandBuffer->pipelineBarrier(
+			vk::PipelineStageFlagBits::eComputeShader,
+			vk::PipelineStageFlagBits::eComputeShader,
+			{},
+			{},
+			{ remapTableBarrier2, indexBarrier },
+			{}
+		);
+
+		actualizeIndicesPipeline.Bind(commandBuffer);
+		actualizeIndicesPipeline.BindDescriptorSet(0, commandBuffer, *actualizeIndicesSet2);
+		commandBuffer->dispatch(indexCount / 128 + 1, 1, 1);
+	}, vk::QueueFlagBits::eCompute);
+
 	auto vertexBuffer = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(Graphics::Vertex))
 		.InstanceCount(vertexCount)
 		.UsageFlags(vk::BufferUsageFlagBits::eVertexBuffer)
+		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
 		.Build();
@@ -116,6 +342,7 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		.InstanceSize(sizeof(u32))
 		.InstanceCount(indexCount)
 		.UsageFlags(vk::BufferUsageFlagBits::eIndexBuffer)
+		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
 		.Build();

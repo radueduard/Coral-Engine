@@ -4,11 +4,11 @@
 
 #include "sceneManager.h"
 #include "ecs/entity.h"
-#include "gui/elements/popup.h"
 
 Coral::ECS::SceneManager::SceneManager() {
 	s_instance = this;
 	m_registry = entt::registry();
+
 	NewScene();
 }
 Coral::ECS::SceneManager& Coral::ECS::SceneManager::Get() {

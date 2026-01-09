@@ -13,6 +13,8 @@ namespace Coral::Asset {
 		explicit Prefab(std::string name, nlohmann::json metadata);
 		void Load() const;
 
+		const nlohmann::json& Json() const { return m_metadata; }
+
 		[[nodiscard]] const std::string& Name() const { return m_name; }
 
 	private:

@@ -113,5 +113,5 @@ void Coral::Asset::Prefab::Load() const {
 			root = objectMap[childUUID];
 		}
 	}
-	ECS::SceneManager::Get().GetLoadedScene().Root().AddChild(std::unique_ptr<ECS::Entity>(root));
+	Context::Scene().Root().AddChild(std::unique_ptr<ECS::Entity>(root));
 }

@@ -4,13 +4,11 @@
 
 #pragma once
 
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <iostream>
-#include <vulkan/vulkan.hpp>
-
-#include "context.h"
 #include "core/device.h"
+
+#include <vulkan/vulkan.hpp>
+#include "context.h"
+#include "utils/globalWrapper.h"
 
 static vk::DeviceSize GetAlignment(const vk::DeviceSize size, const vk::DeviceSize alignment) {
     if (alignment > 0) {
@@ -37,8 +35,9 @@ namespace Coral::Memory {
 			Builder& MemoryProperty(vk::MemoryPropertyFlagBits memoryPropertyFlag);
 
 			Builder& DeviceAlignment(vk::DeviceSize deviceAlignment);
+			Coral::Memory::Buffer::Builder& Data(const void* value);
 
-        	Builder& Data(const void* data, vk::DeviceSize size);
+			Builder& Data(const void* data, vk::DeviceSize size);
 
 			std::unique_ptr<Buffer> Build();
 
@@ -49,6 +48,7 @@ namespace Coral::Memory {
         	UnorderedSet<vk::MemoryPropertyFlagBits> m_memoryPropertyFlagSet = {};
             vk::DeviceSize m_deviceAlignment = 0;
 
+        	const void* m_value = nullptr;
         	const void* m_data = nullptr;
         	vk::DeviceSize m_dataSize = 0;
         };

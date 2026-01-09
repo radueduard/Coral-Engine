@@ -25,7 +25,7 @@ namespace Coral::Shader {
 		std::vector<u32> Compile();
 
 		explicit EntryPoint(
-			slang::IModule* module,
+			Module* module,
 			u32 index,
 			const Slang::ComPtr<slang::IEntryPoint>& entryPoint);
 
@@ -33,7 +33,7 @@ namespace Coral::Shader {
 		std::string m_name;
 		std::unordered_map<std::string, std::string> m_semanticMap;
 
-		slang::IModule* m_module;
+		Module* m_module;
 		Slang::ComPtr<slang::IEntryPoint> m_entryPoint;
 
 		Coral::Shader::Shader* m_shader = nullptr;
@@ -45,13 +45,17 @@ namespace Coral::Shader {
 
 		const std::string& Name() const { return m_name; }
 		EntryPoint& EntryPoint(const std::string& name) const;
+		bool Changed() const { return m_changed; }
+		slang::ISession* Session() const { return m_session; }
 
 		void Update();
 
-	private:
-		explicit Module(const Slang::ComPtr<slang::IModule>& module);
+		slang::IModule* get() const { return m_module; }
 
-		std::filesystem::path m_path;
+	private:
+		explicit Module(std::string name);
+
+		Slang::ComPtr<slang::ISession> m_session;
 		std::vector<std::filesystem::path> m_dependencies;
 		std::string m_name;
 		bool m_changed = false;
@@ -70,7 +74,6 @@ namespace Coral::Shader {
 
 		void Update();
 
-		slang::ISession* Session() const { return session; }
 		Coral::Shader::Module& Module(const std::string& moduleName) {
 			if (!modules.contains(moduleName)) {
 				modules[moduleName] = LoadModule(moduleName);
@@ -78,11 +81,15 @@ namespace Coral::Shader {
 			return *modules.at(moduleName);
 		}
 
+		~SlangCompiler() = default;
+
+		SlangProfileID FindProfile(const std::string& profileName) const;
+		Slang::ComPtr<slang::ISession> CreateSession(const std::vector<std::filesystem::path>& searchPaths) const;
+
 	private:
 		std::unique_ptr<Coral::Shader::Module> LoadModule(const std::string& moduleName) const;
 
 		Slang::ComPtr<slang::IGlobalSession> globalSession;
-		Slang::ComPtr<slang::ISession> session;
 
 		std::unordered_map<std::string, std::unique_ptr<Coral::Shader::Module>> modules;
 	};

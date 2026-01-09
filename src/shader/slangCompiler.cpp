@@ -10,6 +10,7 @@
 #include <stack>
 
 #include "manager.h"
+#include "utils/fileSystemObserver.h"
 
 void Coral::Shader::EntryPoint::LoadShader() {
 	const auto code = Compile();
@@ -26,10 +27,10 @@ void Coral::Shader::EntryPoint::LoadShader() {
 std::vector<Coral::u32> Coral::Shader::EntryPoint::Compile() {
 	Slang::ComPtr<slang::IBlob> diagnostics;
 
-	const std::vector<slang::IComponentType*> components{ m_module, m_entryPoint.get() };
+	const std::vector<slang::IComponentType*> components { m_module->get(), m_entryPoint.get() };
 
 	Slang::ComPtr<slang::IComponentType> program;
-	Context::ShaderManager().SlangCompiler().Session()->createCompositeComponentType(
+	m_module->Session()->createCompositeComponentType(
 		components.data(), static_cast<i64>(components.size()), program.writeRef(), diagnostics.writeRef());
 
 	if (diagnostics) {
@@ -103,7 +104,7 @@ std::vector<Coral::u32> Coral::Shader::EntryPoint::Compile() {
 	return {dataStart, dataEnd};
 }
 
-Coral::Shader::EntryPoint::EntryPoint(slang::IModule* module, const u32 index,
+Coral::Shader::EntryPoint::EntryPoint(Module* module, const u32 index,
 									  const Slang::ComPtr<slang::IEntryPoint>& entryPoint) :
 	m_index(index), m_module(module), m_entryPoint(entryPoint) {
 	m_name = entryPoint->getFunctionReflection()->getName();
@@ -114,26 +115,23 @@ Coral::Shader::EntryPoint& Coral::Shader::Module::EntryPoint(const std::string& 
 }
 
 void Coral::Shader::Module::Update() {
-	m_changed = Context::FileSystemObserver().HasFileChanged(m_path);
-	if (!m_changed) {
-		for (const auto& dependency : m_dependencies) {
-			if (Context::FileSystemObserver().HasFileChanged(dependency)) {
-				m_changed = true;
-				break;
-			}
+	m_changed = false;
+	for (const auto& dependency : m_dependencies) {
+		if (Context::FileSystemObserver().HasFileChanged(dependency)) {
+			m_changed = true;
+			break;
 		}
 	}
 	if (m_changed) {
 		std::cout << "Shader module " << m_name << " has changed. Reloading..." << std::endl;
-		Context::FileSystemObserver().UntrackFile(m_path);
 		for (const auto& dependency : m_dependencies) {
 			Context::FileSystemObserver().UntrackFile(dependency);
 		}
 
-		m_module = Context::ShaderManager().SlangCompiler().Session()->loadModule(m_name.c_str());
+		m_session = Context::ShaderManager().SlangCompiler().CreateSession({ "shaders/slang" });
+
+		m_module = m_session->loadModule(m_name.c_str());
 		const u32 dependencyCount = m_module->getDependencyFileCount();
-		m_path = m_module->getFilePath();
-		Context::FileSystemObserver().TrackFile(m_path);
 
 		m_dependencies.clear();
 		m_dependencies.reserve(dependencyCount);
@@ -152,11 +150,10 @@ void Coral::Shader::Module::Update() {
 				newEntryPointNames.insert(entryPointName);
 				if (!m_entryPoints.contains(entryPointName)) {
 					m_entryPoints.emplace(entryPointName,
-						std::unique_ptr<Coral::Shader::EntryPoint>(new Coral::Shader::EntryPoint(m_module.get(), i, entryPoint)));
+						std::unique_ptr<Coral::Shader::EntryPoint>(new Coral::Shader::EntryPoint(this, i, entryPoint)));
 				} else {
 					m_entryPoints[entryPointName]->m_entryPoint.swap(entryPoint);
 					m_entryPoints[entryPointName]->m_index = i;
-					m_entryPoints[entryPointName]->m_module = m_module.get();
 				}
 			}
 			else {
@@ -184,11 +181,16 @@ void Coral::Shader::Module::Update() {
 	}
 }
 
-Coral::Shader::Module::Module(const Slang::ComPtr<slang::IModule>& module) : m_module(module) {
-	m_name = m_module->getName();
-	m_path = m_module->getFilePath();
-	Context::FileSystemObserver().TrackFile(m_path);
-
+Coral::Shader::Module::Module(std::string name)
+	: m_name(std::move(name))
+{
+	Slang::ComPtr<slang::IBlob> diagnostics;
+	m_session = Context::ShaderManager().SlangCompiler().CreateSession({ "shaders/slang" });
+	m_module = m_session->loadModule(m_name.c_str(), diagnostics.writeRef());
+	if (diagnostics) {
+		std::cerr << "Diagnostics: " << static_cast<const char*>(diagnostics->getBufferPointer()) << std::endl;
+		throw std::runtime_error("Failed to load Slang module");
+	}
 	m_changed = true;
 	const u32 dependencyCount = m_module->getDependencyFileCount();
 	m_dependencies.reserve(dependencyCount);
@@ -202,7 +204,7 @@ Coral::Shader::Module::Module(const Slang::ComPtr<slang::IModule>& module) : m_m
 		m_module->getDefinedEntryPoint(i, entryPoint.writeRef());
 		if (entryPoint) {
 			const std::string entryPointName = entryPoint->getFunctionReflection()->getName();
-			m_entryPoints.emplace(entryPointName, std::unique_ptr<Coral::Shader::EntryPoint>(new Coral::Shader::EntryPoint(m_module.get(), i, entryPoint)));
+			m_entryPoints.emplace(entryPointName, std::unique_ptr<Coral::Shader::EntryPoint>(new Coral::Shader::EntryPoint(this, i, entryPoint)));
 		}
 		else {
 			std::cerr << "Failed to get entry point at index " << i << std::endl;
@@ -213,12 +215,24 @@ Coral::Shader::Module::Module(const Slang::ComPtr<slang::IModule>& module) : m_m
 Coral::Shader::SlangCompiler::SlangCompiler() {
 	const SlangGlobalSessionDesc desc = {};
 	createGlobalSession(&desc, globalSession.writeRef());
+}
 
+SlangProfileID Coral::Shader::SlangCompiler::FindProfile(const std::string& profileName) const {
+	return globalSession->findProfile(profileName.c_str());
+}
+Slang::ComPtr<slang::ISession>
+
+Coral::Shader::SlangCompiler::CreateSession(const std::vector<std::filesystem::path>& searchPaths) const {
 	slang::TargetDesc targetDesc;
 	targetDesc.format = SLANG_SPIRV;
-	targetDesc.profile = globalSession->findProfile("spirv_1_5");
+	targetDesc.profile = Context::ShaderManager().SlangCompiler().FindProfile("spirv_1_5");
 
-	const char* searchPaths[] = {"shaders/slang"};
+	std::vector<std::string> pathStrings = searchPaths | std::views::transform([](const auto& p) {
+		return p.string();
+	}) | std::ranges::to<std::vector<std::string>>();
+	std::vector<const char*> searchPathCStrs = pathStrings | std::views::transform([](const auto& s) {
+		return s.c_str();
+	}) | std::ranges::to<std::vector<const char*>>();
 
 	// constexpr PreprocessorMacroDesc fancyFlag = { "ENABLE_FANCY_FEATURE", "1" };
 
@@ -230,25 +244,25 @@ Coral::Shader::SlangCompiler::SlangCompiler() {
 		.targets = &targetDesc,
 		.targetCount = 1,
 		.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
-		.searchPaths = searchPaths,
-		.searchPathCount = 1,
+		.searchPaths = searchPathCStrs.data(),
+		.searchPathCount = static_cast<u32>(searchPathCStrs.size()),
 		.compilerOptionEntries = slangOptions.data(),
 		.compilerOptionEntryCount = static_cast<u32>(slangOptions.size()),
 		// .preprocessorMacros = &fancyFlag,
 		// .preprocessorMacroCount = 1,
 	};
 
-	globalSession->createSession(sessionDesc, session.writeRef());
+	Slang::ComPtr<slang::ISession> session;
+	if (const auto result = globalSession->createSession(sessionDesc, session.writeRef());
+		SLANG_FAILED(result))
+	{
+		throw std::runtime_error("Failed to create Slang session");
+	}
+	return std::move(session);
 }
 
 std::unique_ptr<Coral::Shader::Module> Coral::Shader::SlangCompiler::LoadModule(const std::string& moduleName) const {
-	Slang::ComPtr<slang::IBlob> diagnostics;
-	const auto module = Slang::ComPtr(session->loadModule(moduleName.c_str(), diagnostics.writeRef()));
-
-	if (diagnostics) {
-		std::cerr << "Diagnostics: " << static_cast<const char*>(diagnostics->getBufferPointer()) << std::endl;
-	}
-	return std::unique_ptr<Coral::Shader::Module>(new Coral::Shader::Module(module));
+	return std::unique_ptr<Coral::Shader::Module>(new Coral::Shader::Module(moduleName));
 }
 
 bool Coral::Shader::SlangCompiler::ModuleChanged(const std::string& moduleName) const {

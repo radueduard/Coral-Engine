@@ -80,7 +80,8 @@ namespace Coral::Asset {
     }
 
 	void Manager::AddPrefab(std::unique_ptr<Prefab> prefab) {
-		prefabs.emplace(boost::uuids::random_generator()(), std::move(prefab));
+    	std::cout << "Adding prefab: " << prefab->Json().dump(4) << std::endl;
+    	prefabs.emplace(boost::uuids::random_generator()(), std::move(prefab));
 		m_prefabsChanged = true;
 	}
 	const Prefab& Manager::GetPrefab(const boost::uuids::uuid& id) const {
@@ -190,7 +191,7 @@ namespace Coral::Asset {
 			.Name("default")
 			.AddTexture(PBR::Usage::Albedo, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")))
 			.AddTexture(PBR::Usage::Normal, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000003")))
-			.AddTexture(PBR::Usage::Metalic, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
+			.AddTexture(PBR::Usage::Metallic, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
 			.AddTexture(PBR::Usage::Roughness, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
 			.AddTexture(PBR::Usage::AmbientOcclusion, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")))
 			.AddTexture(PBR::Usage::Emissive, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))

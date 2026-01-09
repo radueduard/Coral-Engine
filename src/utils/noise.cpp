@@ -55,21 +55,23 @@ Coral::Utils::PerlinNoise2D::PerlinNoise2D(Math::Vector2u size, u32 octaves) {
 
 Coral::Utils::PerlinNoise3D::PerlinNoise3D(Math::Vector3u size, u32 octaves) : m_size(size) {
 	const auto stagingImage = Memory::Image::Builder()
+		.Type(vk::ImageType::e3D)
 		.Format(vk::Format::eR8Unorm)
 		.Extent(size)
-		.MipLevels(octaves)
+		.MipLevels(1)
 		.UsageFlags(vk::ImageUsageFlagBits::eStorage)
 		.InitialLayout(vk::ImageLayout::eGeneral)
 		.Build();
 
 	m_image = Memory::Image::Builder()
-		  .Format(vk::Format::eR8Unorm)
-		  .Extent(size)
-		  .MipLevels(octaves)
-		  .UsageFlags(vk::ImageUsageFlagBits::eStorage)
-		  .UsageFlags(vk::ImageUsageFlagBits::eSampled)
-		  .InitialLayout(vk::ImageLayout::eGeneral)
-		  .Build();
+		.Type(vk::ImageType::e3D)
+		.Format(vk::Format::eR8Unorm)
+		.Extent(size)
+		.MipLevels(1)
+		.UsageFlags(vk::ImageUsageFlagBits::eStorage)
+		.UsageFlags(vk::ImageUsageFlagBits::eSampled)
+		.InitialLayout(vk::ImageLayout::eGeneral)
+		.Build();
 
 	const auto generateImageView = Memory::ImageView::Builder(*stagingImage)
 		.ViewType(vk::ImageViewType::e3D)

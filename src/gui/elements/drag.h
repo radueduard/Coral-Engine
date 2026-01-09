@@ -63,6 +63,10 @@ namespace Coral::Reef {
 
 			ImGui::SetWindowFontScale(m_textStyle.fontSize / ImGui::GetFontSize());
 
+			for (int i = 0; i < N; ++i) {
+				localValue[i] = *m_value[i];
+			}
+
 			ImGui::PushItemWidth(m_currentSize.width);
 			const bool changed = ImGui::DragScalarN(
 				"",
@@ -76,6 +80,7 @@ namespace Coral::Reef {
 				0,
 				m_labels.has_value() ? m_labels->data() : nullptr
 			);
+
 			if (changed) {
 				for (int i = 0; i < N; ++i) {
 					*m_value[i] = localValue[i];

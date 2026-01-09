@@ -11,10 +11,18 @@
 #include "gui/elements/popup.h"
 
 namespace Coral::ECS {
-    Camera::Camera(const CreateInfo &createInfo) :
-          m_projectionData(createInfo.projectionData),
+    Camera::Camera(const CreateInfo &createInfo)
+		: m_projectionData(createInfo.projectionData),
           m_viewportSize(createInfo.size),
-          m_primary(false) {
+          m_primary(false)
+	{
+    	m_cameraBuffer = Memory::Buffer::Builder()
+			.InstanceCount(1)
+    		.InstanceSize(sizeof(GPU::Camera))
+    		.UsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
+    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+			.Build();
     }
 
     void Camera::Resize(const Math::Vector2<u32>& size) {
@@ -25,9 +33,33 @@ namespace Coral::ECS {
         m_changed = true;
     }
 
+	void Camera::Update() {
+    	bool updateBuffer = false;
+		const auto& transform = Entity().Get<Transform>();
+	    if (m_changed || transform.Changed()) {
+		    RecalculateProjection();
+	    	updateBuffer = true;
+	    }
+	    if (m_moved || transform.Changed()) {
+		    RecalculateView();
+	    	updateBuffer = true;
+	    }
+
+    	if (updateBuffer) {
+			m_cameraBuffer->Map<GPU::Camera>();
+    		m_cameraBuffer->WriteAt(0, GPU::Camera {
+    			.view = m_view,
+				.projection = m_projection,
+				.inverseView = m_inverseView,
+				.inverseProjection = m_inverseProjection,
+			});
+    		m_cameraBuffer->Flush();
+    		m_cameraBuffer->Unmap();
+    	}
+    }
+
 	void Camera::Move(const Math::Vector3<f32>& amount) {
-    	const auto& entity = SceneManager::Get().Registry().get<class Entity*>(Entity());
-    	auto& transform = entity->Get<Transform>();
+    	auto& transform = Entity().Get<Transform>();
 
 		const auto rotation = Math::Quaternion(Math::Radians<f32, 3>(transform.rotation));
 		const auto forward = rotation * FORWARD;
@@ -42,8 +74,7 @@ namespace Coral::ECS {
 		if (yaw == 0.f && pitch == 0.f)
     		return;
 
-    	const auto& entity = SceneManager::Get().Registry().get<class Entity*>(Entity());
-    	auto& transform = entity->Get<Transform>();
+    	auto& transform = Entity().Get<Transform>();
 
 		const auto rotation = Math::Quaternion(Math::Radians<f32, 3>(transform.rotation));
     	auto forward = rotation * FORWARD;
@@ -87,8 +118,7 @@ namespace Coral::ECS {
     }
 
     void Camera::RecalculateView() {
-    	const auto& entity = SceneManager::Get().Registry().get<class Entity*>(Entity());
-    	const auto& transform = entity->Get<Transform>();
+    	const auto& transform = Entity().Get<Transform>();
 
         m_view = Math::LookAt(
             transform.position,

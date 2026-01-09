@@ -89,7 +89,7 @@ namespace Coral::Graphics {
     	sphere
             .Name("Sphere");
 
-        int density = 10;
+        int density = 30;
         for (int i = 0; i <= density; i++) {
             const float theta = static_cast<float>(i) * glm::pi<float>() / static_cast<float>(density);
             for (int j = 0; j <= density; j++) {
@@ -102,10 +102,9 @@ namespace Coral::Graphics {
             	};
             	Math::Vector3f normal = position.Normalized();
                 Math::Vector3f tangent = { -sin(phi), 0.0f, cos(phi) };
-                Math::Vector3f bitangent = normal.Cross(tangent).Normalized();
 
                 Math::Vector2f texCoord = {static_cast<float>(j) / static_cast<float>(density), static_cast<float>(i) / static_cast<float>(density)};
-                Math::Vector4f tangent4 = Math::Vector4(tangent, normal.Cross(tangent).Dot(bitangent) < 0.0f ? -1.0f : 1.0f);
+                Math::Vector4f tangent4 = Math::Vector4(tangent, 1.f);
                 sphere.AddVertex({position, normal, tangent4, texCoord});
             }
         }

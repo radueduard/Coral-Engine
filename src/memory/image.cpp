@@ -23,7 +23,7 @@ namespace Coral::Memory {
 
         if (!builder.m_image.has_value()) {
             auto imageCreateFlags = vk::ImageCreateFlags();
-        	if (m_layerCount > 1 && m_imageType == vk::ImageType::e2D) imageCreateFlags |= vk::ImageCreateFlagBits::e2DArrayCompatibleKHR;
+        	// if (m_layerCount > 1 && m_imageType == vk::ImageType::e2D) imageCreateFlags |= vk::ImageCreateFlagBits::e2DArrayCompatibleKHR;
         	if (m_layerCount == 6 && m_imageType == vk::ImageType::e2D) imageCreateFlags |= vk::ImageCreateFlagBits::eCubeCompatible;
 
             const auto imageCreateInfo = vk::ImageCreateInfo()

@@ -28,7 +28,7 @@ namespace Coral::Graphics {
 				case PBR::Usage::Normal:
 					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000003"));
 					break;
-				case PBR::Usage::Metalic:
+				case PBR::Usage::Metallic:
 					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
 					break;
 				case PBR::Usage::Roughness:
@@ -93,7 +93,7 @@ namespace Coral::Graphics {
     		.WriteBuffer(0, m_parametersBuffer->DescriptorInfo())
 			.WriteImage(1, m_textures.at(PBR::Usage::Albedo)->DescriptorInfo())
     		.WriteImage(2, m_textures.at(PBR::Usage::Normal)->DescriptorInfo())
-    		.WriteImage(3, m_textures.at(PBR::Usage::Metalic)->DescriptorInfo())
+    		.WriteImage(3, m_textures.at(PBR::Usage::Metallic)->DescriptorInfo())
     		.WriteImage(4, m_textures.at(PBR::Usage::Roughness)->DescriptorInfo())
     		.WriteImage(5, m_textures.at(PBR::Usage::Emissive)->DescriptorInfo())
     		.WriteImage(6, m_textures.at(PBR::Usage::AmbientOcclusion)->DescriptorInfo())

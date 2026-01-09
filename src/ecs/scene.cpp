@@ -13,17 +13,16 @@
 #include "ecs/entity.h"
 #include "gui/templates/inspector.h"
 
-#include "components/light.h"
 #include "core/input.h"
 #include "core/scheduler.h"
-#include "gui/elements/popup.h"
 #include "memory/gpuStructs.h"
-#include "utils/random.h"
 
 namespace Coral::ECS {
     Scene::Scene() {
+    	Context::m_scene = this;
+
     	m_inspectorTemplate = new Reef::EntityInspector();
-    	m_root = std::make_unique<Entity>("Root");
+    	m_root = std::make_unique<ECS::Entity>("Root");
     }
 
     void Scene::OnGUIAttach() {
@@ -36,9 +35,9 @@ namespace Coral::ECS {
 				   .backgroundColor = {0.0f, 0.0f, 0.0f, 1.f},
 				},
 				{
-					new Reef::TreeView<Entity, entt::entity>(
+					new Reef::TreeView<ECS::Entity, entt::entity>(
 						*m_root,
-						[this](Entity& object) {
+						[this](ECS::Entity& object) {
 							m_selectedObject = object.Id();
 							AddDockable(
 								"Object Inspector",
@@ -80,13 +79,13 @@ namespace Coral::ECS {
 	}
 
 	void Scene::Setup() {
-    	auto firstCamera = std::make_unique<Entity>("Camera");
+    	auto firstCamera = std::make_unique<ECS::Entity>("Camera");
     	auto firstCameraCreateInfo = Camera::CreateInfo {
     		.projectionData = Camera::ProjectionData(Camera::Type::Perspective),
 			.size = { 800u, 600u }
     	};
-    	firstCamera->Add<Camera>(firstCameraCreateInfo);
-    	firstCamera->Get<Transform>().position.z = 3.0f;
+    	auto& camera = firstCamera->Add<Camera>(firstCameraCreateInfo);
+    	firstCamera->Get<Transform>().position.z = 30.0f;
     	firstCamera->Get<Camera>().Primary() = true;
 
     	m_root->Add<Camera>(firstCameraCreateInfo);
@@ -96,16 +95,8 @@ namespace Coral::ECS {
 			.AddBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 			.Build();
 
-		m_cameraBuffer = Memory::Buffer::Builder()
-    		.InstanceCount(1)
-    		.InstanceSize(sizeof(GPU::Camera))
-    		.UsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
-    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-    		.Build();
-
     	m_set = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_setLayout)
-			.WriteBuffer(0, m_cameraBuffer->DescriptorInfo())
+			.WriteBuffer(0, camera.Buffer().DescriptorInfo())
 			.Build();
 
     	m_planetSetLayout = Memory::Descriptor::SetLayout::Builder()
@@ -132,18 +123,73 @@ namespace Coral::ECS {
 				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 				.setImageView(**m_planetImageView)
 				.setSampler(**m_planetSampler))
-			.WriteBuffer(1, m_cameraBuffer->DescriptorInfo())
+			.WriteBuffer(1, camera.Buffer().DescriptorInfo())
 			.Build();
 
     	const auto albedoUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_albedo.png");
+    	const auto normalUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_normal-dx.png");
+    	const auto roughnessUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_roughness.png");
+		const auto metallicUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_metallic.png");
+    	const auto aoUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_ao.png");
 
     	m_planetMaterial = Graphics::Material::Builder()
 			.Name("Planet Material")
 			.AddTexture(PBR::Usage::Albedo, Asset::Manager::Get().GetTexture(albedoUUID))
+    		.AddTexture(PBR::Usage::Normal, Asset::Manager::Get().GetTexture(normalUUID))
+			.AddTexture(PBR::Usage::Roughness, Asset::Manager::Get().GetTexture(roughnessUUID))
+			.AddTexture(PBR::Usage::Metallic, Asset::Manager::Get().GetTexture(metallicUUID))
+			.AddTexture(PBR::Usage::AmbientOcclusion, Asset::Manager::Get().GetTexture(aoUUID))
 			.RoughnessFactor(1.0f)
 			.MetallicFactor(0.0f)
 			.DoubleSided(false)
 			.Build();
+
+    	m_shadowCastingLightCount = 0;
+
+    	m_lightCameraBuffer = Memory::Buffer::Builder()
+			.InstanceSize(sizeof(GPU::Camera))
+			.InstanceCount(16)
+			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+			.Build();
+
+    	m_shadowMapArray.resize(Context::Scheduler().Frames().size());
+		for (u32 i = 0; i < Context::Scheduler().Frames().size(); i++) {
+			m_shadowMapArray[i] = Memory::Image::Builder()
+	    		.Type(vk::ImageType::e2D)
+				.Extent(Math::Vector2u { 2048u, 2048u })
+				.Format(vk::Format::eD32Sfloat)
+				.UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
+				.UsageFlags(vk::ImageUsageFlagBits::eStorage)
+				.LayerCount(16)
+				.InitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+				.Build();
+		}
+
+    	m_shadowMapViews.resize(Context::Scheduler().Frames().size());
+		for (u32 i = 0; i < Context::Scheduler().Frames().size(); i++) {
+			m_shadowMapViews[i] = Memory::ImageView::Builder(*m_shadowMapArray[i])
+				.ViewType(vk::ImageViewType::e2DArray)
+				.LayerCount(16)
+				.Build();
+		}
+
+    	m_shadowDescriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
+			.AddBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+			.AddBinding(1, vk::DescriptorType::eStorageImage, vk::ShaderStageFlagBits::eFragment)
+			.Build();
+
+    	m_shadowDescriptorSets.resize(Context::Scheduler().Frames().size());
+    	for (u32 i = 0; i < Context::Scheduler().Frames().size(); i++) {
+    		m_shadowDescriptorSets[i] = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_shadowDescriptorSetLayout)
+				.WriteBuffer(0, m_lightCameraBuffer->DescriptorInfo())
+				.WriteImage(1, vk::DescriptorImageInfo()
+					.setImageLayout(vk::ImageLayout::eGeneral)
+					.setImageView(**m_shadowMapViews[i])
+					.setSampler(VK_NULL_HANDLE))
+				.Build();
+    	}
     }
 
 	void Scene::Update(const float deltaTime) {
@@ -176,23 +222,17 @@ namespace Coral::ECS {
 			const Math::Vector2<f32> mouseDelta = Input::GetMousePositionDelta() * 5.f;
 			mainCamera.Rotate(mouseDelta.x, -mouseDelta.y);
 		}
-		if (mainCamera.Changed() || mainCamera.Moved()) {
-			mainCamera.RecalculateView();
-			mainCamera.RecalculateProjection();
 
-			m_cameraBuffer->Map<GPU::Camera>();
-			m_cameraBuffer->WriteAt(0, GPU::Camera {
-				.view = mainCamera.View(),
-				.projection = mainCamera.Projection(),
-				.inverseView = mainCamera.InverseView(),
-				.inverseProjection = mainCamera.InverseProjection(),
-			});
-			m_cameraBuffer->Flush();
-			m_cameraBuffer->Unmap();
+    	for (const auto& child : *m_root) {
+			child.Update();
 		}
     }
 
-    Camera& Scene::PrimaryCamera() {
+	ECS::Entity& Scene::Entity(const entt::entity entityId) const {
+	    return *SceneManager::Get().Registry().get<ECS::Entity*>(entityId);
+    }
+
+	Camera& Scene::PrimaryCamera() {
     	auto& registry = SceneManager::Get().Registry();
 		for (const auto cameras = registry.view<Camera>(); const auto camera : cameras) {
 			if (registry.get<Camera>(camera).Primary()) {
@@ -216,6 +256,18 @@ namespace Coral::ECS {
 	    if (m_selectedObject == entt::null) {
 		    return nullptr;
 	    }
-    	return SceneManager::Get().Registry().get<Entity*>(m_selectedObject);
+    	return SceneManager::Get().Registry().get<ECS::Entity*>(m_selectedObject);
     }
-} // namespace Coral::ECS
+	std::pair<std::vector<std::unique_ptr<Memory::ImageView>>, u32> Scene::GetShadowMap() {
+    	std::vector<std::unique_ptr<Memory::ImageView>> shadowMaps;
+    	u32 index = m_shadowCastingLightCount++;
+    	for (u32 i = 0; i < Context::Scheduler().Frames().size(); i++) {
+    		shadowMaps.emplace_back(Memory::ImageView::Builder(*m_shadowMapArray[i])
+				.ViewType(vk::ImageViewType::e2D)
+				.BaseArrayLayer(index)
+				.LayerCount(1)
+				.Build());
+		}
+	    return { std::move(shadowMaps), index };
+    }
+}

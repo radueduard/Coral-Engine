@@ -41,6 +41,29 @@ namespace Coral::Graphics {
         return *this;
     }
 
+	Pipeline::BuilderDynamic::BuilderDynamic(const vk::PipelineRenderingCreateInfo& pipelineRenderingInfo) :
+		m_pipelineRenderingInfo(pipelineRenderingInfo)
+	{
+    	m_inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
+			.setTopology(vk::PrimitiveTopology::eTriangleList)
+			.setPrimitiveRestartEnable(vk::False);
+
+    	m_rasterizer = vk::PipelineRasterizationStateCreateInfo()
+			.setDepthClampEnable(vk::False)
+			.setRasterizerDiscardEnable(vk::False)
+			.setPolygonMode(vk::PolygonMode::eFill)
+			.setCullMode(vk::CullModeFlagBits::eNone)
+			.setFrontFace(vk::FrontFace::eCounterClockwise)
+			.setDepthBiasEnable(vk::False)
+			.setLineWidth(1.0f);
+
+    	m_depthStencil = vk::PipelineDepthStencilStateCreateInfo()
+			.setDepthTestEnable(vk::True)
+			.setDepthWriteEnable(vk::True)
+			.setDepthCompareOp(vk::CompareOp::eLess)
+			.setDepthBoundsTestEnable(vk::False)
+			.setStencilTestEnable(vk::False);
+    }
 	Pipeline::BuilderDynamic &Pipeline::BuilderDynamic::AddShader(const Shader::Shader* shader) {
     	const auto stage = shader->GetStage();
     	m_shaders[stage] = shader;
@@ -95,7 +118,7 @@ namespace Coral::Graphics {
         return *this;
     }
 
-	Pipeline::BuilderRenderPass& Pipeline::BuilderRenderPass::RenderFunction(const std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)>& function)
+	Pipeline::BuilderRenderPass& Pipeline::BuilderRenderPass::RenderFunction(const std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&, void*)>& function)
 	{
 	    m_function = function;
 		return *this;
@@ -238,7 +261,7 @@ namespace Coral::Graphics {
     	m_multisampling = multisampling;
 	    return *this;
     }
-	Pipeline::BuilderDynamic& Pipeline::BuilderDynamic::RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&)>& function) {
+	Pipeline::BuilderDynamic& Pipeline::BuilderDynamic::RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)>& function) {
 	    m_function = function;
 	    return *this;
     }

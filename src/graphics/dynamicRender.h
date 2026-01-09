@@ -16,7 +16,7 @@ namespace Coral::Graphics {
 		DynamicRender() = default;
 		~DynamicRender() = default;
 
-		void Render(const Core::CommandBuffer& commandBuffer,const vk::RenderingInfo& info) const;
+		void Render(const Core::CommandBuffer& commandBuffer,const vk::RenderingInfo& info, void* usrData = nullptr) const;
 
 		void AddPipeline(std::unique_ptr<Pipeline::Builder> pipelineBuilder);
 

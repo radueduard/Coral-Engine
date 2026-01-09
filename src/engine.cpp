@@ -23,6 +23,7 @@
 
 #include "gui/elements/popup.h"
 #include "shader/slangCompiler.h"
+#include "utils/fileSystemObserver.h"
 
 namespace Coral {
 	class ImageTest : public Reef::Layer {
@@ -90,7 +91,7 @@ namespace Coral {
         		.setShaderStorageImageWriteWithoutFormat(true)
 				// .setGeometryShader(true)
 	            .setVertexPipelineStoresAndAtomics(true),
-            .instanceLayers = std::vector {
+            .instanceLayers = {
                 "VK_LAYER_KHRONOS_validation",
             },
             .instanceExtensions = {
@@ -98,8 +99,8 @@ namespace Coral {
             },
             .deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            	VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
-                // VK_EXT_MESH_SHADER_EXTENSION_NAME,
+            	VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+                VK_EXT_MESH_SHADER_EXTENSION_NAME,
             	// VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME
             },
             .deviceLayers = {
@@ -266,10 +267,11 @@ namespace Coral {
   //   	Reef::Container<ImageTest> noiseTestContainer = Reef::MakeContainer<ImageTest>(noise.Image());
 
 		const auto image = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(1024u), 9);
+		// const auto image = std::make_unique<Utils::CircleNoise<3>>(Math::Vector3u(64u), 0.75f);
 
     	auto entity = std::make_unique<ECS::Entity>("Generated Planet Mesh");
     	auto& renderTarget = entity->Add<ECS::RenderTarget>();
-    	Math::Vector3u chunkCount { 3u, 3u, 3u };
+    	Math::Vector3u chunkCount { 8u, 8u, 8u };
 
   		const Compute::GenerateTextureMesh generateTextureMeshProgram(
   			image->Image(),

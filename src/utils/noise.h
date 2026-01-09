@@ -26,6 +26,7 @@ namespace Coral::Utils {
 
 			m_image = Memory::Image::Builder()
 				.Format(vk::Format::eR8Unorm)
+				.Type(N == 2 ? vk::ImageType::e2D : vk::ImageType::e3D)
 				.Extent(size)
 				.MipLevels(octaves)
 				.UsageFlags(vk::ImageUsageFlagBits::eSampled)

@@ -84,7 +84,7 @@ namespace Coral::Graphics {
 
             BuilderRenderPass &Subpass(uint32_t);
 
-        	BuilderRenderPass &RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&)> &function);
+        	BuilderRenderPass &RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> &function);
 
             std::unique_ptr<Pipeline> Build() override;
         private:
@@ -114,14 +114,13 @@ namespace Coral::Graphics {
             vk::PipelineLayout m_pipelineLayout;
             uint32_t m_subpass = 0;
 
-        	std::function<void(const Pipeline&, const Core::CommandBuffer&)> m_function = nullptr;
+        	std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> m_function = nullptr;
         };
 
 		class BuilderDynamic : public Builder {
 			friend class Pipeline;
 		public:
-			explicit BuilderDynamic(const vk::PipelineRenderingCreateInfo& pipelineRenderingInfo)
-				: m_pipelineRenderingInfo(pipelineRenderingInfo) {}
+			explicit BuilderDynamic(const vk::PipelineRenderingCreateInfo& pipelineRenderingInfo);
 			~BuilderDynamic() override = default;
 
 			BuilderDynamic(const BuilderDynamic &) = delete;
@@ -136,7 +135,7 @@ namespace Coral::Graphics {
 			BuilderDynamic &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
 			BuilderDynamic &Multisampling(const vk::PipelineMultisampleStateCreateInfo &);
 
-			BuilderDynamic &RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&)> &function);
+			BuilderDynamic &RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> &function);
 
 			std::unique_ptr<Pipeline> Build() override;
 
@@ -169,7 +168,7 @@ namespace Coral::Graphics {
 			vk::PipelineDynamicStateCreateInfo m_dynamicState;
 
 			vk::PipelineLayout m_pipelineLayout;
-        	std::function<void(const Pipeline&, const Core::CommandBuffer&)> m_function = nullptr;
+        	std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> m_function = nullptr;
 		};
 
         explicit Pipeline(BuilderRenderPass &);
@@ -195,9 +194,9 @@ namespace Coral::Graphics {
 
         [[nodiscard]] const vk::PipelineLayout &Layout() const { return m_pipelineLayout; }
 
-    	void Render(const Core::CommandBuffer& commandBuffer) const {
+    	void Render(const Core::CommandBuffer& commandBuffer, void* usrData) const {
 			if (m_renderFunction) {
-				m_renderFunction(*this, commandBuffer);
+				m_renderFunction(*this, commandBuffer, usrData);
 			}
 		}
 
@@ -208,6 +207,6 @@ namespace Coral::Graphics {
         std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
         std::unordered_map<Shader::Stage, const Shader::Shader*> m_shaders;
 
-    	std::function<void(const Pipeline&, const Core::CommandBuffer&)> m_renderFunction = nullptr;
+    	std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> m_renderFunction = nullptr;
     };
 }

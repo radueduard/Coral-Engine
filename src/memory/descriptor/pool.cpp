@@ -3,6 +3,7 @@
 //
 
 #include "pool.h"
+#include "context.h"
 
 #include <ranges>
 
@@ -99,5 +100,6 @@ namespace Coral::Memory::Descriptor {
     void Pool::Free(const std::vector<vk::DescriptorSet> &descriptorSets) const {
         Context::Device()->freeDescriptorSets(m_pool, descriptorSets);
     }
+	void Pool::Reset() const { Context::Device()->resetDescriptorPool(m_pool); }
 
-}
+} // namespace Coral::Memory::Descriptor

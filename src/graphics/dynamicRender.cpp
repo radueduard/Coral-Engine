@@ -9,10 +9,10 @@
 #include "ecs/components/renderTarget.h"
 #include "pipeline.h"
 
-void Coral::Graphics::DynamicRender::Render(const Core::CommandBuffer& commandBuffer, const vk::RenderingInfo& info) const {
+void Coral::Graphics::DynamicRender::Render(const Core::CommandBuffer& commandBuffer, const vk::RenderingInfo& info, void* usrData) const {
 	commandBuffer->beginRendering(info);
 	for (const auto& pipeline : m_pipelines | std::views::values) {
-		pipeline->Render(commandBuffer);
+		pipeline->Render(commandBuffer, usrData);
 	}
 	commandBuffer->endRendering();
 }
