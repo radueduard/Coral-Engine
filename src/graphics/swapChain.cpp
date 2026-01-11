@@ -9,12 +9,10 @@
 #include "renderPass.h"
 #include "core/device.h"
 #include "core/physicalDevice.h"
-#include "core/runtime.h"
 #include "memory/image.h"
 
 #include "core/scheduler.h"
 #include "ecs/entity.h"
-#include "gui/elements/popup.h"
 
 namespace Coral::Graphics {
     vk::SurfaceFormatKHR SwapChain::ChooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) {

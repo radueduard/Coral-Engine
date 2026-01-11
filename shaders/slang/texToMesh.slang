@@ -61,7 +61,7 @@ func TextureToMesh3D(
         float noise = densityTexture.SampleLevel(samplePos, 0);
 
         float radius = 15.0;
-        cell.densities[i] = radius - length(cell.positions[i]) + noise * 15.0;
+        cell.densities[i] = radius - length(cell.positions[i]) + noise * 10.0;
     }
 
     Array<float3, 12> initialVertices; 
@@ -128,12 +128,11 @@ func TextureToMesh3D(
     }
 
     for (uint i = 0; i < localVertexCount; i++) {
-        float2 uv = sphericalToUV(initialVertices[i]);
         vertexBuffer[vertexOffset + localVertexOffset + i] = Vertex(
             initialVertices[i], 
             normals[i], 
             float4(tangents[i], 1),
-            uv, 
+            cubicToUV(initialVertices[i]), 
             float2(0.0, 0.0), 
             float4(1.0, 1.0, 1.0, 1.0)
         );

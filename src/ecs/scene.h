@@ -6,10 +6,8 @@
 #include <memory>
 
 #include "gui/layer.h"
-
 #include <entt/entt.hpp>
 
-#include "graphics/objects/material.h"
 #include "utils/noise.h"
 
 namespace Coral::Memory {
@@ -18,17 +16,24 @@ namespace Coral::Memory {
 	class Image;
 	class Buffer;
 }
+
 namespace Coral::Memory::Descriptor {
 	class SetLayout;
 	class Set;
 }
+
 namespace Coral::Reef {
     class EntityInspector;
+}
+
+namespace Coral::Graphics {
+	class Material;
 }
 
 namespace Coral::ECS {
     class Camera;
     class Entity;
+	enum class LightType : u8;
 
     class Scene final : public Reef::Layer {
     public:
@@ -55,13 +60,19 @@ namespace Coral::ECS {
 
     	std::pair<std::vector<std::unique_ptr<Memory::ImageView>>, u32> GetShadowMap();
 
-    	Memory::Buffer& LightCameraBuffer() const { return *m_lightCameraBuffer; }
+		u32 AllocateNewLight(const ECS::LightType &type);
+    	Math::Vector4u LightCounts() const;
+
+		Memory::Buffer& LightCameraBuffer() const { return *m_lightCameraBuffer; }
 
     	Memory::Descriptor::Set& ShadowDescriptorSet(const u32 index) const { return *m_shadowDescriptorSets[index]; }
+    	Memory::Descriptor::Set& LightsDescriptorSet() const { return *m_lightsDescriptorSet; }
 
     	Memory::Image& ShadowMap(const u32 index) const { return *m_shadowMapArray[index]; }
 
-    private:
+    	Memory::Buffer& LightBuffer(const ECS::LightType& type) const;
+
+	private:
 
         Reef::EntityInspector* m_inspectorTemplate;
 
@@ -88,5 +99,17 @@ namespace Coral::ECS {
 
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_shadowDescriptorSetLayout;
     	std::vector<std::unique_ptr<Memory::Descriptor::Set>> m_shadowDescriptorSets;
+
+    	u32 m_pointLightCount = 0;
+    	std::unique_ptr<Memory::Buffer> m_pointLightBuffer;
+
+    	u32 m_directionalLightCount = 0;
+    	std::unique_ptr<Memory::Buffer> m_directionalLightBuffer;
+
+    	u32 m_spotLightCount = 0;
+    	std::unique_ptr<Memory::Buffer> m_spotLightBuffer;
+
+    	std::unique_ptr<Memory::Descriptor::SetLayout> m_lightsDescriptorSetLayout;
+		std::unique_ptr<Memory::Descriptor::Set> m_lightsDescriptorSet;
     };
 }

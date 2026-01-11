@@ -149,7 +149,7 @@ namespace Coral::Graphics {
     }
 
     void RenderPass::Draw(const Core::CommandBuffer& commandBuffer, void* usrData) const {
-		if (!ECS::SceneManager::Get().IsSceneLoaded())
+		if (!Context::SceneManager().IsSceneLoaded())
 			return;
 
     	for (const auto& pipeline : m_pipelines | std::views::values) {

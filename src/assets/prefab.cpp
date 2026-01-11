@@ -54,30 +54,49 @@ void Coral::Asset::Prefab::Load() const {
 		if (objectData.contains("lights")) {
 			for (const auto& lightUUID : objectData["lights"]) {
 				const auto& lightData = m_metadata["lights"][lightUUID];
-				ECS::Light::Type type;
-				ECS::Light::Data data;
+				ECS::LightType type;
 				if (lightData["type"].get<std::string>() == "aiLightSource_POINT") {
-					type = ECS::Light::Type::Point;
-					data.point.color =  {1.0f, .8f, 0.6f};
-					data.point.attenuation = { 1.0f, 0.09f, 0.032f };
-					data.point.range = 3.f;
+					type = ECS::LightType::Point;
+					auto& light = child->Add<ECS::Light>(type, false);
+
+
+					light.color = {1.0f, .8f, 0.6f};
+					light.attenuation = { 1.0f, 0.09f, 0.032f };
+					light.range = 3.f;
 				}
 				else if (lightData["type"].get<std::string>() == "aiLightSource_DIRECTIONAL") {
-					type = ECS::Light::Type::Directional;
-					data.directional.color = {1.0f, 1.0f, 1.0f}; // Default color for directional light
-					data.directional.direction = {lightData["direction"][0].get<float>(),
-												 lightData["direction"][1].get<float>(),
-												 lightData["direction"][2].get<float>()};
-					data.directional.intensity = lightData["intensity"].get<float>();
-				}
-				// TODO: Handle spot lights when implemented
-				// case "aiLightSource_SPOT":
-				// 	type = ECS::Light::Type::Spot;
-				// 	break;
-				else {
+					type = ECS::LightType::Directional;
+					auto& light = child->Add<ECS::Light>(type, true);
+					auto& transform = child->Get<ECS::Transform>();
+					transform.rotation = {lightData["rotation"][0].get<float>(),
+										  lightData["rotation"][1].get<float>(),
+										  lightData["rotation"][2].get<float>()};
+
+					light.color = {1.0f, 1.0f, 1.0f}; // Default color for directional light
+					light.intensity = lightData["intensity"].get<float>();
+				} else if (lightData["type"].get<std::string>() == "aiLightSource_AMBIENT") {
+					// Ambient light is usually not represented as an entity in ECS.
+					// It might be a global setting. So we can skip adding a light component here.
+					continue;
+				} else if (lightData["type"].get<std::string>() == "aiLightSource_AREA") {
+					// Area lights are not supported in this ECS implementation.
+					continue;
+				} else if (lightData["type"].get<std::string>() == "aiLightSource_SPOT") {
+					type = ECS::LightType::Spot;
+					auto& light = child->Add<ECS::Light>(type, true);
+					auto& transform = child->Get<ECS::Transform>();
+					transform.rotation = {lightData["rotation"][0].get<float>(),
+										  lightData["rotation"][1].get<float>(),
+										  lightData["rotation"][2].get<float>()};
+
+					light.color = {1.0f, 1.0f, 1.0f}; // Default color for spot light
+					light.intensity = lightData["intensity"].get<float>();
+					light.innerAngle = lightData["innerAngle"].get<float>();
+					light.outerAngle = lightData["outerAngle"].get<float>();
+					light.range = lightData["range"].get<float>();
+				} else {
 					throw std::runtime_error("Unknown light type: " + lightData["type"].get<std::string>());
 				}
-				child->Add<ECS::Light>(type, data);
 			}
 		}
 

@@ -7,11 +7,6 @@ public func sphericalToUV(float3 position) -> float2 {
     float phi = atan2(normalizedPos.z, normalizedPos.x);
     float theta = acos(clamp(normalizedPos.y, -1.0, 1.0));
     
-    // Fix seam by ensuring phi is in [0, 2*PI] range
-    if (phi < 0.0) {
-        phi += 2.0 * PI;
-    }
-    
     float u = phi / (2.0 * PI);
     float v = theta / PI;
     return float2(u, v);

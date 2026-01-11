@@ -33,6 +33,7 @@ namespace Coral
 	namespace ECS {
 		class Entity;
 		class Scene;
+		class SceneManager;
 	}
 
 	class Context
@@ -44,6 +45,7 @@ namespace Coral
 		static Core::Scheduler& Scheduler() { return *m_scheduler; }
 		static Reef::Manager& GUIManager() { return *m_guiManager; }
 		static ECS::Scene& Scene() { return *m_scene; }
+		static ECS::SceneManager& SceneManager() { return *m_sceneManager; }
 		static Utils::FileSystemObserver& FileSystemObserver() { return *m_fileSystemObserver; }
 		static Shader::Manager& ShaderManager() { return *m_shaderManager; }
 
@@ -54,6 +56,7 @@ namespace Coral
 		friend class Core::Scheduler;
 		friend class Reef::Manager;
 		friend class ECS::Scene;
+		friend class ECS::SceneManager;
 		friend class Core::Window;
 		friend class Utils::FileSystemObserver;
 		friend class Shader::Manager;
@@ -64,6 +67,7 @@ namespace Coral
 		inline static Core::Scheduler* m_scheduler = nullptr;
 		inline static Reef::Manager* m_guiManager = nullptr;
 		inline static ECS::Scene* m_scene = nullptr;
+		inline static ECS::SceneManager* m_sceneManager = nullptr;
 		inline static Utils::FileSystemObserver* m_fileSystemObserver = nullptr;
 		inline static Shader::Manager* m_shaderManager = nullptr;
 

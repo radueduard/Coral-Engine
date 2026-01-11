@@ -122,7 +122,7 @@ namespace Coral::ECS {
 
         m_view = Math::LookAt(
             transform.position,
-            transform.position + Math::Quaternion(Math::Radians<f32, 3>(transform.rotation)) * FORWARD,
+            transform.position + Math::Direction(Math::Radians<f32, 3>(transform.rotation)),
             UP);
         m_inverseView = m_view.Inverse();
     	m_moved = false;

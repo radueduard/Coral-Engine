@@ -2,21 +2,25 @@
 // Created by radue on 6/25/2025.
 //
 
+#include "graphics/objects/material.h"
+#include "scene.h"
+#include "gui/container.h"
 #include "sceneManager.h"
 #include "ecs/entity.h"
 
 Coral::ECS::SceneManager::SceneManager() {
-	s_instance = this;
+	static bool firstTime = true;
+	if (!firstTime) {
+		throw std::runtime_error("SceneManager has already been initialised!");
+	}
+	firstTime = false;
+	Context::m_sceneManager = this;
+
 	m_registry = entt::registry();
 
 	NewScene();
 }
-Coral::ECS::SceneManager& Coral::ECS::SceneManager::Get() {
-	if (s_instance == nullptr) {
-		throw std::runtime_error("SceneManager is not initialized.");
-	}
-	return *s_instance;
-}
+
 Coral::ECS::Scene& Coral::ECS::SceneManager::GetLoadedScene() const {
 	if (m_loadedScene == nullptr) {
 		throw std::runtime_error("No scene is currently loaded.");

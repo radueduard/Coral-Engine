@@ -5,6 +5,9 @@
 #include "material.h"
 
 #include "context.h"
+
+#include "assets/manager.h"
+
 #include "core/scheduler.h"
 #include "ecs/entity.h"
 #include "gui/elements/popup.h"

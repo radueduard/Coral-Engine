@@ -39,7 +39,7 @@ namespace Coral::Reef {
                 if (const auto payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                     IdType recvObject = *static_cast<IdType*>(payload->Data);
                     if (m_tree.Id() != recvObject) {
-                        T* recv = ECS::SceneManager::Get().Registry().get<T*>(recvObject);
+                        T* recv = Context::SceneManager().Registry().get<T*>(recvObject);
                         if (recv != nullptr) {
                             auto detached = recv->Detach();
                             m_tree.AddChild(std::move(detached));
@@ -99,7 +99,7 @@ namespace Coral::Reef {
                 if (const auto payload = ImGui::AcceptDragDropPayload("DND_OBJECT")) {
                     IdType recvObject = *static_cast<IdType*>(payload->Data);
                     if (object.Id() != recvObject) {
-                        T* recv = ECS::SceneManager::Get().Registry().get<T*>(recvObject);
+                        T* recv = Context::SceneManager().Registry().get<T*>(recvObject);
                         if (recv != nullptr) {
                             try {
                                 recv->FindChild(object.Id());
@@ -131,9 +131,15 @@ namespace Coral::Reef {
             	if (ImGui::MenuItem(ICON_FA_CAMERA "    Add Camera", nullptr, false)) {
             		object.AddCamera();
 				}
-            	if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Light", nullptr, false)) {
-					object.AddLight();
+            	if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Point Light", nullptr, false)) {
+					object.AddLight(ECS::LightType::Point);
             	}
+                if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Directional Light", nullptr, false)) {
+                    object.AddLight(ECS::LightType::Directional);
+                }
+                if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Spot Light", nullptr, false)) {
+                    object.AddLight(ECS::LightType::Spot);
+                }
             	if (ImGui::BeginMenu(ICON_FA_HASHTAG "    Add Mesh")) {
 					if (ImGui::MenuItem(ICON_FA_CUBE "    Add Cube", nullptr, false)) {
 						object.AddCube();

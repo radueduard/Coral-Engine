@@ -48,8 +48,8 @@ namespace Coral::Reef {
             },
             [this] (const Math::Vector2<f32>& newSize) {
 	            Context::Scheduler().RenderGraph().Resize(newSize, true);
-            	if (ECS::SceneManager::Get().IsSceneLoaded()) {
-            		auto& scene = ECS::SceneManager::Get().GetLoadedScene();
+            	if (Context::SceneManager().IsSceneLoaded()) {
+            		auto& scene = Context::Scene();
 					scene.PrimaryCamera().Resize(newSize);
 
 					for (uint32_t i = 0; i < m_renderPass.ImageCount(); i++) {

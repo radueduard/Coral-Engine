@@ -19,6 +19,9 @@
 
 #include <entt/entity/registry.hpp>
 
+#include "ecs/components/light.h"
+#include "ecs/components/renderTarget.h"
+
 
 namespace Coral::Project {
 	void RenderGraph::ShadowRunNode::Run(const Core::CommandBuffer& commandBuffer, const u32 frameIndex) {
@@ -26,7 +29,7 @@ namespace Coral::Project {
 			commandBuffer,
 			vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
-		ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::Light>).each(
+		Context::SceneManager().Registry().group(entt::get<ECS::Entity*, ECS::Light>).each(
 			[&](const ECS::Entity* entity, ECS::Light& light) {
 				if (light.CastsShadows()) {
 					for (u32 i = 0; i < cascadeCount; i++) {
@@ -387,7 +390,7 @@ namespace Coral::Project {
 					const auto light = static_cast<ECS::Light*>(usrData);
 					pipeline.Bind(*commandBuffer);
 					pipeline.BindDescriptorSet(0, *commandBuffer, light->ShadowDescriptorSet());
-					ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
+					Context::SceneManager().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
 						[&](const ECS::Entity* entity, const ECS::RenderTarget& renderTarget) {
 							Math::Matrix4<f32> matrix = Math::Matrix4<f32>::Identity();
 							while (entity) {
@@ -426,9 +429,10 @@ namespace Coral::Project {
 				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer, void*) {
 					const u32 index = Context::Scheduler().CurrentFrame().ImageIndex();
 					pipeline.Bind(*commandBuffer);
-					pipeline.BindDescriptorSet(0, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().DescriptorSet());
-					pipeline.BindDescriptorSet(2, *commandBuffer, ECS::SceneManager::Get().GetLoadedScene().ShadowDescriptorSet(index));
-					ECS::SceneManager::Get().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
+					pipeline.BindDescriptorSet(0, *commandBuffer, Context::Scene().DescriptorSet());
+					pipeline.BindDescriptorSet(2, *commandBuffer, Context::Scene().ShadowDescriptorSet(index));
+					pipeline.BindDescriptorSet(3, *commandBuffer, Context::Scene().LightsDescriptorSet());
+					Context::SceneManager().Registry().group(entt::get<ECS::Entity*, ECS::RenderTarget>).each(
 						[&](const ECS::Entity* entity, const ECS::RenderTarget& renderTarget) {
 							Math::Matrix4<f32> matrix = Math::Matrix4<f32>::Identity();
 							while (entity) {
@@ -438,7 +442,8 @@ namespace Coral::Project {
 							}
 							for (const auto [mesh, material] : renderTarget.Targets()) {
 								pipeline.BindDescriptorSet(1, *commandBuffer, material->DescriptorSet());
-								pipeline.PushConstants<Math::Matrix4<f32>>(*commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, matrix);
+								pipeline.PushConstants(*commandBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, matrix);
+								pipeline.PushConstants(*commandBuffer, vk::ShaderStageFlagBits::eFragment, sizeof(Math::Matrix4<f32>), Context::Scene().LightCounts());
 								mesh->Bind(*commandBuffer);
 								mesh->Draw(*commandBuffer);
 							}

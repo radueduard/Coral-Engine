@@ -8,17 +8,20 @@
 #include "core/scheduler.h"
 #include "memory/gpuStructs.h"
 
-Coral::ECS::Light::Light(const Type type, const Data& data, bool castsShadows) :
-	m_type(type), m_data(data), m_castsShadows(castsShadows) {
+Coral::ECS::Light::Light(const LightType type, bool castsShadows) :
+	type(type), m_castsShadows(castsShadows) {
+
+	m_index = Context::Scene().AllocateNewLight(type);
+
 	if (!castsShadows) {
 		return;
 	}
 	switch (type) {
-	case Type::Directional:
-	case Type::Spot: {
+	case LightType::Directional:
+	case LightType::Spot: {
 		auto [shadowMaps, index] = Context::Scene().GetShadowMap();
 		m_shadowMaps = std::move(shadowMaps);
-		m_index = index;
+		m_shadowMapIndex = index;
 		break;
 	}
 	default:
@@ -26,19 +29,73 @@ Coral::ECS::Light::Light(const Type type, const Data& data, bool castsShadows) :
 	}
 }
 
-void Coral::ECS::Light::Setup() {
-	auto& transform = Entity().Get<Transform>();
-	transform.rotation = Math::Degrees<f32, 3>(Math::Quaternion<>::ToEulerAngles(Math::LookAt(m_data.directional.direction, Math::Vector3<f32>(0.f, 1.f, 0.f))));
+template<>
+auto Coral::ECS::Light::GPU<Coral::ECS::LightType::Directional>() const {
+	const auto& transform = Entity().Get<Transform>();
+	return GPU::Light::Directional {
+		.direction = Math::Direction(Math::Radians(transform.rotation)),
+		.color = {color.r, color.g, color.b, color.a },
+		.intensity = intensity,
+	};
+}
 
-	const auto& camera = Entity().Add<Camera>(Camera::CreateInfo {
-		.projectionData = Camera::ProjectionData(Camera::Orthographic {
+template<>
+auto Coral::ECS::Light::GPU<Coral::ECS::LightType::Spot>() const {
+	const auto& transform = Entity().Get<Transform>();
+	return GPU::Light::Spot {
+		.position = transform.position,
+		.range = range,
+		.direction = Math::Direction(Math::Radians(transform.rotation)),
+		.intensity = intensity,
+		.color = { color.r, color.g, color.b, color.a },
+		.attenuation = attenuation,
+		.innerAngle = innerAngle,
+		.outerAngle = outerAngle,
+	};
+}
+
+template<>
+auto Coral::ECS::Light::GPU<Coral::ECS::LightType::Point>() const {
+	const auto& transform = Entity().Get<Transform>();
+	return GPU::Light::Point {
+		.position = transform.position,
+		.intensity = intensity,
+		.color = { color.r, color.g, color.b, color.a },
+		.attenuation = attenuation,
+		.range = range
+	};
+}
+
+void Coral::ECS::Light::Setup() {
+	if (!m_castsShadows) {
+		return;
+	}
+
+	Camera::ProjectionData projectionData;
+	switch (type) {
+	case LightType::Directional:
+		projectionData = Camera::ProjectionData(Camera::Orthographic {
 			.left = -40.f,
 			.right = 40.f,
 			.top = 40.f,
 			.bottom = -40.f,
 			.near = -100.f,
 			.far = 100.f,
-		}),
+		});
+		break;
+	case LightType::Spot:
+		projectionData = Camera::ProjectionData(Camera::Perspective {
+			.fov = 90.f,
+			.near = 1.f,
+			.far = 100.f,
+		});
+		break;
+	default:
+		throw std::runtime_error("Only Directional and Spot lights can cast shadows for now!");
+	}
+
+	const auto& camera = Entity().Add<Camera>(Camera::CreateInfo {
+		.projectionData = projectionData,
 		.size = { 2048u, 2048u },
 	});
 
@@ -50,12 +107,12 @@ void Coral::ECS::Light::Setup() {
 		.WriteBuffer(0, camera.Buffer().DescriptorInfo())
 		.Build();
 
-	switch (m_type) {
-	case Type::Directional:
-	case Type::Spot: {
+	switch (type) {
+	case LightType::Directional:
+	case LightType::Spot: {
 		auto& buffer = Context::Scene().LightCameraBuffer();
 		buffer.Map<GPU::Camera>();
-		buffer.WriteAt(m_index, GPU::Camera {
+		buffer.WriteAt(m_shadowMapIndex, GPU::Camera {
 			.view = camera.View(),
 			.projection = camera.Projection(),
 		});
@@ -70,14 +127,14 @@ void Coral::ECS::Light::Setup() {
 void Coral::ECS::Light::Update()
 {
 	auto& transform = Entity().Get<Transform>();
-	if (transform.Changed()) {
+	if (transform.Changed() && m_castsShadows) {
 		auto& camera = Entity().Get<Camera>();
-		switch (m_type) {
-		case Type::Directional:
-		case Type::Spot: {
+		switch (type) {
+		case LightType::Directional:
+		case LightType::Spot: {
 			auto& buffer = Context::Scene().LightCameraBuffer();
 			buffer.Map<GPU::Camera>();
-			buffer.WriteAt(m_index, GPU::Camera {
+			buffer.WriteAt(m_shadowMapIndex, GPU::Camera {
 				.view = camera.View(),
 				.projection = camera.Projection(),
 			});
@@ -86,6 +143,24 @@ void Coral::ECS::Light::Update()
 		}
 		default:
 			break;
+		}
+	}
+
+	if (m_changed || transform.Changed()) {
+		m_changed = false;
+		auto& buffer = Context::Scene().LightBuffer(type);
+		switch (type) {
+		case LightType::Point:
+			buffer.WriteAt(m_index, GPU<LightType::Point>());
+			break;
+		case LightType::Directional:
+			buffer.WriteAt(m_index, GPU<LightType::Directional>());
+			break;
+		case LightType::Spot:
+			buffer.WriteAt(m_index, GPU<LightType::Spot>());
+			break;
+		default:
+			throw std::runtime_error("No light type found");
 		}
 	}
 }

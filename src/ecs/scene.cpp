@@ -7,7 +7,11 @@
 #include "IconsFontAwesome6.h"
 #include "context.h"
 
+#include "assets/manager.h"
+
 #include "components/camera.h"
+#include "components/light.h"
+
 #include "gui/reef.h"
 
 #include "ecs/entity.h"
@@ -16,6 +20,8 @@
 #include "core/input.h"
 #include "core/scheduler.h"
 #include "memory/gpuStructs.h"
+
+#include "utils/noise.h"
 
 namespace Coral::ECS {
     Scene::Scene() {
@@ -193,6 +199,45 @@ namespace Coral::ECS {
 					.setSampler(**m_shadowMapSampler))
 				.Build();
     	}
+
+    	m_pointLightCount = 0;
+    	m_pointLightBuffer = Memory::Buffer::Builder()
+    		.InstanceSize(sizeof(GPU::Light::Point))
+    		.InstanceCount(16)
+			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+			.Build();
+
+    	m_directionalLightCount = 0;
+    	m_directionalLightBuffer = Memory::Buffer::Builder()
+    		.InstanceSize(sizeof(GPU::Light::Directional))
+    		.InstanceCount(16)
+    		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+    		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+    		.Build();
+
+    	m_spotLightCount = 0;
+    	m_spotLightBuffer = Memory::Buffer::Builder()
+			.InstanceSize(sizeof(GPU::Light::Spot))
+			.InstanceCount(16)
+			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+			.Build();
+
+    	m_lightsDescriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
+			.AddBinding(0, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+			.AddBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+			.AddBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment)
+			.Build();
+
+    	m_lightsDescriptorSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_lightsDescriptorSetLayout)
+			.WriteBuffer(0, m_pointLightBuffer->DescriptorInfo())
+			.WriteBuffer(1, m_directionalLightBuffer->DescriptorInfo())
+			.WriteBuffer(2, m_spotLightBuffer->DescriptorInfo())
+			.Build();
     }
 
 	void Scene::Update(const float deltaTime) {
@@ -226,17 +271,23 @@ namespace Coral::ECS {
 			mainCamera.Rotate(mouseDelta.x, -mouseDelta.y);
 		}
 
+    	m_pointLightBuffer->Map<GPU::Light::Point>();
+    	m_directionalLightBuffer->Map<GPU::Light::Directional>();
+    	m_spotLightBuffer->Map<GPU::Light::Spot>();
     	for (const auto& child : *m_root) {
 			child.Update();
 		}
+    	m_pointLightBuffer->Unmap();
+		m_directionalLightBuffer->Unmap();
+		m_spotLightBuffer->Unmap();
     }
 
 	ECS::Entity& Scene::Entity(const entt::entity entityId) const {
-	    return *SceneManager::Get().Registry().get<ECS::Entity*>(entityId);
+	    return *Context::SceneManager().Registry().get<ECS::Entity*>(entityId);
     }
 
 	Camera& Scene::PrimaryCamera() {
-    	auto& registry = SceneManager::Get().Registry();
+    	auto& registry = Context::SceneManager().Registry();
 		for (const auto cameras = registry.view<Camera>(); const auto camera : cameras) {
 			if (registry.get<Camera>(camera).Primary()) {
 				return registry.get<Camera>(camera);
@@ -246,7 +297,7 @@ namespace Coral::ECS {
 	}
 
 	Camera& Scene::ViewCamera() {
-		auto& registry = SceneManager::Get().Registry();
+		auto& registry = Context::SceneManager().Registry();
 		for (const auto cameras = registry.view<Camera>(); const auto camera : cameras) {
 			if (registry.get<Camera>(camera).Primary()) {
 				return registry.get<Camera>(camera);
@@ -259,8 +310,9 @@ namespace Coral::ECS {
 	    if (m_selectedObject == entt::null) {
 		    return nullptr;
 	    }
-    	return SceneManager::Get().Registry().get<ECS::Entity*>(m_selectedObject);
+    	return Context::SceneManager().Registry().get<ECS::Entity*>(m_selectedObject);
     }
+
 	std::pair<std::vector<std::unique_ptr<Memory::ImageView>>, u32> Scene::GetShadowMap() {
     	std::vector<std::unique_ptr<Memory::ImageView>> shadowMaps;
     	u32 index = m_shadowCastingLightCount++;
@@ -273,4 +325,34 @@ namespace Coral::ECS {
 		}
 	    return { std::move(shadowMaps), index };
     }
+
+	u32 Scene::AllocateNewLight(const ECS::LightType& type) {
+    	switch (type) {
+    	case ECS::LightType::Point:
+    		return m_pointLightCount++;
+    	case ECS::LightType::Spot:
+    		return m_spotLightCount++;
+    	case ECS::LightType::Directional:
+    		return m_directionalLightCount++;
+    	default:
+    		throw std::runtime_error("No new light type found");
+    	}
+    }
+
+	Math::Vector4u Scene::LightCounts() const {
+    	return { m_pointLightCount, m_directionalLightCount, m_spotLightCount, m_shadowCastingLightCount };
+	}
+
+	Memory::Buffer & Scene::LightBuffer(const ECS::LightType &type) const {
+		switch (type) {
+			case LightType::Point:
+				return *m_pointLightBuffer;
+			case LightType::Spot:
+				return *m_spotLightBuffer;
+			case LightType::Directional:
+				return *m_directionalLightBuffer;
+			default:
+				throw std::runtime_error("Unknown type");
+		}
+	}
 }

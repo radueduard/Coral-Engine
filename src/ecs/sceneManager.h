@@ -13,8 +13,6 @@ namespace Coral::ECS {
 		SceneManager();
 		~SceneManager() = default;
 
-		static SceneManager& Get();
-
 		Scene& GetLoadedScene() const;
 
 		bool IsSceneLoaded() const;
@@ -31,9 +29,8 @@ namespace Coral::ECS {
 
 	private:
 		std::vector<std::function<void()>> m_events;
-		inline static SceneManager* s_instance = nullptr;
 
         entt::registry m_registry;
-		Reef::Container<Scene> m_loadedScene = nullptr;
+		Reef::Container<Scene> m_loadedScene;
 	};
 }

@@ -19,11 +19,14 @@
 #include "compute/program.h"
 #include "compute/programs/generateTextureMesh.h"
 #include "ecs/scene.h"
+#include "ecs/components/renderTarget.h"
+
 #include "gui/container.h"
 
 #include "gui/elements/popup.h"
 #include "shader/slangCompiler.h"
 #include "utils/fileSystemObserver.h"
+#include "utils/noise.h"
 
 namespace Coral {
 	class ImageTest : public Reef::Layer {
@@ -68,7 +71,7 @@ namespace Coral {
     	std::unique_ptr<Shader::Manager> m_shaderManager = nullptr;
     	std::unique_ptr<Core::Scheduler> m_scheduler = nullptr;
     	std::unique_ptr<ECS::SceneManager> m_sceneManager = nullptr;
-    	Reef::Container<Asset::Manager> m_assetManager = nullptr;
+    	Reef::Container<Asset::Manager> m_assetManager;
 
 		m_fileSystemObserver = std::make_unique<Utils::FileSystemObserver>();
 
@@ -314,7 +317,7 @@ namespace Coral {
         	// pipeline.Update();
 
             if (!m_window->IsPaused()) {
-            	if (ECS::SceneManager::Get().IsSceneLoaded())
+            	if (m_sceneManager->IsSceneLoaded())
 					m_sceneManager->GetLoadedScene().Update(m_window->DeltaTime());
                 m_scheduler->Update(m_window->DeltaTime());
     //         	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {

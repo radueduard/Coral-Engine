@@ -107,7 +107,7 @@ namespace Coral::Core {
 
     private:
     	std::unique_ptr<Reef::Manager> m_guiManager;
-    	Reef::Container<Project::RenderGraph> m_renderGraph = nullptr;
+    	Reef::Container<Project::RenderGraph> m_renderGraph;
     	u32 m_imageCount;
     	vk::SampleCountFlagBits m_multiSampling;
 

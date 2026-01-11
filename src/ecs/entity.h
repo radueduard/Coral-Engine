@@ -6,86 +6,37 @@
 
 #include <entt/entity/entity.hpp>
 
-#include "components/transform.h"
-#include "utils/narryTree.h"
+#include "context.h"
 
-#include "assets/importer.h"
-#include "assets/manager.h"
-#include "components/camera.h"
-#include "components/light.h"
-#include "components/renderTarget.h"
 #include "scene.h"
+#include "gui/container.h"
 #include "sceneManager.h"
 
+#include "components/transform.h"
+#include "utils/narryTree.h"
 
 namespace Coral::ECS {
 	template<typename T> requires std::is_base_of_v<Component, T>
 	constexpr u16 TypeMask();
 
-	template<>
-	constexpr u16 TypeMask<Transform>() {
-		return 0b1000'0000'0000'0000;
-	}
-
-	template<>
-	constexpr u16 TypeMask<Camera>() {
-		return 0b0000'0000'0000'0010;
-	}
-
-	template<>
-	constexpr u16 TypeMask<Light>() {
-		return 0b0000'0000'0000'0100;
-	}
-
-	template<>
-	constexpr u16 TypeMask<RenderTarget>() {
-		return 0b0000'0000'0000'1000;
-	}
-
     class Entity final : public Tree<Entity, entt::entity> {
     public:
-        explicit Entity(String name = "Empty") {
-            auto& registry = SceneManager::Get().Registry();
-            m_id = registry.create();
-            registry.emplace<Entity*>(m_id, this);
-            registry.emplace<Transform>(m_id);
-            m_name = std::move(name);
-        }
-        ~Entity() override {
-            auto& registry = SceneManager::Get().Registry();
-        		if (registry.valid(m_id)) {
-				registry.remove<Entity*>(m_id);
-				registry.remove<Transform>(m_id);
-				registry.destroy(m_id);
-			}
-        }
+        explicit Entity(String name = "Empty");
 
-        Entity(const Entity&) = delete;
+		~Entity() override;
+
+		Entity(const Entity&) = delete;
         Entity& operator=(const Entity&) = delete;
 
         // [[nodiscard]] entt::entity Id() const override { return m_id; }
         [[nodiscard]] const String &Name() const { return m_name; }
         String& Name() { return m_name; }
 
-    	std::unique_ptr<Entity> Clone() const {
-        	auto& registry = SceneManager::Get().Registry();
-			const auto& transform = registry.get<Transform>(m_id);
+    	std::unique_ptr<Entity> Clone() const;
 
-			auto newEntity = std::make_unique<Entity>(m_name);
-			newEntity->m_id = registry.create();
-			registry.emplace<Entity*>(newEntity->m_id, newEntity.get());
-			registry.emplace<Transform>(newEntity->m_id, transform.position, transform.rotation, transform.scale);
-
-        	for (const auto& child : Children()) {
-				auto clonedChild = child->Clone();
-				newEntity->AddChild(std::move(clonedChild));
-			}
-			return newEntity;
-        }
-
-        template<typename T, typename... Args> requires std::is_base_of_v<Component, T>
+		template<typename T, typename... Args> requires std::is_base_of_v<Component, T>
         T& Add(Args&&... args) {
-            auto& registry = SceneManager::Get().Registry();
+            auto& registry = Context::SceneManager().Registry();
             T& component = registry.emplace<T>(m_id, std::forward<Args>(args)...);
         	component.SetEntity(this->m_id);
         	m_componentMask |= TypeMask<T>();
@@ -98,13 +49,13 @@ namespace Coral::ECS {
 		template <typename T>
         [[nodiscard]]
         bool Has() const {
-            const auto& registry = SceneManager::Get().Registry();
+            const auto& registry = Context::SceneManager().Registry();
             return registry.all_of<T>(m_id);
         }
 
         template<typename T>
         T& Get() const {
-            auto& registry = SceneManager::Get().Registry();
+            auto& registry = Context::SceneManager().Registry();
             if (registry.all_of<T>(m_id)) {
                 return registry.get<T>(m_id);
             }
@@ -113,80 +64,23 @@ namespace Coral::ECS {
 
         template<typename T>
         void Remove() {
-            auto& registry = SceneManager::Get().Registry();
+            auto& registry = Context::SceneManager().Registry();
             if (registry.all_of<T>(m_id)) {
                 registry.remove<T>(m_id);
             	m_componentMask &= ~T::componentTypeMask;
             }
         }
 
-    	void AddEmpty() {
-        	static int counter = 0;
-			auto child = std::make_unique<Entity>("Empty" + std::to_string(counter++));
-			AddChild(std::move(child));
-        }
+    	void AddEmpty();
+		void AddCamera();
+		void AddLight(const LightType& type);
+		void AddCube();
+		void AddSphere();
 
-    	void AddCamera() {
-        	static int counter = 0;
-        	auto child = std::make_unique<Entity>("Camera" + std::to_string(counter++));
-			child->Add<Camera>(Camera::CreateInfo {});
-        	AddChild(std::move(child));
-        }
-
-    	void AddLight() {
-        	static int counter = 0;
-			auto child = std::make_unique<Entity>("Light" + std::to_string(counter++));
-			child->Get<Transform>().position = Math::Vector3<f32>(-40.f, 0.f, 0.f);
-			child->Add<Light>(Light::Type::Directional, Light::Data { Light::Directional { .direction = Math::Vector3<f32>(1.f, 0.f, 0.f) } }, true);
-			AddChild(std::move(child));
-		}
-
-    	void AddCube() {
-	        static int counter = 0;
-        	auto child = std::make_unique<Entity>("Cube" + std::to_string(counter++));
-        	auto& renderTarget = child->Add<RenderTarget>();
-        	renderTarget.Add(Asset::Manager::Get().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")),
-							 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
-        	AddChild(std::move(child));
-        }
-
-    	void AddSphere() {
-        	static int counter = 0;
-        	auto child = std::make_unique<Entity>("Sphere" + std::to_string(counter++));
-        	auto& renderTarget = child->Add<RenderTarget>();
-        	renderTarget.Add(Asset::Manager::Get().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")),
-							 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
-        	AddChild(std::move(child));
-        }
-
-    private:
+	private:
         String m_name;
-    	u16 m_componentMask = TypeMask<Transform>();
+    	u16 m_componentMask;
     };
-
-	inline void Entity::Update() const {
-		auto& registry = SceneManager::Get().Registry();
-
-		if (m_componentMask & TypeMask<Camera>()) {
-			auto& camera = registry.get<Camera>(m_id);
-			camera.Update();
-		}
-
-		if (m_componentMask & TypeMask<Light>()) {
-			auto& light = registry.get<Light>(m_id);
-			light.Update();
-		}
-
-		if (m_componentMask & TypeMask<RenderTarget>()) {
-			auto& renderTarget = registry.get<RenderTarget>(m_id);
-			renderTarget.Update();
-		}
-
-		if (m_componentMask & TypeMask<Transform>()) {
-			auto& transform = registry.get<Transform>(m_id);
-			transform.Update();
-		}
-	}
 }
 
 inline std::string to_string(const Coral::ECS::Entity& entity) {

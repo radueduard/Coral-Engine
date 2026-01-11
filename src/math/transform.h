@@ -92,11 +92,7 @@ namespace Coral::Math {
     }
 
 	inline Vector3f Direction(const Vector3<f32>& eulerAngles) {
-    	return Vector3f {
-    		glm::cos(eulerAngles.y) * glm::cos(eulerAngles.x),
-			glm::sin(eulerAngles.x),
-			glm::sin(eulerAngles.y) * glm::cos(eulerAngles.x)
-		}.Normalized();
+    	return Quaternion(eulerAngles) * Vector3f { 0.f, 0.f, -1.f };
     }
 
 	inline Vector3f AnglesFromDirection(const Vector3<f32>& direction) {

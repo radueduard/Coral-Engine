@@ -74,7 +74,7 @@ namespace Coral::Reef {
 			const Math::Vector2f uv1 = { 0.f, 1.f };
 			const Math::Vector2f uv2 = { 1.f, 0.f };
 
-			const auto& camera = ECS::SceneManager::Get().GetLoadedScene().PrimaryCamera();
+			const auto& camera = Context::Scene().PrimaryCamera();
 
 			Math::Matrix4f viewMatrix = camera.View();
 			Math::Matrix4f projectionMatrix = camera.Projection();
@@ -105,7 +105,7 @@ namespace Coral::Reef {
 				m_style.cornerRadius,
 				ImVec2(uv1), ImVec2(uv2));
 
-			const auto selectedEntity = ECS::SceneManager::Get().GetLoadedScene().SelectedEntity();
+			const auto selectedEntity = Context::Scene().SelectedEntity();
 			if (!selectedEntity || selectedEntity->Id() == camera.Entity().Id())
 				return;
 
