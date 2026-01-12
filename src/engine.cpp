@@ -103,7 +103,7 @@ namespace Coral {
             .deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             	VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-                VK_EXT_MESH_SHADER_EXTENSION_NAME,
+                // VK_EXT_MESH_SHADER_EXTENSION_NAME,
             	// VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME
             },
             .deviceLayers = {

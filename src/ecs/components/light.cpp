@@ -8,6 +8,8 @@
 #include "core/scheduler.h"
 #include "memory/gpuStructs.h"
 
+#include "math/constants.h"
+
 Coral::ECS::Light::Light(const LightType type, bool castsShadows) :
 	type(type), m_castsShadows(castsShadows) {
 
@@ -33,7 +35,7 @@ template<>
 auto Coral::ECS::Light::GPU<Coral::ECS::LightType::Directional>() const {
 	const auto& transform = Entity().Get<Transform>();
 	return GPU::Light::Directional {
-		.direction = Math::Direction(Math::Radians(transform.rotation)),
+		.direction = Math::Direction(Math::Radians<f32, 3>(transform.rotation)),
 		.color = {color.r, color.g, color.b, color.a },
 		.intensity = intensity,
 	};
@@ -45,7 +47,7 @@ auto Coral::ECS::Light::GPU<Coral::ECS::LightType::Spot>() const {
 	return GPU::Light::Spot {
 		.position = transform.position,
 		.range = range,
-		.direction = Math::Direction(Math::Radians(transform.rotation)),
+		.direction = Math::Direction(Math::Radians<f32, 3>(transform.rotation)),
 		.intensity = intensity,
 		.color = { color.r, color.g, color.b, color.a },
 		.attenuation = attenuation,

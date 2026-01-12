@@ -8,6 +8,7 @@
 #include "math/matrix.h"
 #include "math/vector.h"
 #include "memory/gpuStructs.h"
+#include "memory/buffer.h"
 
 namespace Coral::Memory {
 	class Buffer;
