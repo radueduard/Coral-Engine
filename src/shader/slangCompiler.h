@@ -11,6 +11,7 @@
 
 namespace Coral::Shader {
 	class Shader;
+	class Module;
 
 	class EntryPoint {
 	public:
