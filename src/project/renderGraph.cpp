@@ -507,13 +507,13 @@ namespace Coral::Project {
 		m_viewport.reset();
 	}
 
-	void RenderGraph::Update(const float deltaTime) const
+	void RenderGraph::Update() const
 	{
 		for (const auto& renderPass : m_renderPasses | std::views::values) {
-			renderPass->Update(deltaTime);
+			renderPass->Update();
 		}
 		if (m_guiEnabled) {
-			m_guiManager->Update(deltaTime);
+			m_guiManager->Update();
 		}
 	}
 

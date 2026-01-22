@@ -62,7 +62,7 @@ namespace Coral::Reef {
         void AddLayer(Layer* layer);
         void RemoveLayer(Layer* layer);
 
-        void Update(float deltaTime);
+        void Update();
         void Render(const Core::CommandBuffer& commandBuffer);
 
     	void RegisterPopup(const String& name, Popup* popup) {

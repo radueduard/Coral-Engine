@@ -97,16 +97,18 @@ public:
 		return children;
 	}
 
-	void AddChild(std::unique_ptr<T> child) {
+	T& AddChild(std::unique_ptr<T> child) {
 		child->m_parent = static_cast<T*>(this);
 		m_childrenMap.emplace(child->Id(), child.get());
 		m_children.emplace_back(std::move(child));
+		return *m_children.back();
 	}
 
-	void AddChild(T* child) {
+	T& AddChild(T* child) {
 		child->m_parent = static_cast<T*>(this);
 		m_childrenMap.emplace(child->Id(), child);
 		m_children.emplace_back(child);
+		return *m_children.back();
 	}
 
 	template <class... Args>

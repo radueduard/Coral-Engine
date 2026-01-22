@@ -11,10 +11,10 @@ namespace Coral::Graphics {
 namespace Coral::Compute {
 	class GenerateTextureMesh {
 	public:
-		explicit GenerateTextureMesh(const Memory::Image& image, const Math::Vector3u& chunkCount);
+		explicit GenerateTextureMesh(const Memory::Image& image, const Math::Vector3u& groupCount);
 		~GenerateTextureMesh() = default;
 
-		std::unique_ptr<Graphics::Mesh> Execute(const Math::Vector3u& offset, const Math::Vector3u& fullCount) const;
+		std::unique_ptr<Graphics::Mesh> Execute(const Math::Vector3u& chunkID, const Math::Vector3u& chunkCount) const;
 
 	private:
 		const Memory::Image& m_image;
@@ -28,6 +28,6 @@ namespace Coral::Compute {
 		u32 m_vertexCount = 0;
 		u32 m_indexCount = 0;
 
-		Math::Vector3u m_chunkCount;
+		Math::Vector3u m_groupCount;
 	};
 }

@@ -58,10 +58,6 @@ namespace Coral::Asset {
 
         Graphics::Mesh* GetRandomMesh();
 
-		static Manager& Get() {
-			return *instance;
-		}
-
 	protected:
 		void OnGUIAttach() override;
 		void OnGUIUpdate() override;
@@ -77,8 +73,6 @@ namespace Coral::Asset {
 		std::unique_ptr<Reef::MaterialList> m_materialList;
 		std::unique_ptr<Reef::TextureList> m_texturesList;
 		std::unique_ptr<Reef::PrefabList> m_prefabsList;
-
-		inline static Manager* instance = nullptr;
 
         inline static auto idProvider = boost::uuids::random_generator();
         boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Graphics::Mesh>> meshes {};

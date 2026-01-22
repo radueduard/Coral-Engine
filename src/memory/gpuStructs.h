@@ -19,7 +19,8 @@ namespace Coral::GPU {
 		struct Directional {
 			alignas(16) Math::Vector3<f32> direction;
 			alignas(16) Math::Vector4f color;
-			alignas(16) f32 intensity;
+			f32 intensity;
+			u32 shadowIndex;
 		};
 
 		struct Spot {
@@ -31,6 +32,7 @@ namespace Coral::GPU {
 			alignas(16) Math::Vector3<f32> attenuation;
 			f32 innerAngle;
 			f32 outerAngle;
+			u32 shadowIndex;
 		};
 	}
 

@@ -11,6 +11,7 @@
 
 #include "components/camera.h"
 #include "components/light.h"
+#include "components/script.h"
 
 #include "gui/reef.h"
 
@@ -19,6 +20,8 @@
 
 #include "core/input.h"
 #include "core/scheduler.h"
+#include "core/time.h"
+
 #include "memory/gpuStructs.h"
 
 #include "utils/noise.h"
@@ -94,6 +97,44 @@ namespace Coral::ECS {
     	firstCamera->Get<Transform>().position.z = 30.0f;
     	firstCamera->Get<Camera>().Primary() = true;
 
+    	firstCamera->Add<Script>([] (const ECS::Entity& self) {
+    		auto& camera = self.Get<Camera>();
+    		// camera.SetUpDirection({0.0f, 0.0f, 1.0f});
+    		// camera.SetForwardDirection({1.0f, 0.0f, 0.0f});
+    	}, [] (const ECS::Entity& self) {
+    		auto& camera = self.Get<Camera>();
+    		if (Input::IsMouseButtonHeld(MouseButton::MouseButtonRight)) {
+				Math::Vector3f displacement { 0.0f, 0.0f, 0.0f };
+				if (Input::IsKeyHeld(Key::W)) {
+					displacement.z += 1.0f;
+				}
+				if (Input::IsKeyHeld(Key::S)) {
+					displacement.z -= 1.0f;
+				}
+				if (Input::IsKeyHeld(Key::A)) {
+					displacement.x += 1.0f;
+				}
+				if (Input::IsKeyHeld(Key::D)) {
+					displacement.x -= 1.0f;
+				}
+				if (Input::IsKeyHeld(Key::Q)) {
+					displacement.y -= 1.0f;
+				}
+				if (Input::IsKeyHeld(Key::E)) {
+					displacement.y += 1.0f;
+				}
+				if (displacement.Length() > 0.0f) {
+					camera.Move(displacement * Time::FrameTime<float>() * 3.0f);
+				}
+
+    			// const auto& transform = self.Get<Transform>();
+    			// camera.SetUpDirection(transform.position.Normalized());
+
+				const Math::Vector2<f32> mouseDelta = Input::GetMousePositionDelta() * 5.f;
+				camera.Rotate(mouseDelta.x, -mouseDelta.y);
+			}
+    	});
+
     	m_root->Add<Camera>(firstCameraCreateInfo);
     	m_root->AddChild(std::move(firstCamera));
 
@@ -132,21 +173,40 @@ namespace Coral::ECS {
 			.WriteBuffer(1, camera.Buffer().DescriptorInfo())
 			.Build();
 
-    	const auto albedoUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_albedo.png");
-    	const auto normalUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_normal-dx.png");
-    	const auto roughnessUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_roughness.png");
-		const auto metallicUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_metallic.png");
-    	const auto aoUUID = Asset::Manager::Get().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_ao.png");
+    	auto albedoUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_albedo.png");
+    	auto normalUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_normal-dx.png");
+    	auto roughnessUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_roughness.png");
+		auto metallicUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_metallic.png");
+    	auto aoUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_ao.png");
 
     	m_planetMaterial = Graphics::Material::Builder()
 			.Name("Planet Material")
-			.AddTexture(PBR::Usage::Albedo, Asset::Manager::Get().GetTexture(albedoUUID))
-    		.AddTexture(PBR::Usage::Normal, Asset::Manager::Get().GetTexture(normalUUID))
-			.AddTexture(PBR::Usage::Roughness, Asset::Manager::Get().GetTexture(roughnessUUID))
-			.AddTexture(PBR::Usage::Metallic, Asset::Manager::Get().GetTexture(metallicUUID))
-			.AddTexture(PBR::Usage::AmbientOcclusion, Asset::Manager::Get().GetTexture(aoUUID))
+			.AddTexture(PBR::Usage::Albedo, Context::AssetManager().GetTexture(albedoUUID))
+    		.AddTexture(PBR::Usage::Normal, Context::AssetManager().GetTexture(normalUUID))
+			.AddTexture(PBR::Usage::Roughness, Context::AssetManager().GetTexture(roughnessUUID))
+			.AddTexture(PBR::Usage::Metallic, Context::AssetManager().GetTexture(metallicUUID))
+			.AddTexture(PBR::Usage::AmbientOcclusion, Context::AssetManager().GetTexture(aoUUID))
 			.RoughnessFactor(1.0f)
 			.MetallicFactor(0.0f)
+			.DoubleSided(false)
+			.Build();
+
+    	albedoUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/snow_packed/snow-packed12-Base_Color.png");
+    	normalUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/snow_packed/snow-packed12-Normal-dx.png");
+    	roughnessUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/snow_packed/snow-packed12-Roughness.png");
+    	metallicUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/snow_packed/snow-packed12-Metallic.png");
+    	aoUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/snow_packed/snow-packed12-ao.png");
+
+    	m_waterMaterial = Graphics::Material::Builder()
+			.Name("Water Material")
+			.AddTexture(PBR::Usage::Albedo, Context::AssetManager().GetTexture(albedoUUID))
+			.AddTexture(PBR::Usage::Normal, Context::AssetManager().GetTexture(normalUUID))
+			.AddTexture(PBR::Usage::Roughness, Context::AssetManager().GetTexture(roughnessUUID))
+			.AddTexture(PBR::Usage::Metallic, Context::AssetManager().GetTexture(metallicUUID))
+			.AddTexture(PBR::Usage::AmbientOcclusion, Context::AssetManager().GetTexture(aoUUID))
+    		.BaseColorFactor({0.0f, 0.3f, 0.8f, 1.0f})
+			.RoughnessFactor(.5f)
+			.MetallicFactor(1.0f)
 			.DoubleSided(false)
 			.Build();
 
@@ -155,6 +215,7 @@ namespace Coral::ECS {
     	m_lightCameraBuffer = Memory::Buffer::Builder()
 			.InstanceSize(sizeof(GPU::Camera))
 			.InstanceCount(16)
+    		.DeviceAlignment(4)
 			.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
 			.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
@@ -240,37 +301,7 @@ namespace Coral::ECS {
 			.Build();
     }
 
-	void Scene::Update(const float deltaTime) {
-		auto& mainCamera = ViewCamera();
-
-		if (Input::IsMouseButtonHeld(MouseButton::MouseButtonRight)) {
-			Math::Vector3f displacement { 0.0f, 0.0f, 0.0f };
-			if (Input::IsKeyHeld(Key::W)) {
-				displacement.z += 1.0f;
-			}
-			if (Input::IsKeyHeld(Key::S)) {
-				displacement.z -= 1.0f;
-			}
-			if (Input::IsKeyHeld(Key::A)) {
-				displacement.x += 1.0f;
-			}
-			if (Input::IsKeyHeld(Key::D)) {
-				displacement.x -= 1.0f;
-			}
-			if (Input::IsKeyHeld(Key::Q)) {
-				displacement.y -= 1.0f;
-			}
-			if (Input::IsKeyHeld(Key::E)) {
-				displacement.y += 1.0f;
-			}
-			if (displacement.Length() > 0.0f) {
-				mainCamera.Move(displacement * deltaTime * 3.0f);
-			}
-
-			const Math::Vector2<f32> mouseDelta = Input::GetMousePositionDelta() * 5.f;
-			mainCamera.Rotate(mouseDelta.x, -mouseDelta.y);
-		}
-
+	void Scene::Update() {
     	m_pointLightBuffer->Map<GPU::Light::Point>();
     	m_directionalLightBuffer->Map<GPU::Light::Directional>();
     	m_spotLightBuffer->Map<GPU::Light::Spot>();

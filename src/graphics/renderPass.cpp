@@ -135,7 +135,7 @@ namespace Coral::Graphics {
         commandBuffer->setScissor(0, scissor);
     }
 
-    void RenderPass::Update(const float deltaTime) {
+    void RenderPass::Update() {
         for (auto& [builder, pipeline] : m_pipelines) {
         	bool needsUpdate = builder->ShouldRebuild();
         	for (const auto& shader : pipeline->Shaders() | std::views::values) {

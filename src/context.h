@@ -9,6 +9,10 @@
 
 namespace Coral
 {
+	namespace Asset {
+		class Manager;
+	}
+
 	namespace Core
 	{
 		class Window;
@@ -48,6 +52,7 @@ namespace Coral
 		static ECS::SceneManager& SceneManager() { return *m_sceneManager; }
 		static Utils::FileSystemObserver& FileSystemObserver() { return *m_fileSystemObserver; }
 		static Shader::Manager& ShaderManager() { return *m_shaderManager; }
+		static Asset::Manager& AssetManager() { return *m_assetManager; }
 
 		static UUID GenerateUUID() { return m_uuidGenerator(); }
 	private:
@@ -60,6 +65,7 @@ namespace Coral
 		friend class Core::Window;
 		friend class Utils::FileSystemObserver;
 		friend class Shader::Manager;
+		friend class Asset::Manager;
 
 		inline static Core::Window* m_window = nullptr;
 		inline static Core::Runtime* m_runtime = nullptr;
@@ -70,6 +76,7 @@ namespace Coral
 		inline static ECS::SceneManager* m_sceneManager = nullptr;
 		inline static Utils::FileSystemObserver* m_fileSystemObserver = nullptr;
 		inline static Shader::Manager* m_shaderManager = nullptr;
+		inline static Asset::Manager* m_assetManager = nullptr;
 
 		inline static auto m_uuidGenerator = boost::uuids::random_generator();
 	};

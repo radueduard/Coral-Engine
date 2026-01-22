@@ -112,6 +112,8 @@ void actualizeIndices(
 	indices[index] = remapTable[oldPosition];
 }
 
+#define MAX_FLOAT 3.402823466e+38F
+
 [numthreads(1, 1, 1)]
 [shader("compute")]
 void combineDuplicates(
@@ -122,21 +124,34 @@ void combineDuplicates(
 	uint offset = DTid.x * 128;
 	uint baseVertexIndex = offset;
 	Vertex baseVertex = vertices[offset];
-	for (uint i = 1; i < 128; i++) {
+
+	int i = 0;
+	while (true) {
 		Vertex currentVertex = vertices[offset + i];
-		if (currentVertex.equals(baseVertex)) {
-			baseVertex.normal += currentVertex.normal;
-			baseVertex.tangent.xyz += currentVertex.tangent.xyz;
+		if (length(baseVertex.position - currentVertex.position) < 0.0001) {
 			remapTable[offset + i] = baseVertexIndex;
+			baseVertex.normal += currentVertex.normal;
+			baseVertex.tangent += currentVertex.tangent;
+
+			if (all(baseVertex.position == float3(MAX_FLOAT))) {
+				break;
+			}
 		} else {
 			baseVertex.normal = normalize(baseVertex.normal);
-			baseVertex.tangent.xyz = normalize(baseVertex.tangent.xyz);
+			baseVertex.tangent = normalize(baseVertex.tangent);
+
 			vertices[baseVertexIndex] = baseVertex;
 			baseVertex = currentVertex;
 			baseVertexIndex = offset + i;
+
+			if (i >= 127) {
+				break;
+			}
 		}
+		i++;
 	}
 	baseVertex.normal = normalize(baseVertex.normal);
-	baseVertex.tangent.xyz = normalize(baseVertex.tangent.xyz);
+	baseVertex.tangent = normalize(baseVertex.tangent);
+
 	vertices[baseVertexIndex] = baseVertex;
 }

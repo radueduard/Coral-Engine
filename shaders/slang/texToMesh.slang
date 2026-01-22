@@ -22,7 +22,9 @@ groupshared uint indexOffset;
 struct Payload {
     float4 gridMin;
     float4 gridMax;
-    uint4 globalGroupCount;
+
+    uint4 chunkID;
+    uint4 chunkCount;
 };
 
 [shader("compute")]
@@ -42,20 +44,18 @@ func TextureToMesh3D(
     indexCount = 0;
     GroupMemoryBarrierWithGroupSync();
 
-    uint3 groupSize = WorkgroupSize();
-    uint3 groupCount = WorkgroupCount();
-    uint3 threadCount = groupSize * payload.globalGroupCount.xyz;
+    uint3 threadsPerGroup = WorkgroupSize();
+    uint3 groupsPerChunk = WorkgroupCount();
 
-    uint3 cellId = threadId + groupSize * groupId;
-
-    float3 uvw = float3(cellId) / float3(threadCount - 1); // used to sample density texture
-    float3 texStep = 1.0 / float3(threadCount - 1);
+    uint3 cellCount = threadsPerGroup * groupsPerChunk * payload.chunkCount.xyz;
+    uint3 cellId = payload.chunkID.xyz * groupsPerChunk * threadsPerGroup
+                 + groupId * threadsPerGroup
+                 + threadId;
 
     GridCell cell;
     for (int i = 0; i < 8; i++) {
         uint3 offset = uint3(i % 2, (i / 2) % 2, (i / 4) % 2);
-        float3 samplePos = uvw + float3(offset) * texStep;
-        samplePos = clamp(samplePos, 0.0, 1.0);
+        float3 samplePos = float3(cellId + offset) / float3(cellCount);
 
         cell.positions[i] = lerp(payload.gridMin.xyz, payload.gridMax.xyz, samplePos);
         float noise = densityTexture.SampleLevel(samplePos, 0);
@@ -64,21 +64,23 @@ func TextureToMesh3D(
         cell.densities[i] = radius - length(cell.positions[i]) + noise * 10.0;
     }
 
-    Array<float3, 12> initialVertices; 
+    Array<float3, 12> initialVertices;
     Array<uint3, 5> initialPrimitives;
     uint localVertexCount = 0;
     uint localPrimitiveCount = 0;
 
+    initialVertices = { float3(0.0, 0.0, 0.0) };
+    initialPrimitives = { uint3(0, 0, 0) };
     float threshold = 0.5f;
     GetTrianglesFromCube (
-        cell, 
+        cell,
         threshold, 
         initialVertices, 
         initialPrimitives, 
         localVertexCount, 
         localPrimitiveCount
-    );
-
+    );  
+    
     uint localIndexCount = localPrimitiveCount * 3;
 
     uint localVertexOffset = 0;
@@ -93,38 +95,89 @@ func TextureToMesh3D(
     }
     GroupMemoryBarrierWithGroupSync();
 
+
+    Array<uint, 12> facesPerVertex = { 0 };
     Array<float3, 12> normals = { float3(0.0, 0.0, 0.0) };
     Array<float3, 12> tangents = { float3(0.0, 0.0, 0.0) };
-    // Array<float3, 12> bitangents = { float3(0.0, 0.0, 0.0) };
-    for (int i = 0; i < localPrimitiveCount; i++) {
-        uint3 tri = initialPrimitives[i];
-        float3 v0 = initialVertices[tri.x];
-        float3 v1 = initialVertices[tri.y];
-        float3 v2 = initialVertices[tri.z];
 
-        float3 faceNormal = normalize(cross(v1 - v0, v2 - v0));
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            for (int k = -1; k <= 1; k++) {
+                int3 neighborCellId = int3(cellId) + int3(i, j, k);
+                if (any(neighborCellId < 0) || any(neighborCellId >= int3(cellCount))) {
+                    continue;
+                }
 
-        normals[tri.x] += faceNormal;
-        normals[tri.y] += faceNormal;
-        normals[tri.z] += faceNormal;
+                float3 neighborUVW = float3(neighborCellId) / float3(cellCount);
+                GridCell neighborCell;
+                for (int vi = 0; vi < 8; vi++) {
+                    uint3 offset = uint3(vi % 2, (vi / 2) % 2, (vi / 4) % 2);
+                    float3 samplePos = float3(neighborCellId + offset) / float3(cellCount);
 
-        float3 faceTangent = normalize(cross(faceNormal, float3(0.0, 1.0, 0.0)));
-        if (length(faceTangent) < 0.1) {
-            faceTangent = normalize(cross(faceNormal, float3(1.0, 0.0, 0.0)));
+                    neighborCell.positions[vi] = lerp(payload.gridMin.xyz, payload.gridMax.xyz, samplePos);
+                    float noise = densityTexture.SampleLevel(samplePos, 0);
+
+                    float radius = 15.0;
+                    neighborCell.densities[vi] = radius - length(neighborCell.positions[vi]) + noise * 10.0;
+                }
+
+                Array<float3, 12> neighborVertices;
+                Array<uint3, 5> neighborPrimitives;
+
+                uint neighborVertexCount = 0;
+                uint neighborPrimitiveCount = 0;
+
+                neighborVertices = { float3(0.0, 0.0, 0.0) };
+                neighborPrimitives = { uint3(0, 0, 0) };
+
+                GetTrianglesFromCube (
+                    neighborCell,
+                    threshold, 
+                    neighborVertices, 
+                    neighborPrimitives, 
+                    neighborVertexCount, 
+                    neighborPrimitiveCount
+                );
+
+                for (int ni = 0; ni < neighborPrimitiveCount; ni++) {
+                    uint3 tri = neighborPrimitives[ni];
+                    float3 v0 = neighborVertices[tri.x];
+                    float3 v1 = neighborVertices[tri.y];
+                    float3 v2 = neighborVertices[tri.z];
+                    float3 faceNormal = normalize(cross(v1 - v0, v2 - v0));
+                    
+                    float3 faceTangent = normalize(cross(faceNormal, float3(0.0, 1.0, 0.0)));
+                    if (length(faceTangent) < 0.001) {
+                        faceTangent = normalize(cross(faceNormal, float3(1.0, 0.0, 0.0)));
+                    }
+
+                    for (int vj = 0; vj < localVertexCount; vj++) {
+                        float3 mainPos = initialVertices[vj];
+                        
+                        if (length(v0 - mainPos) <= 0.001) {
+                            normals[vj] += faceNormal;
+                            tangents[vj] += faceTangent;
+                            facesPerVertex[vj]++;
+                        }
+                        if (length(v1 - mainPos) <= 0.001) {
+                            normals[vj] += faceNormal;
+                            tangents[vj] += faceTangent;
+                            facesPerVertex[vj]++;
+                        }
+                        if (length(v2 - mainPos) <= 0.001) {
+                            normals[vj] += faceNormal;
+                            tangents[vj] += faceTangent;
+                            facesPerVertex[vj]++;
+                        }
+                    }
+                }
+            }
         }
-        tangents[tri.x] += faceTangent;
-        tangents[tri.y] += faceTangent;
-        tangents[tri.z] += faceTangent;
-
-        // float3 faceBitangent = cross(faceNormal, faceTangent);
-        // bitangents[tri.x] += faceBitangent;
-        // bitangents[tri.y] += faceBitangent;
-        // bitangents[tri.z] += faceBitangent;
     }
 
     for (int i = 0; i < localVertexCount; i++) {
-        normals[i] = normalize(normals[i]);
-        tangents[i] = normalize(tangents[i]);
+        normals[i] = normals[i] / float(facesPerVertex[i]);
+        tangents[i] = tangents[i] / float(facesPerVertex[i]);
     }
 
     for (uint i = 0; i < localVertexCount; i++) {
@@ -134,7 +187,7 @@ func TextureToMesh3D(
             float4(tangents[i], 1),
             cubicToUV(initialVertices[i]), 
             float2(0.0, 0.0), 
-            float4(1.0, 1.0, 1.0, 1.0)
+            float4(float3(cellId) / float3(cellCount), 1.0)
         );
     }
 

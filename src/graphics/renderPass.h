@@ -95,7 +95,7 @@ namespace Coral::Graphics {
         RenderPass &operator=(const RenderPass &) = delete;
 
         void Begin(const Core::CommandBuffer& commandBuffer, uint32_t imageIndex);
-        void Update(float deltaTime);
+        void Update();
         void Draw(const Core::CommandBuffer& commandBuffer, void* usrData = nullptr) const;
         void End(const Core::CommandBuffer& commandBuffer);
 

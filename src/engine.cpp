@@ -15,11 +15,18 @@
 
 #include "engine.h"
 
+#include "planeMeshes.h"
+
 #include "assets/importer.h"
 #include "compute/program.h"
 #include "compute/programs/generateTextureMesh.h"
+
+#include "core/time.h"
+
 #include "ecs/scene.h"
 #include "ecs/components/renderTarget.h"
+
+#include "graphics/objects/baseMeshes.h"
 
 #include "gui/container.h"
 
@@ -132,156 +139,25 @@ namespace Coral {
 
         Input::Setup();
 
-		// Asset::Importer("assets/DamagedHelmet/DamagedHelmet.gltf").Import();
-		// Asset::Importer("E:/main_sponza/NewSponza_Main_glTF_003.gltf").Import();
-		// Asset::Importer("E:/JungleRuins/gltf/JungleRuins_Main.gltf").Import();
-		// Asset::Importer("E:/pkg_e_knight_anim/Exports/alembic/knight_ANIM_001.rnd.abc").Import();
-
-  //   	auto colorImage = Memory::Image::Builder()
-  //   		.Extent(Math::Vector3u {1280u, 720u, 1u})
-		// 	.Format(vk::Format::eR8G8B8A8Unorm)
-		// 	.UsageFlags(vk::ImageUsageFlagBits::eStorage)
-  //   		.UsageFlags(vk::ImageUsageFlagBits::eSampled)
-  //   		.UsageFlags(vk::ImageUsageFlagBits::eTransferDst)
-  //   		.InitialLayout(vk::ImageLayout::eGeneral)
-		// 	.Build();
-	 //
-		// const auto colorImageView = Memory::ImageView::Builder(*colorImage)
-		// 	.Build();
-	 //
-  //   	const auto colorImageInfo = vk::DescriptorImageInfo()
-  //   		.setImageLayout(vk::ImageLayout::eGeneral)
-		// 	.setImageView(**colorImageView)
-  //   		.setSampler(VK_NULL_HANDLE);
-	 //
-   //  	const auto depthImage = Memory::Image::Builder()
-			// .Extent(Math::Vector3u { 1280u, 720u, 1u })
-   //  		.Format(vk::Format::eR32Uint)
-   //  		.UsageFlags(vk::ImageUsageFlagBits::eStorage)
-   //  		// .UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
-   //  		.UsageFlags(vk::ImageUsageFlagBits::eTransferDst)
-   //  		.InitialLayout(vk::ImageLayout::eGeneral)
-   //  		.Build();
-	  //
-   //  	const auto depthImageView = Memory::ImageView::Builder(*depthImage)
-			// .Build();
-
-  //   	const auto depthImageInfo = vk::DescriptorImageInfo()
-		// 	.setImageLayout(vk::ImageLayout::eGeneral)
-  //   		.setImageView(**depthImageView)
-  //   		.setSampler(VK_NULL_HANDLE);
-	 //
-  //   	struct Vertex {
-		// 	alignas(16) Math::Vector3f position;
-		// 	alignas(16) Math::Vector3f color;
-		// };
-	 //
-  //   	const auto vertexBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(8u)
-  //   		.InstanceSize(sizeof(Vertex))
-		// 	.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-  //   		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-		// 	.Build();
-	 //
-  //   	const auto stagingBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(8u)
-		// 	.InstanceSize(sizeof(Vertex))
-  //   		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-  //   		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-  //   		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-  //   		.Build();
-	 //
-		// std::vector<Vertex> vertices = {
-		// 	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-		// 	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-		// 	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
-		// 	{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
-		// 	{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
-		// 	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } },
-		// 	{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f } },
-		// 	{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 0.0f } },
-		// };
-	 //
-  //   	auto mappedVertices = stagingBuffer->Map<Vertex>();
-  //   	std::ranges::copy(vertices, mappedVertices.begin());
-  //   	stagingBuffer->Unmap();
-		// vertexBuffer->CopyBuffer(*stagingBuffer);
-	 //
-  //   	const auto vertexBufferInfo = vk::DescriptorBufferInfo()
-		// 	.setBuffer(**vertexBuffer)
-		// 	.setOffset(0)
-		// 	.setRange(VK_WHOLE_SIZE);
-	 //
-  //   	const auto indexBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(36u)
-		// 	.InstanceSize(sizeof(u32))
-  //   		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-		// 	.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-  //   		.Build();
-	 //
-  //   	const auto indexStagingBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(36u)
-		// 	.InstanceSize(sizeof(u32))
-		// 	.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-		// 	.Build();
-	 //
-  //   	const std::vector<u32> indices = {
-		// 	0, 1, 2, 2, 3, 0,
-		// 	4, 5, 6, 6, 7, 4,
-		// 	0, 4, 7, 7, 3, 0,
-		// 	1, 5, 6, 6, 2, 1,
-		// 	3, 2, 6, 6, 7, 3,
-		// 	0, 1, 5, 5, 4, 0
-		// };
-	 //
-  //   	auto mappedIndices = indexStagingBuffer->Map<u32>();
-		// std::ranges::copy(indices, mappedIndices.begin());
-  //   	indexStagingBuffer->Unmap();
-	 //
-		// indexBuffer->CopyBuffer(*indexStagingBuffer);
-	 //
-  //   	const auto indexBufferInfo = vk::DescriptorBufferInfo()
-		// 	.setBuffer(**indexBuffer)
-		// 	.setOffset(0)
-		// 	.setRange(VK_WHOLE_SIZE);
-	 //
-  //   	const auto cameraBufferInfo = vk::DescriptorBufferInfo()
-		// 	.setBuffer(*m_sceneManager->GetLoadedScene().CameraBuffer())
-		// 	.setOffset(0)
-		// 	.setRange(VK_WHOLE_SIZE);
-	 //
-	 //
-		// const auto descriptorSet = Memory::Descriptor::Set::Builder(m_scheduler->DescriptorPool(), pipeline.DescriptorSetLayout(0))
-		// 	.WriteImage(0, colorImageInfo)
-		// 	.WriteImage(1, depthImageInfo)
-  //   		.WriteBuffer(2, vertexBufferInfo)
-  //   		.WriteBuffer(3, indexBufferInfo)
-  //   		.WriteBuffer(4, cameraBufferInfo)
-		// 	.Build();
-	 //
-  //   	Reef::Container<ImageTest> imageTestContainer = Reef::MakeContainer<ImageTest>(*colorImage);
-
 
 		// const Utils::PerlinNoise2D noise({ 512u, 512u }, 6);
   //   	Reef::Container<ImageTest> noiseTestContainer = Reef::MakeContainer<ImageTest>(noise.Image());
 
-		const auto image = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(1024u), 9);
+		const auto image = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(256), 9);
 		// const auto image = std::make_unique<Utils::CircleNoise<3>>(Math::Vector3u(64u), 0.75f);
 
     	auto entity = std::make_unique<ECS::Entity>("Generated Planet Mesh");
     	auto& renderTarget = entity->Add<ECS::RenderTarget>();
-    	Math::Vector3u chunkCount { 4u, 4u, 4u };
+
+    	Math::Vector3u chunkCount { 1u, 1u, 1u };
+    	chunkCount *= 4u;
 
   		const Compute::GenerateTextureMesh generateTextureMeshProgram(
   			image->Image(),
-  			chunkCount
+			Math::Vector3u { 1u, 1u, 1u } * 8u
   		);
 
-    	const auto& material = m_sceneManager->GetLoadedScene().PlanetMaterial();
+    	const auto& planetMaterial = m_sceneManager->GetLoadedScene().PlanetMaterial();
 
     	std::vector<std::unique_ptr<Graphics::Mesh>> meshes;
 
@@ -295,7 +171,7 @@ namespace Coral {
 					if (!mesh) {
 						continue;
 					}
-					renderTarget.Add(mesh.get(), &material);
+					renderTarget.Add(mesh.get(), &planetMaterial);
 					meshes.emplace_back(std::move(mesh));
 				}
 			}
@@ -303,23 +179,45 @@ namespace Coral {
 
     	m_sceneManager->GetLoadedScene().Root().AddChild(std::move(entity));
 
-    	// return;
+    	auto waterEntity = std::make_unique<ECS::Entity>("Water Sphere");
+		auto& waterRenderTarget = waterEntity->Add<ECS::RenderTarget>();
+    	auto* waterMesh = m_assetManager->GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002"));
+    	auto& waterMaterial = m_sceneManager->GetLoadedScene().WaterMaterial();
+    	waterRenderTarget.Add(waterMesh, &waterMaterial);
 
-        while (!m_window->ShouldClose()) {
+    	waterEntity->Get<ECS::Transform>().scale = Math::Vector3f { 15.f };
+
+    	m_sceneManager->GetLoadedScene().Root().AddChild(std::move(waterEntity));
+    	m_sceneManager->GetLoadedScene().Root().AddChild(PlaneMeshes::Plane());
+
+    	auto& dirLight = m_sceneManager->GetLoadedScene().Root().AddLight(ECS::LightType::Directional);
+    	dirLight.Get<ECS::Transform>().position = Math::Vector3f { 0.f, 0.f, 30.f };
+
+		auto& spot1 = m_sceneManager->GetLoadedScene().Root().AddLight(ECS::LightType::Spot);
+    	spot1.Get<ECS::Transform>().position = Math::Vector3f { -2.5f, 0.f, 30.f };
+    	spot1.Get<ECS::Transform>().rotation = Math::Vector3f { 0.f, -30.f, 0.f };
+
+    	auto& spot2 = m_sceneManager->GetLoadedScene().Root().AddLight(ECS::LightType::Spot);
+    	spot2.Get<ECS::Transform>().position = Math::Vector3f { 2.5f, 0.f, 30.f };
+    	spot2.Get<ECS::Transform>().rotation = Math::Vector3f { 0.f, 30.f, 0.f };
+
+		Time::Setup();
+
+    	while (!m_window->ShouldClose()) {
 	        auto startTime = std::chrono::high_resolution_clock::now();
         	m_window->PollEvents();
-        	m_window->UpdateDeltaTime();
+        	Time::Update();
 
         	m_fileSystemObserver->Update();
 
         	m_shaderManager->Update();
-        	m_sceneManager->Update(m_window->DeltaTime());
+        	m_sceneManager->Update();
         	// pipeline.Update();
 
             if (!m_window->IsPaused()) {
             	if (m_sceneManager->IsSceneLoaded())
-					m_sceneManager->GetLoadedScene().Update(m_window->DeltaTime());
-                m_scheduler->Update(m_window->DeltaTime());
+					m_sceneManager->GetLoadedScene().Update();
+                m_scheduler->Update();
     //         	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
     //         		colorImage->TransitionLayout(commandBuffer, vk::ImageLayout::eGeneral);
     //         		colorImage->Clear(commandBuffer, vk::ClearColorValue(std::array { 0.f, 0.f, 0.f, 1.f }));

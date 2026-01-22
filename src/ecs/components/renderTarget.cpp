@@ -9,6 +9,9 @@
 
 namespace Coral::ECS {
     void RenderTarget::Add(const Graphics::Mesh *mesh, const Graphics::Material *material) {
+        if (material == nullptr) {
+            material = Graphics::Material::Default();
+        }
         m_targets.emplace_back(mesh, material);
     }
 }

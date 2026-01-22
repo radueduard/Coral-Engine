@@ -47,8 +47,8 @@ void Coral::Asset::Prefab::Load() const {
 			for (const auto& meshData : objectData["meshes"]) {
 				const auto meshUUID = _stringToUuid(meshData["mesh"].get<std::string>());
 				const auto materialUUID = _stringToUuid(meshData["material"].get<std::string>());
-				renderTarget.Add(Manager::Get().GetMesh(meshUUID),
-								 Manager::Get().GetMaterial(materialUUID));
+				renderTarget.Add(Context::AssetManager().GetMesh(meshUUID),
+								 Context::AssetManager().GetMaterial(materialUUID));
 			}
 		}
 		if (objectData.contains("lights")) {

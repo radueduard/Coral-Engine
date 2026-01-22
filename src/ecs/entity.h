@@ -73,9 +73,14 @@ namespace Coral::ECS {
 
     	void AddEmpty();
 		void AddCamera();
-		void AddLight(const LightType& type);
+		Entity& AddLight(const LightType& type);
 		void AddCube();
 		void AddSphere();
+		void AddCylinder();
+		void AddCone();
+    	void AddPrism();
+
+    	void Duplicate();
 
 	private:
         String m_name;

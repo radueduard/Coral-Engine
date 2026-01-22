@@ -43,7 +43,7 @@ namespace Coral::ECS {
         void OnGUIAttach() override;
 		void Setup();
 
-		void Update(float deltaTime);
+		void Update();
 
     	[[nodiscard]] ECS::Entity& Entity(entt::entity entityId) const;
         [[nodiscard]] ECS::Entity& Root() const { return *m_root; }
@@ -57,6 +57,7 @@ namespace Coral::ECS {
 
     	[[nodiscard]] Memory::Descriptor::Set& PlanetDescriptorSet() const { return *m_planetSet; }
     	[[nodiscard]] Graphics::Material& PlanetMaterial() const { return *m_planetMaterial; }
+    	[[nodiscard]] Graphics::Material& WaterMaterial() const { return *m_waterMaterial; }
 
     	std::pair<std::vector<std::unique_ptr<Memory::ImageView>>, u32> GetShadowMap();
 
@@ -89,6 +90,7 @@ namespace Coral::ECS {
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_planetSetLayout;
     	std::unique_ptr<Memory::Descriptor::Set> m_planetSet;
     	std::unique_ptr<Graphics::Material> m_planetMaterial;
+    	std::unique_ptr<Graphics::Material> m_waterMaterial;
 
     	u32 m_shadowCastingLightCount;
     	std::unique_ptr<Memory::Buffer> m_lightCameraBuffer;

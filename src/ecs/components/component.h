@@ -5,7 +5,6 @@
 #pragma once
 
 #include "entt/entity/entity.hpp"
-#include "utils/types.h"
 
 namespace Coral::ECS {
 	class Entity;
@@ -31,4 +30,4 @@ namespace Coral::ECS {
 
 		entt::entity m_entity { entt::null };
 	};
-} // namespace Coral::ECS
+}

@@ -13,15 +13,13 @@
 
 Coral::Compute::GenerateTextureMesh::GenerateTextureMesh (
 	const Memory::Image& image,
-	const Math::Vector3u& chunkCount
-) : m_image(image), m_chunkCount(chunkCount) {}
+	const Math::Vector3u& groupCount
+) : m_image(image), m_groupCount(groupCount) {}
 
 std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Execute(
-	const Math::Vector3u& offset,
-	const Math::Vector3u& fullCount
+	const Math::Vector3u& chunkID,
+	const Math::Vector3u& chunkCount
 ) const {
-	const u32 chunkCountTotal = m_chunkCount.x * m_chunkCount.y * m_chunkCount.z;
-
 	const u32 initialCounts[2] = { 0, 0 };
 
 	const auto counts = Memory::Buffer::Builder()
@@ -37,21 +35,26 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		.position = { std::numeric_limits<f32>::max(), std::numeric_limits<f32>::max(), std::numeric_limits<f32>::max() }
 	};
 
-	// max vertex count is 12 * 8^3 * chunkCountTotal
+	u32 indicesPerThread = 15;
+	u32 verticesPerThread = 16;
+	u32 threadsPerGroup = 8 * 8 * 8;
+	u32 groupsPerChunk = m_groupCount.x * m_groupCount.y * m_groupCount.z;
+
 	auto vertexBufferWithDuplicates = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(Graphics::Vertex))
-		.InstanceCount(16 * 512 * chunkCountTotal)
+		.InstanceCount(verticesPerThread * threadsPerGroup * groupsPerChunk)
 		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
 		.Data(&defaultVertex)
 		.Build();
 
-	std::vector<u32> initialIndices = std::ranges::iota_view(0u, 16u * 512u * chunkCountTotal) | std::ranges::to<std::vector<u32>>();
+	std::vector<u32> initialIndices = std::ranges::iota_view(0u, indicesPerThread * threadsPerGroup * groupsPerChunk)
+		| std::ranges::to<std::vector<u32>>();
 
 	auto reverseRemapTableBuffer = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(u32))
-		.InstanceCount(16 * 512 * chunkCountTotal)
+		.InstanceCount(verticesPerThread * threadsPerGroup * groupsPerChunk)
 		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
@@ -60,7 +63,7 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 
 	auto remapTableBuffer = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(u32))
-		.InstanceCount(16 * 512 * chunkCountTotal)
+		.InstanceCount(verticesPerThread * threadsPerGroup * groupsPerChunk)
 		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
@@ -69,7 +72,7 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 
 	auto remapTableBuffer2 = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(u32))
-		.InstanceCount(16 * 512 * chunkCountTotal)
+		.InstanceCount(verticesPerThread * threadsPerGroup * groupsPerChunk)
 		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
@@ -79,7 +82,7 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 	// max index count is 15 * 8^3 * chunkCountTotal
 	auto indexBufferWithDuplicates = Memory::Buffer::Builder()
 		.InstanceSize(sizeof(u32))
-		.InstanceCount(15 * 512 * chunkCountTotal)
+		.InstanceCount(indicesPerThread * threadsPerGroup * groupsPerChunk)
 		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
 		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
 		.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
@@ -152,18 +155,17 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 		const struct {
 			alignas(16) Math::Vector3f gridMin;
 			alignas(16) Math::Vector3f gridMax;
+			alignas(16) Math::Vector3u chunkID;
 			alignas(16) Math::Vector3u chunkCount;
 		} pushConstants = {
 			.gridMin = Math::Vector3f { -25.f, -25.f, -25.f },
 			.gridMax = Math::Vector3f { 25.f, 25.f, 25.f },
-			.chunkCount = fullCount * m_chunkCount
+			.chunkID = chunkID,
+			.chunkCount = chunkCount
 		};
 
 		computePipeline.PushConstants(commandBuffer, vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
-		commandBuffer->dispatchBase(
-			offset.x * m_chunkCount.x, offset.y * m_chunkCount.y, offset.z * m_chunkCount.z,
-			m_chunkCount.x, m_chunkCount.y, m_chunkCount.z
-		);
+		commandBuffer->dispatch(m_groupCount.x, m_groupCount.y, m_groupCount.z);
 	}, vk::QueueFlagBits::eCompute);
 
 	auto mappedCounts = counts->Map<u32>();
@@ -351,7 +353,7 @@ std::unique_ptr<Coral::Graphics::Mesh> Coral::Compute::GenerateTextureMesh::Exec
 	indexBuffer->CopyBuffer(*indexBufferWithDuplicates, indexCount);
 
 	return Graphics::Mesh::Builder()
-		.Name("GeneratedTextureMesh" + std::to_string(offset.x) + "_" + std::to_string(offset.y) + "_" + std::to_string(offset.z))
+		.Name("GeneratedTextureMesh" + std::to_string(chunkID.x) + "_" + std::to_string(chunkID.y) + "_" + std::to_string(chunkID.z))
 		.VertexBuffer(std::move(vertexBuffer))
 		.IndexBuffer(std::move(indexBuffer))
 		.AABB(Math::AABB { Math::Vector3f { -25.f, -25.f, -25.f }, Math::Vector3f { 25.f, 25.f, 25.f } })

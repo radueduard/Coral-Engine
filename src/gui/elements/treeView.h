@@ -141,23 +141,39 @@ namespace Coral::Reef {
             if (ImGui::MenuItem(ICON_FA_CAMERA "    Add Camera", nullptr, false)) {
                 object.AddCamera();
             }
-            if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Point Light", nullptr, false)) {
-                object.AddLight(ECS::LightType::Point);
-            }
-            if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Directional Light", nullptr, false)) {
-                object.AddLight(ECS::LightType::Directional);
-            }
-            if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Add Spot Light", nullptr, false)) {
-                object.AddLight(ECS::LightType::Spot);
-            }
-            if (ImGui::BeginMenu(ICON_FA_HASHTAG "    Add Mesh")) {
-                if (ImGui::MenuItem(ICON_FA_CUBE "    Add Cube", nullptr, false)) {
-                    object.AddCube();
+            if (ImGui::BeginMenu(ICON_FA_LIGHTBULB "    Add Light")) {
+                if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Point Light", nullptr, false)) {
+                    object.AddLight(ECS::LightType::Point);
                 }
-                if (ImGui::MenuItem(ICON_FA_CIRCLE "    Add Sphere", nullptr, false)) {
-                    object.AddSphere();
+                if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Directional Light", nullptr, false)) {
+                    object.AddLight(ECS::LightType::Directional);
+                }
+                if (ImGui::MenuItem(ICON_FA_LIGHTBULB "    Spot Light", nullptr, false)) {
+                    object.AddLight(ECS::LightType::Spot);
                 }
                 ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu(ICON_FA_HASHTAG "    Add Mesh")) {
+                if (ImGui::MenuItem(ICON_FA_CUBE "    Cube", nullptr, false)) {
+                    object.AddCube();
+                }
+                if (ImGui::MenuItem(ICON_FA_CIRCLE "    Sphere", nullptr, false)) {
+                    object.AddSphere();
+                }
+                if (ImGui::MenuItem(ICON_FA_DATABASE "    Cylinder", nullptr, false)) {
+                    object.AddCylinder();
+                }
+                if (ImGui::MenuItem(ICON_FA_CARET_UP "    Cone", nullptr, false)) {
+                    object.AddCone();
+                }
+                if (ImGui::MenuItem(ICON_FA_BAHT_SIGN "    Prism", nullptr, false)) {
+                    object.AddPrism();
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::MenuItem(ICON_FA_SQUARE_PLUS "    Duplicate" , nullptr, false)) {
+                object.Duplicate();
             }
             if (ImGui::MenuItem(ICON_FA_TRASH "    Delete", nullptr, false)) {
                 object.Detach();

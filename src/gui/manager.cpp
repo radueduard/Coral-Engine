@@ -140,7 +140,7 @@ namespace Coral::Reef {
         std::erase(m_layers, layer);
     }
 
-    void Manager::Update(const float deltaTime) {
+    void Manager::Update() {
 
     }
 

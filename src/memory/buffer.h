@@ -7,7 +7,9 @@
 #include "core/device.h"
 
 #include <vulkan/vulkan.hpp>
+
 #include "context.h"
+
 #include "utils/globalWrapper.h"
 
 static vk::DeviceSize GetAlignment(const vk::DeviceSize size, const vk::DeviceSize alignment) {
@@ -35,7 +37,7 @@ namespace Coral::Memory {
 			Builder& MemoryProperty(vk::MemoryPropertyFlagBits memoryPropertyFlag);
 
 			Builder& DeviceAlignment(vk::DeviceSize deviceAlignment);
-			Coral::Memory::Buffer::Builder& Data(const void* value);
+			Builder& Data(const void* value);
 
 			Builder& Data(const void* data, vk::DeviceSize size);
 

@@ -80,7 +80,7 @@ namespace Coral::Project {
         explicit RenderGraph(const CreateInfo& createInfo);
         ~RenderGraph() override;
 
-        void Update(float deltaTime) const;
+        void Update() const;
         void Execute(const Core::Frame& frame) const;
         void Resize(const Math::Vector2<f32>& size, bool inner = false);
 

@@ -13,7 +13,7 @@ namespace Coral::ECS {
         explicit RenderTarget() = default;
         ~RenderTarget() override = default;
 
-        void Add(const Graphics::Mesh *mesh, const Graphics::Material *material);
+        void Add(const Graphics::Mesh *mesh, const Graphics::Material *material = nullptr);
 
         [[nodiscard]] const std::vector<std::pair<const Graphics::Mesh*, const Graphics::Material*>>& Targets() const { return m_targets; }
 
