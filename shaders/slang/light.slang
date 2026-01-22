@@ -140,7 +140,7 @@ public struct DirectionalLight : ILight {
 
     public float3 GetDirectIlumination(float3 worldPosition, float3 eye, MaterialProperties material) {
         float3 L = getDirection(worldPosition);
-        float3 V = normalize(worldPosition - eye);
+        float3 V = -normalize(worldPosition - eye);
         float3 H = normalize(L + V);
         float3 N = material.normal;
 
