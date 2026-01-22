@@ -8,8 +8,6 @@
 
 #include <vector>
 
-#include "context.h"
-
 namespace Coral::Memory::Descriptor {
     class Pool {
     public:
@@ -40,9 +38,9 @@ namespace Coral::Memory::Descriptor {
         void Free(const vk::DescriptorSet &descriptorSet) const;
         void Free(const std::vector<vk::DescriptorSet> &descriptorSets) const;
 
-        void Reset() const { Context::Device()->resetDescriptorPool(m_pool); }
+        void Reset() const;
 
-    private:
+	private:
     	u32 m_allocatedSetCount = 0;
     	std::unordered_map<vk::DescriptorType, uint32_t> m_allocatedBindingCounts;
 

@@ -12,7 +12,6 @@
 namespace Coral::Graphics {
     Texture::Texture(const Builder &builder)
         : m_uuid(builder.m_uuid), m_name(builder.m_name), m_usage(builder.m_usage) {
-	    const auto extent = vk::Extent3D(builder.m_width, builder.m_height, 1);
     	const auto mipLevels = builder.m_createMipmaps ? static_cast<uint32_t>(std::floor(std::log2(std::max(builder.m_width, builder.m_height)))) + 1 : 1;
     	m_image = Memory::Image::Builder()
 			.Format(builder.m_format)

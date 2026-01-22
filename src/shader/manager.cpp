@@ -4,28 +4,38 @@
 
 #include "manager.h"
 
-#include "gui/elements/popup.h"
+#include "context.h"
+#include "slangCompiler.h"
+#include "shader.h"
 
 namespace Coral::Shader {
-	Manager::Manager(std::filesystem::path defaultSearchPath) : m_defaultSearchPath(std::move(defaultSearchPath)) {
-		s_instance = this;
-		m_currentPath = m_defaultSearchPath;
-		m_shaderStorage = std::make_unique<Slang>();
+	Manager::Manager() {
+		static bool firstTime = true;
+		if (!firstTime) {
+			throw std::runtime_error("Shader::Manager already created!");
+		}
+		firstTime = false;
+		Context::m_shaderManager = this;
+
+		m_slangCompiler = std::make_unique<Coral::Shader::SlangCompiler>();
 	}
 
 	void Manager::Update() const {
-		for (const auto& shader : m_shaderStorage->modules | std::views::values) {
-			for (const auto& entryPoint : shader->entryPoints | std::views::values) {
-				entryPoint->Update();
-			}
-		}
+		m_slangCompiler->Update();
 	}
 
-	void Manager::LateUpdate() const {
-		for (const auto& shader : m_shaderStorage->modules | std::views::values) {
-			for (const auto& entryPoint : shader->entryPoints | std::views::values) {
-				entryPoint->LateUpdate();
-			}
+	Coral::Shader::Shader* Manager::LoadSpirV(std::vector<uint32_t> spirVCode, std::unordered_map<std::string, std::string> semanticMap) {
+		auto shader = std::unique_ptr<Shader>(new Shader());
+		shader->LoadCode(std::move(spirVCode));
+		shader->LoadResourceInfo(std::move(semanticMap));
+		return m_shaders.emplace_back(std::move(shader)).get();
+	}
+
+	Coral::Shader::Shader* Manager::SlangShader(const std::string& moduleName, const std::string& entryPointName) const {
+		auto& entryPoint = m_slangCompiler->Module(moduleName).EntryPoint(entryPointName);
+		if (!entryPoint.Shader()) {
+			entryPoint.LoadShader();
 		}
+		return entryPoint.Shader();
 	}
 }

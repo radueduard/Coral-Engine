@@ -4,6 +4,8 @@
 
 #include "buffer.h"
 
+#include <iostream>
+
 Coral::Memory::Buffer::Builder::Builder() { m_name = to_string(boost::uuids::random_generator()()); }
 Coral::Memory::Buffer::Builder::~Builder() = default;
 Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::InstanceSize(const u32 instanceSize) {
@@ -18,8 +20,7 @@ Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::UsageFlags(const
 	m_usageFlagSet.insert(usageFlag);
 	return *this;
 }
-Coral::Memory::Buffer::Builder&
-Coral::Memory::Buffer::Builder::MemoryProperty(const vk::MemoryPropertyFlagBits memoryPropertyFlag) {
+Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::MemoryProperty(const vk::MemoryPropertyFlagBits memoryPropertyFlag) {
 	m_memoryPropertyFlagSet.insert(memoryPropertyFlag);
 	return *this;
 }
@@ -27,6 +28,23 @@ Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::DeviceAlignment(
 	m_deviceAlignment = deviceAlignment;
 	return *this;
 }
+
+Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::Data(const void* value) {
+	m_value = value;
+	m_usageFlagSet.emplace(vk::BufferUsageFlagBits::eTransferDst);
+
+	return *this;
+}
+
+Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::Data(const void* data, vk::DeviceSize size) {
+	m_data = data;
+	m_dataSize = size;
+
+	m_usageFlagSet.emplace(vk::BufferUsageFlagBits::eTransferDst);
+
+	return *this;
+}
+
 std::unique_ptr<Coral::Memory::Buffer> Coral::Memory::Buffer::Builder::Build() {
 	return std::make_unique<Buffer>(*this);
 }
@@ -59,6 +77,50 @@ Coral::Memory::Buffer::Buffer(const Builder& builder) : m_instanceCount(builder.
 
 	m_memory = Context::Device()->allocateMemory(allocInfo);
 	Context::Device()->bindBufferMemory(m_handle, m_memory, 0);
+
+	if (builder.m_data != nullptr && builder.m_dataSize > 0) {
+		if (m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostVisible && m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) {
+			Map<uint8_t>();
+			std::memcpy(m_mapped, builder.m_data, std::min(builder.m_dataSize, bufferSize));
+			Unmap();
+		} else {
+			const auto stagingBuffer = Builder()
+				.InstanceSize(m_alignmentSize)
+				.InstanceCount((builder.m_dataSize + m_alignmentSize - 1) / m_alignmentSize)
+				.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+				.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+				.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+				.Build();
+			stagingBuffer->Map<uint8_t>();
+			std::memcpy(stagingBuffer->m_mapped, builder.m_data, builder.m_dataSize);
+			stagingBuffer->Unmap();
+
+			CopyBuffer(*stagingBuffer, (builder.m_dataSize + m_alignmentSize - 1) / m_alignmentSize);
+		}
+	} else if (builder.m_value != nullptr) {
+		if (m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostVisible && m_memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) {
+			Map<uint8_t>();
+			for (u32 i = 0; i < m_instanceCount; ++i) {
+				std::memcpy(static_cast<uint8_t*>(m_mapped) + i * m_alignmentSize, builder.m_value, builder.m_instanceSize);
+			}
+			Unmap();
+		} else {
+			const auto stagingBuffer = Builder()
+				.InstanceSize(m_alignmentSize)
+				.InstanceCount(m_instanceCount)
+				.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+				.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
+				.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
+				.Build();
+			stagingBuffer->Map<uint8_t>();
+			for (u32 i = 0; i < m_instanceCount; ++i) {
+				std::memcpy(static_cast<uint8_t*>(stagingBuffer->m_mapped) + i * m_alignmentSize, builder.m_value, builder.m_instanceSize);
+			}
+			stagingBuffer->Unmap();
+
+			CopyBuffer(*stagingBuffer);
+		}
+	}
 }
 Coral::Memory::Buffer::~Buffer() {
 	Unmap();

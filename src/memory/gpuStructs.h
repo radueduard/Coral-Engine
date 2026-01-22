@@ -3,31 +3,36 @@
 //
 
 #pragma once
+#include "math/matrix.h"
 #include "math/vector.h"
 
 namespace Coral::GPU {
 	namespace Light {
 		struct Point {
-			alignas(16) Math::Vector3<f32> position;
-			alignas(16) Math::Vector3<f32> color;
-			alignas(16) Math::Vector3<f32> attenuation;
-			f32 radius;
+			Math::Vector3<f32> position;
+			f32 intensity;
+			alignas(16) Math::Vector4f color;
+			Math::Vector3<f32> attenuation;
+			f32 range;
 		};
 
 		struct Directional {
 			alignas(16) Math::Vector3<f32> direction;
-			alignas(16) Math::Vector3<f32> color;
+			alignas(16) Math::Vector4f color;
 			f32 intensity;
+			u32 shadowIndex;
 		};
 
 		struct Spot {
-			alignas(16) Math::Vector3<f32> position;
-			alignas(16) Math::Vector3<f32> direction;
-			alignas(16) Math::Vector3<f32> color;
+			Math::Vector3<f32> position;
+			f32 range;
+			Math::Vector3<f32> direction;
+			f32 intensity;
+			alignas(16) Math::Vector4f color;
+			alignas(16) Math::Vector3<f32> attenuation;
 			f32 innerAngle;
 			f32 outerAngle;
-			f32 intensity;
-			f32 range;
+			u32 shadowIndex;
 		};
 	}
 

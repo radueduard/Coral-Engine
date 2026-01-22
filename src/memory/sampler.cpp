@@ -16,7 +16,7 @@ namespace Coral::Memory {
             .setAddressModeU(m_addressMode)
             .setAddressModeV(m_addressMode)
             .setAddressModeW(m_addressMode)
-            .setAnisotropyEnable(vk::True)
+            .setAnisotropyEnable(vk::False)
             .setMaxAnisotropy(16)
             .setBorderColor(vk::BorderColor::eIntOpaqueBlack)
             .setUnnormalizedCoordinates(vk::False)

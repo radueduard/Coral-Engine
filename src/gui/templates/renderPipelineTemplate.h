@@ -14,12 +14,12 @@
 
 
 namespace Coral::Reef {
-	class RenderPipelineTemplate : public ReadWriteTemplate<Graphics::Pipeline::Builder> {
+	class RenderPipelineTemplate : public ReadWriteTemplate<Graphics::Pipeline::BuilderRenderPass> {
 	public:
 		RenderPipelineTemplate() = default;
 		~RenderPipelineTemplate() override = default;
 
-		Element* Build(Graphics::Pipeline::Builder& data) override {
+		Element* Build(Graphics::Pipeline::BuilderRenderPass& data) override {
 			return new Element({
 					.size = { Grow, Shrink },
 					.padding = { 10.f, 10.f, 10.f, 10.f },
@@ -29,24 +29,22 @@ namespace Coral::Reef {
 				},
 				{
 					new Text(" " ICON_FA_PAINTBRUSH "   Graphics Pipeline",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black),
 						{ .size = { 0.f, 20.f } }
 					),
 					new Separator(),
 					new Text(
-							"Rasterization State",
-							Text::Style{
-								.color = Colors::grey[300],
-								.fontSize = 20.f,
-								.fontStyle = FontType::Black,
-								.verticalAlignment = Text::VerticalAlignment::Middle,
-								.horizontalAlignment = Text::HorizontalAlignment::Center,
-							},
-					{ .size = { 0.f, 20.f } }
+						"Rasterization State",
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Center),
+						{ .size = { 0.f, 20.f } }
 					),
 					new Separator(),
 					new LabeledRow {
@@ -180,13 +178,12 @@ namespace Coral::Reef {
 					new Separator(),
 					new Text(
 						"Input Assembly State",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Center,
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Center),
 						{ .size = { 0.f, 20.f } }
 					),
 					new Separator(),
@@ -216,13 +213,12 @@ namespace Coral::Reef {
 					new Separator(),
 					new Text(
 						"Tessellation State",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Center,
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Center),
 						{ .size = { Grow, 20.f } }
 					),
 					new Separator(),
@@ -254,14 +250,16 @@ namespace Coral::Reef {
 							return false;
 						},
 						{
-							new Text("Reload", {
-								.color = { 0.8f, 0.8f, 0.8f, 1.f },
-								.fontSize = 15.f,
-								.fontStyle = FontType::Bold,
-								.verticalAlignment = Text::VerticalAlignment::Middle,
-								.horizontalAlignment = Text::HorizontalAlignment::Center,
-							}),
-						}),
+							new Text("Reload",
+								Text::Style()
+									.withColor(Colors::grey[300])
+									.withFontSize(20.f)
+									.withFontStyle(FontType::Black)
+									.withVerticalAlignment(Text::VerticalAlignment::Middle)
+									.withHorizontalAlignment(Text::HorizontalAlignment::Center)
+							),
+						}
+					)
 				}
 			);
 		}

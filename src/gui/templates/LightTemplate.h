@@ -73,11 +73,10 @@ namespace Coral::Reef {
 							   .backgroundColor = ImVec4{163 / 255.f, 58 / 255.f, 44 / 255.f, 1.f}},
 			};
 
-			const Text::Style labelStyle {
-				.color = { 0.8f, 0.8f, 0.8f, 1.f },
-				.fontSize = 15.f,
-				.fontStyle = FontType::Bold,
-			};
+			const Text::Style labelStyle = Text::Style()
+				.withColor( { 0.8f, 0.8f, 0.8f, 1.f } )
+				.withFontSize(15.f)
+				.withFontStyle(FontType::Bold);
 
 			return new Element({
 					.size = { Grow, Shrink },
@@ -89,43 +88,41 @@ namespace Coral::Reef {
 				{
 					new Text(
 						" " ICON_FA_LIGHTBULB "    Light Settings",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Left,
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Left),
 						{ .size = { Grow, 23.f } }
 					),
 					new Separator(),
 					new DropDown(
 						"Light Type",
-						&data.m_type,
+						&data.type,
 						{},
 						DropDownDefaultStyle()
 							.withSize({ Grow, 23.f })
 					),
 					new Conditional(
 						[&data] {
-							static ECS::Light::Type lastType = data.m_type;
-							if (lastType != data.m_type) {
-								lastType = data.m_type;
-								switch (lastType) {
-								case ECS::Light::Type::Point:
-									data.m_data = ECS::Light::Data(ECS::Light::Point {});
-									break;
-								case ECS::Light::Type::Directional:
-									data.m_data = ECS::Light::Data(ECS::Light::Directional {});
-									break;
-								case ECS::Light::Type::Spot:
-									data.m_data = ECS::Light::Data(ECS::Light::Spot {});
-								default:
-									break;
-								}
+							static ECS::LightType lastType = data.type;
+							if (lastType != data.type) {
+								lastType = data.type;
+							// 	switch (lastType) {
+							// 	case ECS::LightType::Point:
+							// 		break;
+							// 	case ECS::LightType::Directional:
+							// 		break;
+							// 	case ECS::LightType::Spot:
+							// 		break;
+							// 	default:
+							// 		break;
+							// 	}
 							}
 							return static_cast<u8>(lastType);
 						},
+						&data.m_changed,
 						{
 							new Element({
 								.direction = Axis::Vertical,
@@ -134,7 +131,7 @@ namespace Coral::Reef {
 									new Text("color"),
 									new Drag<f32, 3>(
 										"Color",
-										{ &data.m_data.point.color.r, &data.m_data.point.color.g, &data.m_data.point.color.b },
+										{ &data.color.r, &data.color.g, &data.color.b },
 										0.01f,
 										{ 0.f, 0.f, 0.f },
 										{ 1.f, 1.f, 1.f },
@@ -149,7 +146,7 @@ namespace Coral::Reef {
 									new Text("attenuation"),
 									new Drag<f32, 3>(
 										"Attenuation",
-										{ &data.m_data.point.attenuation.x, &data.m_data.point.attenuation.y, &data.m_data.point.attenuation.z },
+										{ &data.attenuation.x, &data.attenuation.y, &data.attenuation.z },
 										0.01f,
 										{ 0.f, 0.f, 0.f },
 										{ 1.f, 1.f, 1.f },
@@ -164,7 +161,22 @@ namespace Coral::Reef {
 									new Text("range"),
 									new Drag<>(
 										"Range",
-										{ &data.m_data.point.range },
+										{ &data.range },
+										0.1f,
+										{ 0.f },
+										{ 100.f },
+										&data.m_changed,
+										std::nullopt,
+										DragDefaultStyle()
+											.withSize({ 250.f, Grow })
+									),
+									{ .size = { 0.f, 23.f } }
+								},
+								new LabeledRow {
+									new Text("intensity"),
+									new Drag<>(
+										"Intensity",
+										{ &data.intensity },
 										0.1f,
 										{ 0.f },
 										{ 100.f },
@@ -183,7 +195,7 @@ namespace Coral::Reef {
 									new Text("color"),
 									new Drag<f32, 3>(
 										"Color",
-										{ &data.m_data.directional.color.r, &data.m_data.directional.color.g, &data.m_data.directional.color.b },
+										{ &data.color.r, &data.color.g, &data.color.b },
 										0.01f,
 										{ 0.f, 0.f, 0.f },
 										{ 1.f, 1.f, 1.f },
@@ -198,7 +210,7 @@ namespace Coral::Reef {
 									new Text("intensity"),
 									new Drag<>(
 										"Intensity",
-										{ &data.m_data.directional.intensity },
+										{ &data.intensity },
 										0.1f,
 										{ 0.f },
 										{ 100.f },
@@ -217,7 +229,7 @@ namespace Coral::Reef {
 									new Text("color"),
 									new Drag<f32, 3>(
 										"Color",
-										{ &data.m_data.spot.color.r, &data.m_data.spot.color.g, &data.m_data.spot.color.b },
+										{ &data.color.r, &data.color.g, &data.color.b },
 										0.01f,
 										{ 0.f, 0.f, 0.f },
 										{ 1.f, 1.f, 1.f },
@@ -231,7 +243,7 @@ namespace Coral::Reef {
 									new Text("intensity"),
 									new Drag<f32, 1>(
 										"Intensity",
-										{ &data.m_data.spot.intensity },
+										{ &data.intensity },
 										0.1f,
 										{ 0.f },
 										{ 100.f },
@@ -246,7 +258,7 @@ namespace Coral::Reef {
 									new Text("range"),
 									new Drag<f32, 1>(
 										"Range",
-										{ &data.m_data.spot.range, },
+										{ &data.range, },
 										0.1f,
 										{ 0.f },
 										{ 100.f },
@@ -261,7 +273,7 @@ namespace Coral::Reef {
 									new Text("angles"),
 									new Drag<f32, 2>(
 										"Angles",
-										{ &data.m_data.spot.innerAngle, &data.m_data.spot.outerAngle },
+										{ &data.innerAngle, &data.outerAngle },
 										0.01f,
 										{ 0.f, 0.f },
 										{ 90.f, 180.f },

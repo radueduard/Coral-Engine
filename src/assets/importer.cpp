@@ -20,9 +20,9 @@
 #include <glm/gtc/quaternion.hpp>
 #include <magic_enum/magic_enum.hpp>
 
-#include "../ecs/components/RenderTarget.h"
-#include "../ecs/scene.h"
-#include "ecs/Entity.h"
+#include "ecs/components/renderTarget.h"
+#include "ecs/scene.h"
+#include "ecs/entity.h"
 #include "ecs/components/camera.h"
 #include "graphics/objects/material.h"
 #include "graphics/objects/mesh.h"
@@ -324,7 +324,7 @@ namespace Coral::Asset {
 
     	LoadMeshes();
     	LoadMaterials();
-    	Manager::Get().AddPrefab(std::make_unique<Prefab>(m_name, m_metadata));
+    	Context::AssetManager().AddPrefab(std::make_unique<Prefab>(m_name, m_metadata));
     }
 
 
@@ -336,7 +336,8 @@ namespace Coral::Asset {
             const auto mesh = m_scene->mMeshes[assimpId];
 			const auto aabb = mesh->mAABB;
 
-            auto builder = Graphics::Mesh::Builder(_stringToUuid(uuid))
+            auto builder = Graphics::Mesh::Builder(_stringToUuid(uuid));
+        	builder
                 .Name(mesh->mName.C_Str())
         		.AABB(Math::AABB(Math::Vector3<f32>(aabb.mMin), Math::Vector3<f32>(aabb.mMax)));
 
@@ -395,7 +396,7 @@ namespace Coral::Asset {
                 }
             }
 
-            Manager::Get().AddMesh(builder.Build());
+            Context::AssetManager().AddMesh(builder.Build());
         }
         m_meshesLoaded = true;
     }
@@ -413,7 +414,7 @@ namespace Coral::Asset {
             auto emissiveFactor = materialData["emissiveFactor"].get<std::array<float, 3>>();
             auto baseColorFactor = materialData["baseColorFactor"].get<std::array<float, 4>>();
 
-            auto builder = Graphics::Material::Builder(_stringToUuid(uuid))
+            auto builder = Graphics::Material::Builder()
                 .Name(materialData["name"].get<std::string>())
                 .AlphaCutoff(materialData["alphaCutoff"].get<float>())
                 .DoubleSided(materialData["doubleSided"].get<uint32_t>())
@@ -425,9 +426,9 @@ namespace Coral::Asset {
             for (const auto& [textureType, textureUUID] : materialData["textures"].items()) {
                 const auto textureId = _stringToUuid(textureUUID.get<std::string>());
             	const auto textureEnum = PBR::FromAiTextureType(magic_enum::enum_cast<aiTextureType>(textureType).value());
-                builder.AddTexture(textureEnum, Manager::Get().GetTexture(textureId));
+                builder.AddTexture(textureEnum, Context::AssetManager().GetTexture(textureId));
             }
-            Manager::Get().AddMaterial(builder.Build());
+            Context::AssetManager().AddMaterial(builder.Build());
         }
 
         m_materialsLoaded = true;
@@ -445,10 +446,10 @@ namespace Coral::Asset {
     	std::vector<Graphics::Texture::Builder> builders;
     	std::vector<stbi_uc*> datas;
     	std::mutex mtx;
-        std::for_each(std::execution::par, textures.begin(), textures.end(), [this, &builders, &datas, &mtx] (const auto& texture) {
+        std::ranges::for_each(textures, [this, &builders, &datas, &mtx] (const auto& texture) {
         	const auto& [strUuid, textureData] = texture;
-            const auto path = textureData["path"].get<std::string>();
-            const auto size = textureData["size"].get<uint32_t>();
+            const auto path = textureData["path"].template get<std::string>();
+            const auto size = textureData["size"].template get<uint32_t>();
             const auto textureId = _stringToUuid(strUuid);
             const auto texturePath = m_path + '/' + path;
 
@@ -459,7 +460,6 @@ namespace Coral::Asset {
             }
 
 			{
-				std::lock_guard lock(mtx);
 				auto& builder = builders.emplace_back(Graphics::Texture::Builder(textureId));
 
 				builder.Name(path.substr(path.find_last_of('/') + 1))
@@ -477,7 +477,7 @@ namespace Coral::Asset {
 			if (!texture) {
 				throw std::runtime_error("Failed to create texture from builder");
 			}
-			Manager::Get().AddTexture(std::move(texture));
+			Context::AssetManager().AddTexture(std::move(texture));
 		}
 
 		for (const auto data : datas) {

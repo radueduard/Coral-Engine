@@ -1,4 +1,3 @@
-
 //
 // Created by radue on 11/22/2025.
 //
@@ -6,7 +5,6 @@
 #include "shader.h"
 
 #include <iostream>
-#include <slang/slang-com-ptr.h>
 
 #include "context.h"
 #include "core/device.h"
@@ -32,6 +30,10 @@ namespace Coral::Shader {
 		for (const auto& [size, offset, name] : m_pushConstantRanges) {
 			std::cout << "push constant range size: " << size << " offset: " << offset << std::endl;
 		}
+	}
+	void Shader::LoadCode(std::vector<uint32_t> spirVCode) {
+		m_spirVCode = std::move(spirVCode);
+		LoadSpirVShader();
 	}
 
 	Shader::~Shader() {
@@ -150,161 +152,6 @@ namespace Coral::Shader {
 			const auto& name = module.get_name(pushConstant.id);
 			m_pushConstantRanges.emplace_back(size, offset, name);
 		} // ePushConstant
-	}
-	SlangShader::SlangShader(const std::string& module, const std::string& entryPoint) {
-		m_module = module;
-		m_entryPoint = entryPoint;
-		Compile();
-		LoadSpirVShader();
-		LoadResourceInfo(m_semanticMap);
-		// PrintLayoutInfo();
-	}
-	void SlangShader::Update() {
-		const auto currentWriteTime = std::filesystem::last_write_time(m_path);
-		if (currentWriteTime != m_lastWriteTime) {
-			m_lastWriteTime = currentWriteTime;
-			try {
-				Compile();
-				m_reloaded = true;
-			} catch (const std::exception& e) {
-				std::cerr << "Failed to recompile shader: " << e.what() << std::endl;
-				return;
-			}
-			LoadSpirVShader();
-			LoadResourceInfo(m_semanticMap);
-			// PrintLayoutInfo();
-		}
-	}
-
-	void SlangShader::Compile() {
-		using namespace slang;
-    	Slang::ComPtr<IGlobalSession> globalSession;
-    	SlangGlobalSessionDesc desc = {};
-    	createGlobalSession(&desc, globalSession.writeRef());
-
-    	TargetDesc targetDesc;
-    	targetDesc.format = SLANG_SPIRV;
-    	targetDesc.profile = globalSession->findProfile("spirv_1_4");
-
-    	const char* searchPaths[] = { "shaders/slang" };
-
-		constexpr PreprocessorMacroDesc fancyFlag = { "ENABLE_FANCY_FEATURE", "1" };
-
-		const SessionDesc sessionDesc {
-    		.targets = &targetDesc,
-    		.targetCount = 1,
-			.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
-    		.searchPaths = searchPaths,
-    		.searchPathCount = 1,
-    		.preprocessorMacros = &fancyFlag,
-    		.preprocessorMacroCount = 1,
-		};
-
-    	Slang::ComPtr<ISession> session;
-    	globalSession->createSession(sessionDesc, session.writeRef());
-
-    	Slang::ComPtr<IBlob> diagnostics;
-    	const auto module = Slang::ComPtr(session->loadModule(m_module.c_str(), diagnostics.writeRef()));
-
-    	if (diagnostics) {
-			std::cerr << "Diagnostics: " << static_cast<const char*>(diagnostics->getBufferPointer()) << std::endl;
-			throw std::runtime_error("Failed to load Slang module");
-		}
-
-		std::vector<IComponentType*> components;
-    	components.emplace_back(module);
-
-    	int entryPointIndex = 0;
-		std::unordered_map<std::string, IEntryPoint*> entryPoints;
-		const auto entryPointCount = module->getDefinedEntryPointCount();
-		for (int i = 0; i < entryPointCount; ++i) {
-			IEntryPoint* entryPoint;
-			module->getDefinedEntryPoint(i, &entryPoint);
-			if (entryPoint) {
-				components.emplace_back(entryPoint);
-				const auto* name = entryPoint->getFunctionReflection()->getName();
-				entryPoints[name] = entryPoint;
-				if (m_entryPoint == name) {
-					entryPointIndex = i;
-				}
-			} else {
-				std::cerr << "Failed to get entry point at index " << i << std::endl;
-			}
-		}
-
-    	Slang::ComPtr<IComponentType> program;
-    	session->createCompositeComponentType(components.data(), static_cast<i64>(components.size()), program.writeRef());
-
-    	Slang::ComPtr<IComponentType> linkedProgram;
-    	Slang::ComPtr<ISlangBlob> diagnosticBlob;
-    	auto result = program->link(linkedProgram.writeRef(), diagnosticBlob.writeRef());
-    	if (SLANG_FAILED(result)) {
-    		if (diagnosticBlob) {
-    			std::cerr << "Linking diagnostics: " << static_cast<const char*>(diagnosticBlob->getBufferPointer()) << std::endl;
-    		}
-    		throw std::runtime_error("Failed to link Slang program");
-		}
-
-		constexpr int targetIndex = 0;
-    	Slang::ComPtr<IBlob> kernelBlob;
-		try {
-			linkedProgram->getEntryPointCode(
-				entryPointIndex,
-				targetIndex,
-				kernelBlob.writeRef(),
-				diagnostics.writeRef());
-		} catch (const std::exception& e) {
-			std::cerr << "Failed to get entry point code: " << e.what() << std::endl;
-			throw;
-		}
-
-		IEntryPoint* entryPoint = entryPoints[m_entryPoint];
-
-		ProgramLayout* layout = entryPoint->getLayout();
-		auto entryPointLayout = layout->findEntryPointByName(m_entryPoint.c_str());
-
-		std::stack<std::pair<std::string, VariableLayoutReflection*>> variableLayoutStack {};
-		auto parameters = entryPointLayout->getParameterCount();
-		for (int i = 0; i < parameters; ++i) {
-			auto parameterLayout = entryPointLayout->getParameterByIndex(i);
-			variableLayoutStack.emplace("", parameterLayout);
-		}
-
-		while (!variableLayoutStack.empty()) {
-			auto [parentName, variableLayout] = variableLayoutStack.top();
-			variableLayoutStack.pop();
-
-			auto name = parentName.empty() ? variableLayout->getName() : parentName + "." + variableLayout->getName();
-			auto semantic = variableLayout->getSemanticName();
-
-			if (semantic != nullptr) {
-				m_semanticMap[name] = semantic;
-				// std::cout << "Variable: " << name << " Semantic: " << semantic << std::endl;
-			}
-
-			const auto varType = variableLayout->getTypeLayout()->getType();
-			if (varType->getKind() == TypeReflection::Kind::Struct) {
-				const auto fieldCount = varType->getFieldCount();
-				for (int i = 0; i < fieldCount; ++i) {
-					auto fieldLayout = variableLayout->getTypeLayout()->getFieldByIndex(i);
-					variableLayoutStack.emplace(name, fieldLayout);
-				}
-			}
-		}
-
-		m_path = module->getFilePath();
-		m_lastWriteTime = std::filesystem::last_write_time(m_path);
-
-		// get the stage of the entry point
-
-		const u32 wordCount = static_cast<u32>(kernelBlob->getBufferSize()) / sizeof(u32);
-		auto dataStart = static_cast<const u32*>(kernelBlob->getBufferPointer());
-		const u32* dataEnd = dataStart + wordCount;
-
-		m_spirVCode = {
-			dataStart,
-			dataEnd
-		};
 	}
 }
 

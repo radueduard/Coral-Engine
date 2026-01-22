@@ -26,6 +26,7 @@ namespace Coral::Utils {
 
 			m_image = Memory::Image::Builder()
 				.Format(vk::Format::eR8Unorm)
+				.Type(N == 2 ? vk::ImageType::e2D : vk::ImageType::e3D)
 				.Extent(size)
 				.MipLevels(octaves)
 				.UsageFlags(vk::ImageUsageFlagBits::eSampled)
@@ -210,6 +211,14 @@ namespace Coral::Utils {
 		}
 	private:
 		Math::Vector<u32, N> m_size;
+	};
+
+	class PerlinNoise2D : public Noise {
+	public:
+		explicit PerlinNoise2D(Math::Vector2u size, u32 octaves);
+
+	private:
+		Math::Vector2u m_size;
 	};
 
 	class PerlinNoise3D : public Noise {

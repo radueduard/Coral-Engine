@@ -8,10 +8,32 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #endif
 
 #include "engine.h"
-#include "gui/elements/popup.h"
+
+#ifdef _WIN32
+#include <windows.h>
+void enableANSI() {
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	HANDLE hErr = GetStdHandle(STD_ERROR_HANDLE);
+	DWORD dwMode = 0;
+
+	if (hOut != INVALID_HANDLE_VALUE) {
+		GetConsoleMode(hOut, &dwMode);
+		SetConsoleMode(hOut, dwMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+	}
+
+	if (hErr != INVALID_HANDLE_VALUE) {
+		GetConsoleMode(hErr, &dwMode);
+		SetConsoleMode(hErr, dwMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+	}
+}
+#endif
 
 int main()
 {
+#ifdef _WIN32
+	enableANSI();
+#endif
+
 #if ( VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1 )
 	VULKAN_HPP_DEFAULT_DISPATCHER.init();
 #endif

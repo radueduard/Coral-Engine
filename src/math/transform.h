@@ -4,7 +4,7 @@
 #pragma once
 
 #define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+// #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -92,12 +92,15 @@ namespace Coral::Math {
     }
 
 	inline Vector3f Direction(const Vector3<f32>& eulerAngles) {
-    	return Vector3f {
-    		glm::cos(eulerAngles.y) * glm::cos(eulerAngles.x),
-			glm::sin(eulerAngles.x),
-			glm::sin(eulerAngles.y) * glm::cos(eulerAngles.x)
-		}.Normalized();
+    	return Quaternion(eulerAngles) * Vector3f { 0.f, 0.f, -1.f };
     }
+
+	inline Vector3f AnglesFromDirection(const Vector3<f32>& direction) {
+		const auto dir = reinterpret_cast<const glm::vec3&>(direction);
+		const float pitch = glm::degrees(glm::asin(dir.y));
+		const float yaw = glm::degrees(glm::atan(dir.z, dir.x));
+		return Vector3f { pitch, yaw, 0.f };
+	}
 
 	inline void DecomposeMatrix(const Matrix4<f32>& matrix, Vector3<f32>& outScale, Quaternion<f32>& outRotation, Vector3<f32>& outPosition) {
 		glm::vec3 scale;

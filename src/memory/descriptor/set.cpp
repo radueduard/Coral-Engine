@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include "context.h"
+
 namespace Coral::Memory::Descriptor {
     Set::Builder & Set::Builder::WriteBuffer(const uint32_t binding, const vk::DescriptorBufferInfo &bufferInfo) {
         if (!m_layout.HasBinding(binding)) {

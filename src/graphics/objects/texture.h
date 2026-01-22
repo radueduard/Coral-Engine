@@ -22,11 +22,11 @@ namespace Coral::PBR
         Albedo = 1 << 0,
         Normal = 1 << 1,
         Roughness = 1 << 2,
-        Metalic = 1 << 3,
+        Metallic = 1 << 3,
         AmbientOcclusion = 1 << 4,
         Emissive = 1 << 5,
         Height = 1 << 6,
-    	MetallicRoughness = Metalic | Roughness,
+    	MetallicRoughness = Metallic | Roughness,
     };
 
 	inline Usage operator|(Usage lhs, Usage rhs) {
@@ -51,7 +51,7 @@ namespace Coral::PBR
 			case aiTextureType_BASE_COLOR: return Usage::Albedo;
 			case aiTextureType_DIFFUSE: return Usage::Albedo;
 			case aiTextureType_NORMALS: return Usage::Normal;
-			case aiTextureType_METALNESS: return Usage::Metalic;
+			case aiTextureType_METALNESS: return Usage::Metallic;
 			case aiTextureType_DIFFUSE_ROUGHNESS: return Usage::Roughness;
 			case aiTextureType_AMBIENT_OCCLUSION: return Usage::AmbientOcclusion;
 			case aiTextureType_EMISSIVE: return Usage::Emissive;

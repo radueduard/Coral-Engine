@@ -4,6 +4,8 @@
 
 #include "element.h"
 
+#include "context.h"
+
 namespace Coral::Reef {
     Element::Element(const Style& style, const std::vector<Element*>& children)
         : m_style(style){

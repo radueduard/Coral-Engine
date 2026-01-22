@@ -29,11 +29,10 @@ namespace Coral::Reef {
 							   .backgroundColor = ImVec4{163 / 255.f, 58 / 255.f, 44 / 255.f, 1.f}},
 			};
 
-			const Text::Style titleStyle {
-				.color = { 0.8f, 0.8f, 0.8f, 1.f },
-				.fontSize = 20.f,
-				.fontStyle = FontType::Black
-			};
+			const Text::Style titleStyle = Text::Style()
+				.withColor( { 0.8f, 0.8f, 0.8f, 1.f } )
+				.withFontSize(20.f)
+				.withFontStyle(FontType::Black);
 
 			return new Element({
 					.size = { Grow, Shrink },
@@ -52,11 +51,11 @@ namespace Coral::Reef {
 							data.m_primary,
 							[&data] (const bool value) {
 								if (value) {
-									ECS::SceneManager::Get().GetLoadedScene().MainCamera().Primary() = false;
+									Context::Scene().PrimaryCamera().Primary() = false;
 									data.Primary() = true;
 								} else {
 									data.Primary() = false;
-									ECS::SceneManager::Get().GetLoadedScene().Root().Get<ECS::Camera>().Primary() = true;
+									Context::Scene().Root().Get<ECS::Camera>().Primary() = true;
 								}
 							},
 							Checkbox::DefaultStyle()
@@ -90,6 +89,7 @@ namespace Coral::Reef {
 							}
 							return static_cast<u8>(data.GetProjectionData().type);
 						},
+						&data.m_changed,
 						{
 							new Element({
 								.direction = Axis::Vertical,
@@ -164,8 +164,8 @@ namespace Coral::Reef {
 										"Projection planes",
 										{ &data.m_projectionData.data.orthographic.near, &data.m_projectionData.data.orthographic.far },
 										0.1f,
-										{0.0001f, 100.f},
-										{10.f, 10000.f},
+										{-100.f, 0.f},
+										{0.f, 100.f},
 										&data.m_changed,
 										labels,
 										DragDefaultStyle()
@@ -199,8 +199,8 @@ namespace Coral::Reef {
 									new Drag<f32, 2>(
 										"Projection planes",
 										{ &data.m_projectionData.data.perspective.near, &data.m_projectionData.data.perspective.far },
-										0.1f,
-										{ 0.01f, 100.f },
+										0.001f,
+										{ 0.001f, 100.f },
 										{ 10.0f, 10000.0f },
 										&data.m_changed,
 										labels,

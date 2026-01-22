@@ -4,6 +4,8 @@
 
 #include "manager.h"
 
+#include <stb_image.h>
+
 #include "IconsFontAwesome6.h"
 #include "prefab.h"
 
@@ -11,7 +13,7 @@
 #include "gui/elements/separator.h"
 #include "gui/templates/importAssetPopup.h"
 
-#include "ecs/components/RenderTarget.h"
+#include "ecs/components/renderTarget.h"
 #include "ecs/entity.h"
 #include "ecs/scene.h"
 #include "gui/templates/bufferSettings.h"
@@ -32,7 +34,7 @@ namespace Coral::Asset {
         if (meshes.contains(id)) {
             return meshes[id].get();
         }
-        return nullptr;
+        throw std::runtime_error("Mesh not found: " + boost::uuids::to_string(id));
     }
 
     void Manager::RemoveMesh(const boost::uuids::uuid &id) {
@@ -49,7 +51,7 @@ namespace Coral::Asset {
         if (materials.contains(id)) {
             return materials[id].get();
         }
-        return nullptr;
+        throw std::runtime_error("Material not found: " + boost::uuids::to_string(id));
     }
 
     void Manager::RemoveMaterial(const boost::uuids::uuid &id) {
@@ -78,7 +80,8 @@ namespace Coral::Asset {
     }
 
 	void Manager::AddPrefab(std::unique_ptr<Prefab> prefab) {
-		prefabs.emplace(boost::uuids::random_generator()(), std::move(prefab));
+    	std::cout << "Adding prefab: " << prefab->Json().dump(4) << std::endl;
+    	prefabs.emplace(boost::uuids::random_generator()(), std::move(prefab));
 		m_prefabsChanged = true;
 	}
 	const Prefab& Manager::GetPrefab(const boost::uuids::uuid& id) const {
@@ -92,6 +95,29 @@ namespace Coral::Asset {
 		prefabs.erase(id);
     	m_prefabsChanged = true;
     }
+	boost::uuids::uuid Manager::LoadTextureFromFile(const std::filesystem::path& path) {
+	    const auto textureId = boost::uuids::random_generator()();
+    	int width, height, channels;
+    	stbi_uc* data = stbi_load(path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    	if (!data) {
+			throw std::runtime_error("Failed to load texture: " + path.string());
+		}
+
+		const auto builder = Graphics::Texture::Builder(textureId)
+			.Name(path.filename().string())
+			.Data(data)
+			.Width(width)
+			.Height(height)
+			.Format(vk::Format::eR8G8B8A8Unorm)
+			.CreateMipmaps();
+    	auto texture = builder.Build();
+		if (!texture) {
+			throw std::runtime_error("Failed to create texture from builder");
+		}
+    	AddTexture(std::move(texture));
+    	stbi_image_free(data);
+		return textureId;
+    }
 
 	Graphics::Mesh * Manager::GetRandomMesh() {
         if (meshes.empty()) {
@@ -102,7 +128,12 @@ namespace Coral::Asset {
     }
 
     Manager::Manager() {
-    	instance = this;
+    	static bool firstInstance = true;
+		if (!firstInstance) {
+			throw std::runtime_error("Asset Manager already exists!");
+		}
+    	firstInstance = false;
+    	Context::m_assetManager = this;
 
         Reset();
 
@@ -118,28 +149,28 @@ namespace Coral::Asset {
     	textures.clear();
     	prefabs.clear();
 
-    	std::array black {
+    	const std::array black {
     		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
     		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
     		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
     		Math::Vector4<u8> { static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(0), static_cast<u8>(255) },
     	};
 
-    	std::array white {
+		const std::array white {
 			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
 			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
 			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
 			Math::Vector4<u8> { static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255), static_cast<u8>(255) },
 		};
 
-    	std::array normal {
+    	const std::array normal {
 			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
 			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
 			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
 			Math::Vector4<u8> { static_cast<u8>(127), static_cast<u8>(127), static_cast<u8>(255), static_cast<u8>(255) },
     	};
 
-    	auto stringGenerator = boost::uuids::string_generator();
+		constexpr auto stringGenerator = boost::uuids::string_generator();
     	auto builder = Graphics::Texture::Builder(stringGenerator("00000000-0000-0000-0000-000000000001"))
 			.Name("black")
 			.Size(2)
@@ -160,12 +191,15 @@ namespace Coral::Asset {
 
     	AddMesh(Graphics::Cube());
     	AddMesh(Graphics::Sphere());
+    	AddMesh(Graphics::Cylinder());
+    	AddMesh(Graphics::Cone());
+    	AddMesh(Graphics::Prism());
 
-    	AddMaterial(Graphics::Material::Builder(boost::uuids::nil_uuid())
+    	AddMaterial(Graphics::Material::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"))
 			.Name("default")
 			.AddTexture(PBR::Usage::Albedo, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")))
 			.AddTexture(PBR::Usage::Normal, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000003")))
-			.AddTexture(PBR::Usage::Metalic, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
+			.AddTexture(PBR::Usage::Metallic, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
 			.AddTexture(PBR::Usage::Roughness, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))
 			.AddTexture(PBR::Usage::AmbientOcclusion, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")))
 			.AddTexture(PBR::Usage::Emissive, GetTexture(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")))

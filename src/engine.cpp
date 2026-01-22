@@ -9,78 +9,38 @@
 #include "core/device.h"
 #include "core/physicalDevice.h"
 #include "core/scheduler.h"
+#include "assets/manager.h"
+#include "ecs/sceneManager.h"
+#include "shader/manager.h"
 
 #include "engine.h"
 
+#include "planeMeshes.h"
+
 #include "assets/importer.h"
-#include "assets/manager.h"
-#include "compute/pipeline.h"
 #include "compute/program.h"
+#include "compute/programs/generateTextureMesh.h"
+
+#include "core/time.h"
+
 #include "ecs/scene.h"
+#include "ecs/components/renderTarget.h"
+
+#include "graphics/objects/baseMeshes.h"
+
 #include "gui/container.h"
-#include "shader/manager.h"
 
 #include "gui/elements/popup.h"
-#include "gui/templates/computeProgramTemplate.h"
+#include "shader/slangCompiler.h"
+#include "utils/fileSystemObserver.h"
+#include "utils/noise.h"
 
 namespace Coral {
-    Engine::Engine() {
-        const auto windowCreateInfo = Core::Window::CreateInfo {
-            .title = "Coral",
-            .extent = { 1920u, 1080u },
-            .resizable = true,
-            .fullscreen = false
-        };
-
-        m_window = std::make_unique<Core::Window>(windowCreateInfo);
-
-        const auto runtimeCreateInfo = Core::Runtime::CreateInfo {
-            .deviceFeatures = vk::PhysicalDeviceFeatures()
-	            .setSamplerAnisotropy(true)
-	            .setFragmentStoresAndAtomics(true)
-	            .setFillModeNonSolid(true)
-        		.setTessellationShader(true)
-				.setGeometryShader(true)
-	            .setVertexPipelineStoresAndAtomics(true),
-            .instanceLayers = {
-                "VK_LAYER_KHRONOS_validation",
-            },
-            .instanceExtensions = {
-                VK_EXT_DEBUG_UTILS_EXTENSION_NAME
-            },
-            .deviceExtensions = {
-                VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                VK_EXT_MESH_SHADER_EXTENSION_NAME,
-            },
-            .deviceLayers = {
-                "VK_LAYER_KHRONOS_validation",
-            },
-            .requiredQueueFamilies = {
-                vk::QueueFlagBits::eGraphics,
-                vk::QueueFlagBits::eCompute,
-                vk::QueueFlagBits::eTransfer,
-            },
-        };
-
-        m_runtime = std::make_unique<Core::Runtime>(runtimeCreateInfo);
-        m_device = std::make_unique<Core::Device>();
-
-    	m_shaderManager = std::make_unique<Shader::Manager>(std::filesystem::path("shaders"));
-        const auto schedulerCreateInfo = Core::Scheduler::CreateInfo {
-            .minImageCount = m_runtime->PhysicalDevice().SurfaceCapabilities().minImageCount,
-            .imageCount = 3,
-            .multiSampling = vk::SampleCountFlagBits::e2,
-        };
-
-        m_scheduler = std::make_unique<Core::Scheduler>(schedulerCreateInfo);
-    	m_sceneManager = std::make_unique<ECS::SceneManager>();
-    	m_assetManager = Reef::MakeContainer<Asset::Manager>();
-    }
-
 	class ImageTest : public Reef::Layer {
 	public:
 		explicit ImageTest(const Memory::Image& image) : m_image(image) {
 			m_imageView = Memory::ImageView::Builder(image)
+				.ViewType(vk::ImageViewType::e2D)
 				.Build();
 
 			m_sampler = Memory::Sampler::Builder()
@@ -108,177 +68,156 @@ namespace Coral {
     	ImTextureID m_textureID;
     };
 
-	class ProgramSettings : public Reef::Layer {
-	public:
-		explicit ProgramSettings(Compute::Program& program) : m_program(program) {}
-
-		void OnGUIAttach() override {
-			AddDockable("Compute Program Settings", new Reef::Window(
-				"Compute Program Settings",
-				{
-					.padding = { 10.f, 10.f, 10.f, 10.f },
-				},
-				{
-					m_programTemplate.Build(m_program)
-				},
-				nullptr));
-		}
-	private:
-		Compute::Program& m_program;
-		Reef::ComputeProgramTemplate m_programTemplate;
-	};
-
     void Engine::Run() const {
+    	std::unique_ptr<Utils::FileSystemObserver> m_fileSystemObserver = nullptr;
+    	std::unique_ptr<Shader::SlangCompiler> m_slangCompiler = nullptr;
+
+    	std::unique_ptr<Core::Window> m_window = nullptr;
+    	std::unique_ptr<Core::Runtime> m_runtime = nullptr;
+    	std::unique_ptr<Core::Device> m_device = nullptr;
+    	std::unique_ptr<Shader::Manager> m_shaderManager = nullptr;
+    	std::unique_ptr<Core::Scheduler> m_scheduler = nullptr;
+    	std::unique_ptr<ECS::SceneManager> m_sceneManager = nullptr;
+    	Reef::Container<Asset::Manager> m_assetManager;
+
+		m_fileSystemObserver = std::make_unique<Utils::FileSystemObserver>();
+
+        const auto windowCreateInfo = Core::Window::CreateInfo {
+            .title = "Coral",
+            .extent = { 1920u, 1080u },
+            .resizable = true,
+            .fullscreen = false
+        };
+
+        m_window = std::make_unique<Core::Window>(windowCreateInfo);
+
+        const auto runtimeCreateInfo = Core::Runtime::CreateInfo {
+            .deviceFeatures = vk::PhysicalDeviceFeatures()
+	            .setSamplerAnisotropy(true)
+	            .setFragmentStoresAndAtomics(true)
+	            .setFillModeNonSolid(true)
+        		.setTessellationShader(true)
+        		.setShaderStorageImageReadWithoutFormat(true)
+        		.setShaderStorageImageWriteWithoutFormat(true)
+				// .setGeometryShader(true)
+	            .setVertexPipelineStoresAndAtomics(true),
+            .instanceLayers = {
+                "VK_LAYER_KHRONOS_validation",
+            },
+            .instanceExtensions = {
+                VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+            },
+            .deviceExtensions = {
+                VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            	VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+                // VK_EXT_MESH_SHADER_EXTENSION_NAME,
+            	// VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME
+            },
+            .deviceLayers = {
+                "VK_LAYER_KHRONOS_validation",
+            },
+            .requiredQueueFamilies = {
+                vk::QueueFlagBits::eGraphics,
+                vk::QueueFlagBits::eCompute,
+                vk::QueueFlagBits::eTransfer,
+            },
+        };
+
+        m_runtime = std::make_unique<Core::Runtime>(runtimeCreateInfo);
+        m_device = std::make_unique<Core::Device>();
+
+    	m_shaderManager = std::make_unique<Shader::Manager>();
+        const auto schedulerCreateInfo = Core::Scheduler::CreateInfo {
+            .minImageCount = m_runtime->PhysicalDevice().SurfaceCapabilities().minImageCount,
+            .imageCount = 3,
+            .multiSampling = vk::SampleCountFlagBits::e2,
+        };
+
+        m_scheduler = std::make_unique<Core::Scheduler>(schedulerCreateInfo);
+    	m_assetManager = Reef::MakeContainer<Asset::Manager>();
+    	m_sceneManager = std::make_unique<ECS::SceneManager>();
+
         Input::Setup();
 
-		// Asset::Importer("assets/DamagedHelmet/DamagedHelmet.gltf").Import();
-		// Asset::Importer("E:/main_sponza/NewSponza_Main_glTF_003.gltf").Import();
-		// Asset::Importer("E:/JungleRuins/gltf/JungleRuins_Main.gltf").Import();
-		// Asset::Importer("E:/pkg_e_knight_anim/Exports/alembic/knight_ANIM_001.rnd.abc").Import();
 
-  //   	auto colorImage = Memory::Image::Builder()
-  //   		.Extent(Math::Vector3u {1280u, 720u, 1u})
-		// 	.Format(vk::Format::eR8G8B8A8Unorm)
-		// 	.UsageFlags(vk::ImageUsageFlagBits::eStorage)
-  //   		.UsageFlags(vk::ImageUsageFlagBits::eSampled)
-  //   		.UsageFlags(vk::ImageUsageFlagBits::eTransferDst)
-  //   		.InitialLayout(vk::ImageLayout::eGeneral)
-		// 	.Build();
-	 //
-		// const auto colorImageView = Memory::ImageView::Builder(*colorImage)
-		// 	.Build();
-	 //
-  //   	const auto colorImageInfo = vk::DescriptorImageInfo()
-  //   		.setImageLayout(vk::ImageLayout::eGeneral)
-		// 	.setImageView(**colorImageView)
-  //   		.setSampler(VK_NULL_HANDLE);
-	 //
-   //  	const auto depthImage = Memory::Image::Builder()
-			// .Extent(Math::Vector3u { 1280u, 720u, 1u })
-   //  		.Format(vk::Format::eR32Uint)
-   //  		.UsageFlags(vk::ImageUsageFlagBits::eStorage)
-   //  		// .UsageFlags(vk::ImageUsageFlagBits::eDepthStencilAttachment)
-   //  		.UsageFlags(vk::ImageUsageFlagBits::eTransferDst)
-   //  		.InitialLayout(vk::ImageLayout::eGeneral)
-   //  		.Build();
-	  //
-   //  	const auto depthImageView = Memory::ImageView::Builder(*depthImage)
-			// .Build();
+		// const Utils::PerlinNoise2D noise({ 512u, 512u }, 6);
+  //   	Reef::Container<ImageTest> noiseTestContainer = Reef::MakeContainer<ImageTest>(noise.Image());
 
-  //   	const auto depthImageInfo = vk::DescriptorImageInfo()
-		// 	.setImageLayout(vk::ImageLayout::eGeneral)
-  //   		.setImageView(**depthImageView)
-  //   		.setSampler(VK_NULL_HANDLE);
-	 //
-  //   	struct Vertex {
-		// 	alignas(16) Math::Vector3f position;
-		// 	alignas(16) Math::Vector3f color;
-		// };
-	 //
-  //   	const auto vertexBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(8u)
-  //   		.InstanceSize(sizeof(Vertex))
-		// 	.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-  //   		.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-		// 	.Build();
-	 //
-  //   	const auto stagingBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(8u)
-		// 	.InstanceSize(sizeof(Vertex))
-  //   		.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-  //   		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-  //   		.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-  //   		.Build();
-	 //
-		// std::vector<Vertex> vertices = {
-		// 	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-		// 	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-		// 	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
-		// 	{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
-		// 	{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
-		// 	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } },
-		// 	{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f } },
-		// 	{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 0.0f } },
-		// };
-	 //
-  //   	auto mappedVertices = stagingBuffer->Map<Vertex>();
-  //   	std::ranges::copy(vertices, mappedVertices.begin());
-  //   	stagingBuffer->Unmap();
-		// vertexBuffer->CopyBuffer(*stagingBuffer);
-	 //
-  //   	const auto vertexBufferInfo = vk::DescriptorBufferInfo()
-		// 	.setBuffer(**vertexBuffer)
-		// 	.setOffset(0)
-		// 	.setRange(VK_WHOLE_SIZE);
-	 //
-  //   	const auto indexBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(36u)
-		// 	.InstanceSize(sizeof(u32))
-  //   		.UsageFlags(vk::BufferUsageFlagBits::eStorageBuffer)
-		// 	.UsageFlags(vk::BufferUsageFlagBits::eTransferDst)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eDeviceLocal)
-  //   		.Build();
-	 //
-  //   	const auto indexStagingBuffer = Memory::Buffer::Builder()
-		// 	.InstanceCount(36u)
-		// 	.InstanceSize(sizeof(u32))
-		// 	.UsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eHostVisible)
-		// 	.MemoryProperty(vk::MemoryPropertyFlagBits::eHostCoherent)
-		// 	.Build();
-	 //
-  //   	const std::vector<u32> indices = {
-		// 	0, 1, 2, 2, 3, 0,
-		// 	4, 5, 6, 6, 7, 4,
-		// 	0, 4, 7, 7, 3, 0,
-		// 	1, 5, 6, 6, 2, 1,
-		// 	3, 2, 6, 6, 7, 3,
-		// 	0, 1, 5, 5, 4, 0
-		// };
-	 //
-  //   	auto mappedIndices = indexStagingBuffer->Map<u32>();
-		// std::ranges::copy(indices, mappedIndices.begin());
-  //   	indexStagingBuffer->Unmap();
-	 //
-		// indexBuffer->CopyBuffer(*indexStagingBuffer);
-	 //
-  //   	const auto indexBufferInfo = vk::DescriptorBufferInfo()
-		// 	.setBuffer(**indexBuffer)
-		// 	.setOffset(0)
-		// 	.setRange(VK_WHOLE_SIZE);
-	 //
-  //   	const auto cameraBufferInfo = vk::DescriptorBufferInfo()
-		// 	.setBuffer(*m_sceneManager->GetLoadedScene().CameraBuffer())
-		// 	.setOffset(0)
-		// 	.setRange(VK_WHOLE_SIZE);
-	 //
-	 //
-		// const auto descriptorSet = Memory::Descriptor::Set::Builder(m_scheduler->DescriptorPool(), pipeline.DescriptorSetLayout(0))
-		// 	.WriteImage(0, colorImageInfo)
-		// 	.WriteImage(1, depthImageInfo)
-  //   		.WriteBuffer(2, vertexBufferInfo)
-  //   		.WriteBuffer(3, indexBufferInfo)
-  //   		.WriteBuffer(4, cameraBufferInfo)
-		// 	.Build();
-	 //
-  //   	Reef::Container<ImageTest> imageTestContainer = Reef::MakeContainer<ImageTest>(*colorImage);
+		const auto image = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(256), 9);
+		// const auto image = std::make_unique<Utils::CircleNoise<3>>(Math::Vector3u(64u), 0.75f);
 
-		const auto program = std::make_unique<Compute::Program>(*Shader::Manager::Get().GetShader("rasterizer", "RasterizeTriangles"));
-    	Reef::Container<ProgramSettings> programSettingsContainer = Reef::MakeContainer<ProgramSettings>(*program);
+    	auto entity = std::make_unique<ECS::Entity>("Generated Planet Mesh");
+    	auto& renderTarget = entity->Add<ECS::RenderTarget>();
 
-        while (!m_window->ShouldClose()) {
+    	Math::Vector3u chunkCount { 1u, 1u, 1u };
+    	chunkCount *= 4u;
+
+  		const Compute::GenerateTextureMesh generateTextureMeshProgram(
+  			image->Image(),
+			Math::Vector3u { 1u, 1u, 1u } * 8u
+  		);
+
+    	const auto& planetMaterial = m_sceneManager->GetLoadedScene().PlanetMaterial();
+
+    	std::vector<std::unique_ptr<Graphics::Mesh>> meshes;
+
+    	for (u32 i = 0; i < chunkCount.x; i++) {
+			for (u32 j = 0; j < chunkCount.y; j++) {
+				for (u32 k = 0; k < chunkCount.z; k++) {
+					auto mesh = generateTextureMeshProgram.Execute(
+						Math::Vector3u(i, j, k),
+						chunkCount
+					);
+					if (!mesh) {
+						continue;
+					}
+					renderTarget.Add(mesh.get(), &planetMaterial);
+					meshes.emplace_back(std::move(mesh));
+				}
+			}
+		}
+
+    	m_sceneManager->GetLoadedScene().Root().AddChild(std::move(entity));
+
+    	auto waterEntity = std::make_unique<ECS::Entity>("Water Sphere");
+		auto& waterRenderTarget = waterEntity->Add<ECS::RenderTarget>();
+    	auto* waterMesh = m_assetManager->GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002"));
+    	auto& waterMaterial = m_sceneManager->GetLoadedScene().WaterMaterial();
+    	waterRenderTarget.Add(waterMesh, &waterMaterial);
+
+    	waterEntity->Get<ECS::Transform>().scale = Math::Vector3f { 15.f };
+
+    	m_sceneManager->GetLoadedScene().Root().AddChild(std::move(waterEntity));
+    	m_sceneManager->GetLoadedScene().Root().AddChild(PlaneMeshes::Plane());
+
+    	auto& dirLight = m_sceneManager->GetLoadedScene().Root().AddLight(ECS::LightType::Directional);
+    	dirLight.Get<ECS::Transform>().position = Math::Vector3f { 0.f, 0.f, 30.f };
+
+		auto& spot1 = m_sceneManager->GetLoadedScene().Root().AddLight(ECS::LightType::Spot);
+    	spot1.Get<ECS::Transform>().position = Math::Vector3f { -2.5f, 0.f, 30.f };
+    	spot1.Get<ECS::Transform>().rotation = Math::Vector3f { 0.f, -30.f, 0.f };
+
+    	auto& spot2 = m_sceneManager->GetLoadedScene().Root().AddLight(ECS::LightType::Spot);
+    	spot2.Get<ECS::Transform>().position = Math::Vector3f { 2.5f, 0.f, 30.f };
+    	spot2.Get<ECS::Transform>().rotation = Math::Vector3f { 0.f, 30.f, 0.f };
+
+		Time::Setup();
+
+    	while (!m_window->ShouldClose()) {
 	        auto startTime = std::chrono::high_resolution_clock::now();
         	m_window->PollEvents();
-        	m_window->UpdateDeltaTime();
+        	Time::Update();
+
+        	m_fileSystemObserver->Update();
+
         	m_shaderManager->Update();
-        	m_sceneManager->Update(m_window->DeltaTime());
+        	m_sceneManager->Update();
         	// pipeline.Update();
 
             if (!m_window->IsPaused()) {
-            	if (ECS::SceneManager::Get().IsSceneLoaded())
-					m_sceneManager->GetLoadedScene().Update(m_window->DeltaTime());
-                m_scheduler->Update(m_window->DeltaTime());
+            	if (m_sceneManager->IsSceneLoaded())
+					m_sceneManager->GetLoadedScene().Update();
+                m_scheduler->Update();
     //         	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
     //         		colorImage->TransitionLayout(commandBuffer, vk::ImageLayout::eGeneral);
     //         		colorImage->Clear(commandBuffer, vk::ClearColorValue(std::array { 0.f, 0.f, 0.f, 1.f }));
@@ -289,10 +228,9 @@ namespace Coral {
 				// 	commandBuffer->dispatch(1280 / 16, 720 / 16, 16);
     //         		colorImage->TransitionLayout(commandBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
 				// }, vk::QueueFlagBits::eCompute);
+
                 m_scheduler->Draw();
             }
-
-        	m_shaderManager->LateUpdate();
 
             Input::Update();
 
@@ -300,7 +238,8 @@ namespace Coral {
             const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - startTime).count();
             m_window->SetTitle("Coral - " + std::to_string(1000000.f / static_cast<float>(elapsed)) + "fps");
         }
-        Context::Device()->waitIdle();
+
+        (*m_device)->waitIdle();
     }
 }
 

@@ -10,9 +10,9 @@
 #include "ecs/components/camera.h"
 #include "ecs/components/renderTarget.h"
 #include "ecs/components/transform.h"
+#include "ecs/entity.h"
 #include "ecs/scene.h"
 #include "ecs/sceneManager.h"
-#include "ecs/entity.h"
 
 #include "framebuffer.h"
 #include "memory/image.h"
@@ -135,27 +135,25 @@ namespace Coral::Graphics {
         commandBuffer->setScissor(0, scissor);
     }
 
-    void RenderPass::Update(const float deltaTime) {
+    void RenderPass::Update() {
         for (auto& [builder, pipeline] : m_pipelines) {
         	bool needsUpdate = builder->ShouldRebuild();
         	for (const auto& shader : pipeline->Shaders() | std::views::values) {
 				needsUpdate |= shader->HasReloaded();
 			}
         	if (needsUpdate) {
-        		if (std::ranges::all_of(pipeline->Shaders() | std::views::values, [](const Shader::Shader* shader) { return true; })) {
-        			builder->m_shaders = std::move(pipeline->m_shaders);
-        			pipeline = builder->Build();
-        		}
-        	}
+        		builder->m_shaders = std::move(pipeline->m_shaders);
+        		pipeline = builder->Build();
+			}
         }
     }
 
-    void RenderPass::Draw(const Core::CommandBuffer& commandBuffer) const {
-		if (!ECS::SceneManager::Get().IsSceneLoaded())
+    void RenderPass::Draw(const Core::CommandBuffer& commandBuffer, void* usrData) const {
+		if (!Context::SceneManager().IsSceneLoaded())
 			return;
 
     	for (const auto& pipeline : m_pipelines | std::views::values) {
-			pipeline->Render(commandBuffer);
+			pipeline->Render(commandBuffer, usrData);
         }
     }
 

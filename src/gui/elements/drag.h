@@ -18,12 +18,11 @@ namespace Coral::Reef {
 	};
 
 	static Text::Style DragDefaultTextStyle() {
-		return {
-			.color = Colors::white,
-			.fontSize = 15.f,
-			.fontStyle = FontType::Regular,
-		};
-	};
+		return Text::Style()
+			.withColor(Colors::white)
+			.withFontSize(15.f)
+			.withFontStyle(FontType::Regular);
+	}
 
 	template <typename T = f32, int N = 1> requires std::is_arithmetic_v<T> && (N >= 1) && (N <= 4)
 	class Drag final : public Element {
@@ -64,6 +63,10 @@ namespace Coral::Reef {
 
 			ImGui::SetWindowFontScale(m_textStyle.fontSize / ImGui::GetFontSize());
 
+			for (int i = 0; i < N; ++i) {
+				localValue[i] = *m_value[i];
+			}
+
 			ImGui::PushItemWidth(m_currentSize.width);
 			const bool changed = ImGui::DragScalarN(
 				"",
@@ -77,6 +80,7 @@ namespace Coral::Reef {
 				0,
 				m_labels.has_value() ? m_labels->data() : nullptr
 			);
+
 			if (changed) {
 				for (int i = 0; i < N; ++i) {
 					*m_value[i] = localValue[i];

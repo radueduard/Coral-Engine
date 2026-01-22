@@ -19,7 +19,7 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(Boost COMPONENTS unordered uuid REQUIRED)
 find_package(slang CONFIG REQUIRED)
-find_package(glslang CONFIG REQUIRED)
+#find_package(glslang CONFIG REQUIRED)
 
 # Add the source files
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.cc")
@@ -29,7 +29,8 @@ file(GLOB_RECURSE HEADERS "src/*.h" "src/*.hpp")
 include_directories("src")
 
 # Add the executable
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS}
+        src/ecs/entity.cpp)
 
 # Link the required libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan)
@@ -39,7 +40,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)
 target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(${PROJECT_NAME} PRIVATE EnTT::EnTT)
 target_link_libraries(${PROJECT_NAME} PRIVATE magic_enum::magic_enum)
-target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt)
+#target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         slang::gfx
         slang::slang
@@ -68,11 +69,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE imgui)
 target_include_directories(${PROJECT_NAME} PRIVATE ${IMGUI_DIR}/Include)
 
 # Glslang
-target_link_libraries(${PROJECT_NAME} PRIVATE
-        glslang::glslang
-        glslang::glslang-default-resource-limits
-        glslang::SPIRV
-)
+#target_link_libraries(${PROJECT_NAME} PRIVATE
+#        glslang::glslang
+#        glslang::glslang-default-resource-limits
+#        glslang::SPIRV
+#)
 
 # Spirv-Cross
 target_link_libraries(${PROJECT_NAME} PRIVATE spirv-cross-core)

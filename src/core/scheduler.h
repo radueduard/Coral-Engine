@@ -83,7 +83,7 @@ namespace Coral::Core {
     	Scheduler(const Scheduler &) = delete;
     	Scheduler &operator=(const Scheduler &) = delete;
 
-    	void Update(float deltaTime);
+    	void Update();
     	void Draw();
 
     	[[nodiscard]] const Graphics::SwapChain &SwapChain() const { return *m_swapChain; }
@@ -107,7 +107,7 @@ namespace Coral::Core {
 
     private:
     	std::unique_ptr<Reef::Manager> m_guiManager;
-    	Reef::Container<Project::RenderGraph> m_renderGraph = nullptr;
+    	Reef::Container<Project::RenderGraph> m_renderGraph;
     	u32 m_imageCount;
     	vk::SampleCountFlagBits m_multiSampling;
 

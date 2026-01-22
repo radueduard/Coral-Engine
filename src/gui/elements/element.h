@@ -13,8 +13,6 @@
 #include "math/constants.h"
 #include "gui/padding.h"
 
-#include "context.h"
-
 namespace Coral::Reef {
 
     class ElementList;

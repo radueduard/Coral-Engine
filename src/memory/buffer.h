@@ -4,13 +4,13 @@
 
 #pragma once
 
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <iostream>
+#include "core/device.h"
+
 #include <vulkan/vulkan.hpp>
 
 #include "context.h"
-#include "core/device.h"
+
+#include "utils/globalWrapper.h"
 
 static vk::DeviceSize GetAlignment(const vk::DeviceSize size, const vk::DeviceSize alignment) {
     if (alignment > 0) {
@@ -37,6 +37,9 @@ namespace Coral::Memory {
 			Builder& MemoryProperty(vk::MemoryPropertyFlagBits memoryPropertyFlag);
 
 			Builder& DeviceAlignment(vk::DeviceSize deviceAlignment);
+			Builder& Data(const void* value);
+
+			Builder& Data(const void* data, vk::DeviceSize size);
 
 			std::unique_ptr<Buffer> Build();
 
@@ -46,6 +49,10 @@ namespace Coral::Memory {
         	UnorderedSet<vk::BufferUsageFlagBits> m_usageFlagSet = {};
         	UnorderedSet<vk::MemoryPropertyFlagBits> m_memoryPropertyFlagSet = {};
             vk::DeviceSize m_deviceAlignment = 0;
+
+        	const void* m_value = nullptr;
+        	const void* m_data = nullptr;
+        	vk::DeviceSize m_dataSize = 0;
         };
 
         explicit Buffer(const Builder& builder);
@@ -72,7 +79,7 @@ namespace Coral::Memory {
 				Context::Device()->mapMemory(m_memory, offset * m_alignmentSize, instanceCount, vk::MemoryMapFlags()));
 
     		m_mappedRange =
-				vk::MappedMemoryRange().setMemory(m_memory).setSize(instanceCount).setOffset(offset * m_alignmentSize);
+				vk::MappedMemoryRange().setMemory(m_memory).setSize(m_instanceCount * m_alignmentSize).setOffset(offset * m_alignmentSize);
 
     		return std::span<T>(static_cast<T*>(m_mapped), m_instanceCount);
     	}

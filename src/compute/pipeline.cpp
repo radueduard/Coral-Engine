@@ -8,6 +8,7 @@
 #include <utility>
 #include <ranges>
 
+#include "context.h"
 #include "core/device.h"
 
 #include "memory/descriptor/set.h"
@@ -62,6 +63,7 @@ namespace Coral::Compute {
 
     	const auto createInfo = vk::ComputePipelineCreateInfo()
 			.setLayout(m_pipelineLayout)
+    		.setFlags(vk::PipelineCreateFlagBits::eDispatchBase)
 			.setStage(shaderStage);
 
     	const auto pipeline = Context::Device()->createComputePipeline(nullptr, createInfo);

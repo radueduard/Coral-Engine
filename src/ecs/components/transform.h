@@ -50,27 +50,26 @@ namespace Coral::ECS {
     		Math::Vector3<f32> scale;
 
     		Math::DecomposeMatrix(matrix, scale, rotation, position);
-
-			m_matrix = matrix;
-			m_changed = false;
+    		m_changed = true;
 
 			this->position = position;
-			this->rotation = Math::Degrees(Math::Quaternion<>::ToEulerAngles(rotation));
+			this->rotation = Math::Degrees<f32, 3>(Math::Quaternion<>::ToEulerAngles(rotation));
 			this->scale = scale;
 		}
 
-		void MarkDirty() {
-			m_changed = true;
-    	}
-
-        [[nodiscard]] Math::Matrix4<f32> Matrix() {
+    	void Update() override {
     		if (m_changed) {
     			const auto translation = Math::Translate(position);
-    			const auto rotationMatrix = Math::Quaternion(Math::Radians(rotation)).ToMatrix();
+    			const auto rotationMatrix = Math::Quaternion(Math::Radians<f32, 3>(rotation)).ToMatrix();
     			const auto scaleMatrix = Math::Scale(scale);
-    			m_matrix = scaleMatrix * rotationMatrix * translation;
-    			m_changed = false;
+    			m_matrix = scaleMatrix;
+    			m_matrix *= rotationMatrix;
+    			m_matrix *= translation;
     		}
+    		m_changed = false;
+    	}
+
+        [[nodiscard]] Math::Matrix4<f32> Matrix() const {
     		return m_matrix;
         }
 
@@ -80,4 +79,4 @@ namespace Coral::ECS {
     	bool m_changed { true };
     	Math::Matrix4<f32> m_matrix { Math::Matrix4<f32>::Identity() };
     };
-}
+} // namespace Coral::ECS

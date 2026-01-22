@@ -3,6 +3,7 @@
 //
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VMA_IMPLEMENTATION
 #include "device.h"
 
 #include <iostream>
@@ -114,17 +115,27 @@ namespace Coral::Core {
         }
 
         auto deviceMeshShaderFeatures = vk::PhysicalDeviceMeshShaderFeaturesEXT()
-            .setTaskShader(false)
+            .setTaskShader(true)
             .setMeshShader(true);
 
-        auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features()
-            .setMaintenance4(true)
-            .setPNext(&deviceMeshShaderFeatures);
+     //    auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features()
+     //        .setMaintenance4(true)
+     //        .setPNext(&deviceMeshShaderFeatures);
+
+    	auto dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures()
+			.setDynamicRendering(true)
+			.setPNext(&deviceMeshShaderFeatures);
 
     	auto vk12Features = vk::PhysicalDeviceVulkan12Features()
 			.setShaderInt8(true)
     		.setRuntimeDescriptorArray(true)
-			.setPNext(&maintenance4Features);
+    		.setTimelineSemaphore(true)
+			.setPNext(&dynamicRenderingFeatures);
+			// .setPNext(&maintenance4Features);
+
+   //  	auto vk13Features = vk::PhysicalDeviceVulkan13Features()
+			// .setShaderDemoteToHelperInvocation(true)
+			// .setPNext(&vk12Features);
 
         const auto deviceCreateInfo = vk::DeviceCreateInfo()
             .setQueueCreateInfos(queueCreateInfos)

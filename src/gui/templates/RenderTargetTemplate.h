@@ -6,8 +6,8 @@
 #include "IconsFontAwesome6.h"
 #include "ecs/components/renderTarget.h"
 
-#include "graphics/objects/mesh.h"
 #include "graphics/objects/material.h"
+#include "graphics/objects/mesh.h"
 
 #include "gui/reef.h"
 
@@ -23,11 +23,10 @@ namespace Coral::Reef {
         	std::vector<Element*> targets {
         		new Text(
 					" " ICON_FA_CUBE "    Render Target",
-					Text::Style{
-						{ 0.8f, 0.8f, 0.8f, 1.f },
-						20.f,
-						FontType::Black
-					},
+					Text::Style()
+						.withColor( { 0.8f, 0.8f, 0.8f, 1.f } )
+						.withFontSize(20.f)
+						.withFontStyle(FontType::Black),
         			{ .size = { 0.f, 20.f } }
         		),
 				new Separator(),

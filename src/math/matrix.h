@@ -148,7 +148,7 @@ namespace Coral::Math {
             return *this;
         }
 
-        template<int P, int Q> requires (M == P) && (Q > 0)
+        template<u32 P, u32 Q> requires (M == P) && (Q > 0)
         constexpr Matrix operator*(const Matrix<T, P, Q>& other) const {
             Matrix<T, N, Q> result;
             for (int i = 0; i < N; ++i) {
@@ -162,7 +162,7 @@ namespace Coral::Math {
             return result;
         }
 
-        template<int P> requires (M == P)
+        template<u32 P> requires (M == P)
         constexpr Vector<T, P> operator*(const Vector<T, P>& vector) const {
             Vector<T, P> result;
             for (int i = 0; i < N; ++i) {
@@ -182,7 +182,8 @@ namespace Coral::Math {
             return result;
         }
 
-        constexpr Matrix& operator*=(const Matrix& other) {
+    	template <u32 O = N, u32 P = M> requires (O == P)
+        constexpr Matrix& operator*=(const Matrix<T, O, P>& other) {
             *this = *this * other;
             return *this;
         }

@@ -102,7 +102,7 @@ namespace Coral::Reef {
         }
         style.AntiAliasedFill = true;
 
-        ImGui_ImplGlfw_InitForVulkan(*Core::Window::Get(), true);
+        ImGui_ImplGlfw_InitForVulkan(*Context::Window(), true);
         ImGui_ImplVulkan_InitInfo init_info = {
             .Instance = Context::Runtime().Instance(),
             .PhysicalDevice = *Context::Runtime().PhysicalDevice(),
@@ -140,7 +140,7 @@ namespace Coral::Reef {
         std::erase(m_layers, layer);
     }
 
-    void Manager::Update(const float deltaTime) {
+    void Manager::Update() {
 
     }
 
@@ -307,7 +307,7 @@ namespace Coral::Reef {
         name += "_" + std::to_string(size);
 
         ImFontConfig config;
-        strcpy_s(config.Name, name.c_str());
+        strcpy(config.Name, name.c_str());
         config.MergeMode = false;
         config.PixelSnapH = true;
 

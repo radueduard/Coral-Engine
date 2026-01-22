@@ -17,12 +17,11 @@ namespace Coral::Reef {
 	};
 
 	static Text::Style DropDownDefaultTextStyle() {
-		return {
-			.color = Colors::white,
-			.fontSize = 15.f,
-			.fontStyle = FontType::Regular,
-		};
-	};
+		return Text::Style()
+			.withColor(Colors::white)
+			.withFontSize(15.f)
+			.withFontStyle(FontType::Regular);
+	}
 
 	template <typename T> requires std::is_enum_v<T>
 	class DropDown final : public Element {

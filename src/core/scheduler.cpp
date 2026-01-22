@@ -84,29 +84,27 @@ namespace Coral::Core {
         }
     }
 
-    void Scheduler::Update(const float deltaTime) {
-        m_renderGraph->Update(deltaTime);
+    void Scheduler::Update() {
+        m_renderGraph->Update();
         // m_renderGraph->Resize(m_window.Extent());
     }
 
     void Scheduler::Draw() {
         const auto& frame = CurrentFrame();
 
-        const auto& fence = frame.InFlightFence();
-        if (const auto result = Context::Device()->waitForFences(1, &fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess) {
-            throw std::runtime_error("Failed to wait fence: " + vk::to_string(result));
-        }
+		const auto& fence = frame.InFlightFence();
+		if (const auto result = Context::Device()->waitForFences(1, &fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess) {
+			throw std::runtime_error("Failed to wait fence: " + vk::to_string(result));
+		}
 
-        if (const auto result = Context::Device()->resetFences(1, &fence); result != vk::Result::eSuccess) {
-            throw std::runtime_error("Failed to reset fence: " + vk::to_string(result));
-        }
+		if (const auto result = Context::Device()->resetFences(1, &fence); result != vk::Result::eSuccess) {
+			throw std::runtime_error("Failed to reset fence: " + vk::to_string(result));
+		}
 
         if (const auto result = m_swapChain->Acquire(frame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
-            m_swapChain->Resize(Window::Get().Extent());
-            m_renderGraph->Resize(Window::Get().Extent());
-        	m_currentFrame = 0;
-            return;
+            m_swapChain->Resize(Context::Window().Extent());
+            m_renderGraph->Resize(Context::Window().Extent());
         }
 
     	m_renderGraph->Execute(frame);
@@ -209,11 +207,13 @@ namespace Coral::Core {
             );
         }, frame.ReadyToPresent());
 
+
         if (const auto result = m_swapChain->Present(frame);
             result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) {
-            m_swapChain->Resize(Window::Get().Extent());
-            m_renderGraph->Resize(Window::Get().Extent());
-        	m_currentFrame = 0;
+
+            m_swapChain->Resize(Context::Window().Extent());
+            m_renderGraph->Resize(Context::Window().Extent());
+        	// m_currentFrame = 0;
         	return;
         }
 

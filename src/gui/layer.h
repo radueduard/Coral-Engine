@@ -13,7 +13,7 @@
 
 namespace Coral::Reef {
     class Layer {
-        template <typename T>
+        template <class T> requires std::is_base_of_v<Layer, T>
         friend class Container;
 
         friend class Manager;

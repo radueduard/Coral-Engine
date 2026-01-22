@@ -54,25 +54,12 @@ namespace Coral::Core {
         void Pause() { m_paused = true; }
         void UnPause() { m_paused = false; }
 
-        void UpdateDeltaTime();
-        [[nodiscard]] float TimeElapsed() const { return static_cast<float>(glfwGetTime()); }
-        [[nodiscard]] float DeltaTime() const { return static_cast<float>(m_deltaTime); }
-    	[[nodiscard]] float FixedDeltaTime() const { return static_cast<float>(std::max(m_fixedDeltaTime, m_deltaTime)); }
-
         void SetTitle(const std::string &title) {
             m_info.title = title;
             glfwSetWindowTitle(m_window, title.c_str());
         }
 
-    	static const Window& Get() {
-			if (s_window == nullptr) {
-				throw std::runtime_error("Window::Get : Window is not initialized");
-			}
-			return *s_window;
-		}
-
     private:
-    	inline static Window* s_window = nullptr;
     	static void FramebufferResize(GLFWwindow* window, int width, int height);
 
         GLFWwindow* m_window;
@@ -81,13 +68,5 @@ namespace Coral::Core {
 
         CreateInfo m_info;
         bool m_paused = false;
-
-        double m_lastTime = 0.0;
-        double m_deltaTime = 0.0;
-
-    	bool shouldRunFixedUpdate = false;
-    	double m_timeSinceLastFixedUpdate = 0.0;
-    	const double m_fixedDeltaTime = 1.0 / 60.0;
-
     };
 }

@@ -3,11 +3,12 @@
 //
 
 #pragma once
+#include <boost/uuid/uuid.hpp>
+#include <glm/glm.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <boost/uuid/uuid.hpp>
-#include <glm/glm.hpp>
 
 #include "memory/buffer.h"
 #include "memory/descriptor/set.h"
@@ -19,9 +20,9 @@ namespace Coral::Graphics {
         class Builder {
             friend class Material;
         public:
-            explicit Builder(const boost::uuids::uuid& uuid) : m_uuid(uuid) {}
+            explicit Builder(const boost::uuids::uuid& uuid = boost::uuids::nil_uuid());
 
-            Builder& Name(const std::string& name) {
+			Builder& Name(const std::string& name) {
                 m_name = name;
                 return *this;
             }
@@ -90,6 +91,7 @@ namespace Coral::Graphics {
         [[nodiscard]] const std::string& Name() const { return m_name; }
     	[[nodiscard]] const Memory::Descriptor::Set& DescriptorSet() const { return *m_descriptorSet; }
 
+        static const Material* Default();
 
     private:
         boost::uuids::uuid m_uuid;

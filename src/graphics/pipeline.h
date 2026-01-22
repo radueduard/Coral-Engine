@@ -21,59 +21,74 @@ namespace Coral::Memory::Descriptor {
     class SetLayout;
 }
 
+namespace Coral::Graphics {
+	class RenderPass;
+}
 
 namespace Coral::Reef {
 	class RenderPipelineTemplate;
 }
 
 namespace Coral::Graphics {
-    class RenderPass;
     class Pipeline {
     	friend class RenderPass;
     public:
-        class Builder {
-            friend class Pipeline;
+    	class Builder {
             friend class RenderPass;
+    		friend class Pipeline;
+		public:
+    		Builder() = default;
+    		virtual ~Builder() = default;
+    		Builder(const Builder &) = delete;
+    		Builder &operator=(const Builder &) = delete;
+
+    		virtual std::unique_ptr<Pipeline> Build() = 0;
+
+    		bool ShouldRebuild() {
+    			if (m_shouldRebuild) {
+    				m_shouldRebuild = false;
+    				return true;
+    			}
+    			return false;
+    		}
+
+    	protected:
+    		bool m_shouldRebuild = true;
+
+    		std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
+    		std::unordered_map<Shader::Stage, const Shader::Shader*> m_shaders;
+    		std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
+    	};
+
+        class BuilderRenderPass : public Builder {
+            friend class Pipeline;
+        	friend class RenderPass;
             friend class Reef::RenderPipelineTemplate;
         public:
-            Builder(RenderPass&);
-            ~Builder() = default;
+            explicit BuilderRenderPass(RenderPass&);
+            ~BuilderRenderPass() override = default;
 
-            Builder(const Builder &) = delete;
-            Builder &operator=(const Builder &) = delete;
+            BuilderRenderPass(const BuilderRenderPass &) = delete;
+            BuilderRenderPass &operator=(const BuilderRenderPass &) = delete;
 
-            Builder &AddShader(const Shader::Shader* shader);
-            Builder &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
-            Builder &Viewport(const vk::Viewport &);
-            Builder &Scissor(const vk::Rect2D &);
-            Builder &Rasterizer(const vk::PipelineRasterizationStateCreateInfo &);
-            Builder &DepthStencil(const vk::PipelineDepthStencilStateCreateInfo &);
+			BuilderRenderPass &AddShader(const Shader::Shader* shader);
 
-            Builder &DynamicState(const vk::DynamicState &);
-            Builder &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
+            BuilderRenderPass &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
+            BuilderRenderPass &Viewport(const vk::Viewport &);
+            BuilderRenderPass &Scissor(const vk::Rect2D &);
+            BuilderRenderPass &Rasterizer(const vk::PipelineRasterizationStateCreateInfo &);
+            BuilderRenderPass &DepthStencil(const vk::PipelineDepthStencilStateCreateInfo &);
 
-            Builder &Subpass(uint32_t);
+            BuilderRenderPass &DynamicState(const vk::DynamicState &);
+            BuilderRenderPass &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
 
-        	Builder &RenderFunction(const std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)> &function);
+            BuilderRenderPass &Subpass(uint32_t);
 
-            Builder &BindFunction(const std::function<void(const vk::CommandBuffer&, const Mesh&)> &function);
+        	BuilderRenderPass &RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> &function);
 
-            bool ShouldRebuild() {
-                if (m_shouldRebuild) {
-                    m_shouldRebuild = false;
-                    return true;
-                }
-                return false;
-            }
-
-            std::unique_ptr<Pipeline> Build();
+            std::unique_ptr<Pipeline> Build() override;
         private:
 			RenderPass &m_renderPass;
-            bool m_shouldRebuild = true;
-
-            std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
-            std::unordered_map<Shader::Stage, const Shader::Shader*> m_shaders;
-            std::vector<vk::PipelineShaderStageCreateInfo> m_stages;
 
             vk::PipelineVertexInputStateCreateInfo m_vertexInputInfo;
             vk::PipelineInputAssemblyStateCreateInfo m_inputAssembly;
@@ -99,11 +114,66 @@ namespace Coral::Graphics {
             vk::PipelineLayout m_pipelineLayout;
             uint32_t m_subpass = 0;
 
-        	std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)> m_function = nullptr;
+        	std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> m_function = nullptr;
         };
 
-        explicit Pipeline(Builder &);
-        ~Pipeline();
+		class BuilderDynamic : public Builder {
+			friend class Pipeline;
+		public:
+			explicit BuilderDynamic(const vk::PipelineRenderingCreateInfo& pipelineRenderingInfo);
+			~BuilderDynamic() override = default;
+
+			BuilderDynamic(const BuilderDynamic &) = delete;
+			BuilderDynamic &operator=(const BuilderDynamic &) = delete;
+
+			BuilderDynamic &AddShader(const Shader::Shader* shader);
+			BuilderDynamic &InputAssemblyState(const vk::PipelineInputAssemblyStateCreateInfo &);
+			BuilderDynamic &Rasterizer(const vk::PipelineRasterizationStateCreateInfo &);
+			BuilderDynamic &DepthStencil(const vk::PipelineDepthStencilStateCreateInfo &);
+
+			BuilderDynamic &DynamicState(const vk::DynamicState &);
+			BuilderDynamic &Tessellation(const vk::PipelineTessellationStateCreateInfo &);
+			BuilderDynamic &Multisampling(const vk::PipelineMultisampleStateCreateInfo &);
+
+			BuilderDynamic &RenderFunction(const std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> &function);
+
+			std::unique_ptr<Pipeline> Build() override;
+
+		private:
+			vk::PipelineRenderingCreateInfo m_pipelineRenderingInfo;
+
+			vk::PipelineVertexInputStateCreateInfo m_vertexInputInfo;
+			vk::PipelineInputAssemblyStateCreateInfo m_inputAssembly;
+
+			vk::PipelineRasterizationStateCreateInfo m_rasterizer;
+			vk::PipelineDepthStencilStateCreateInfo m_depthStencil;
+			vk::PipelineViewportStateCreateInfo m_viewportState;
+
+			std::vector<vk::PipelineColorBlendAttachmentState> m_colorBlendAttachments;
+			vk::PipelineColorBlendStateCreateInfo m_colorBlending;
+
+			vk::PipelineMultisampleStateCreateInfo m_multisampling = vk::PipelineMultisampleStateCreateInfo()
+				.setRasterizationSamples(vk::SampleCountFlagBits::e1)
+				.setSampleShadingEnable(vk::False)
+				.setMinSampleShading(1.0f)
+				.setAlphaToCoverageEnable(vk::False)
+				.setAlphaToOneEnable(vk::False);
+
+			vk::PipelineTessellationStateCreateInfo m_tessellation;
+
+			std::vector <vk::DynamicState> m_dynamicStates = {
+				vk::DynamicState::eViewport,
+				vk::DynamicState::eScissor,
+			};
+			vk::PipelineDynamicStateCreateInfo m_dynamicState;
+
+			vk::PipelineLayout m_pipelineLayout;
+        	std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> m_function = nullptr;
+		};
+
+        explicit Pipeline(BuilderRenderPass &);
+        explicit Pipeline(BuilderDynamic &);
+		~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
         Pipeline &operator=(const Pipeline &) = delete;
@@ -124,9 +194,9 @@ namespace Coral::Graphics {
 
         [[nodiscard]] const vk::PipelineLayout &Layout() const { return m_pipelineLayout; }
 
-    	void Render(const Core::CommandBuffer& commandBuffer) const {
+    	void Render(const Core::CommandBuffer& commandBuffer, void* usrData) const {
 			if (m_renderFunction) {
-				m_renderFunction(*this, commandBuffer);
+				m_renderFunction(*this, commandBuffer, usrData);
 			}
 		}
 
@@ -137,6 +207,6 @@ namespace Coral::Graphics {
         std::vector<std::unique_ptr<Memory::Descriptor::SetLayout>> m_setLayouts;
         std::unordered_map<Shader::Stage, const Shader::Shader*> m_shaders;
 
-    	std::function<void(const Graphics::Pipeline&, const Core::CommandBuffer&)> m_renderFunction = nullptr;
+    	std::function<void(const Pipeline&, const Core::CommandBuffer&, void*)> m_renderFunction = nullptr;
     };
 }

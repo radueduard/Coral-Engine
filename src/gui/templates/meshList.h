@@ -4,7 +4,6 @@
 
 #pragma once
 #include "assets/prefab.h"
-#include "graphics/objects/mesh.h"
 #include "gui/elements/image.h"
 #include "gui/elements/text.h"
 #include "template.h"

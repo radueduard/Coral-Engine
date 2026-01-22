@@ -52,13 +52,12 @@ namespace Coral::Reef {
 				{
 					new Text(
 						" " ICON_FA_LOCATION_CROSSHAIRS "   Transform",
-						Text::Style{
-							.color = Colors::grey[300],
-							.fontSize = 20.f,
-							.fontStyle = FontType::Black,
-							.verticalAlignment = Text::VerticalAlignment::Middle,
-							.horizontalAlignment = Text::HorizontalAlignment::Left,
-						},
+						Text::Style()
+							.withColor(Colors::grey[300])
+							.withFontSize(20.f)
+							.withFontStyle(FontType::Black)
+							.withVerticalAlignment(Text::VerticalAlignment::Middle)
+							.withHorizontalAlignment(Text::HorizontalAlignment::Left),
 						{ .size = { Grow, 20.f } }
 					),
 					new Separator(),

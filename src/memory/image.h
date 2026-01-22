@@ -40,21 +40,23 @@ namespace Coral::Memory {
                 return *this;
             }
 
+        	Builder& Type(const vk::ImageType imageType) {
+				m_imageType = imageType;
+				return *this;
+			}
+
         	Builder& Extent(const u32& extent) {
             	m_extent = { extent, 1u, 1u };
-            	m_imageType = vk::ImageType::e1D;
             	return *this;
             }
 
         	Builder& Extent(const Math::Vector2<u32>& extent) {
             	m_extent = { extent.x, extent.y, 1u };
-            	m_imageType = vk::ImageType::e2D;
             	return *this;
             }
 
             Builder& Extent(const Math::Vector3<u32>& extent) {
 	            m_extent = extent;
-            	m_imageType = extent.z > 1 ? vk::ImageType::e3D : vk::ImageType::e2D;
             	return *this;
             }
 

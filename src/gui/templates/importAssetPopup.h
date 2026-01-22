@@ -26,12 +26,15 @@ namespace Coral::Reef {
 							{},
 							{
 								new Reef::Element(),
-								new Reef::Text("Import Asset", Text::Style {
-									   .fontSize = 20.f,
-									   .fontStyle = Reef::FontType::Black,
-								   }, {
+								new Reef::Text(
+									"Import Asset",
+									Text::Style()
+										.withFontSize(20.f)
+										.withFontStyle(Reef::FontType::Black),
+										{
 									   .size = {Reef::Shrink, 20.f},
-								   }),
+								   }
+								),
 								new Reef::Element(),
 							}
 						),
@@ -39,10 +42,9 @@ namespace Coral::Reef {
 						new Reef::LabeledRow(
 							new Reef::Text(
 								"Path",
-								{
-									.fontSize = 16.f,
-									.fontStyle = Reef::FontType::Regular,
-								},
+								Text::Style()
+									.withFontSize(16.f)
+									.withFontStyle(Reef::FontType::Regular),
 								{.size = {Reef::Shrink, 20.f}}
 							),
 							new Element(

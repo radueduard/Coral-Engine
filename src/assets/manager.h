@@ -7,11 +7,14 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
 
-#include "graphics/objects/material.h"
-#include "graphics/objects/mesh.h"
-#include "graphics/objects/texture.h"
 #include "gui/layer.h"
 
+
+namespace Coral::Graphics {
+	class Mesh;
+	class Material;
+	class Texture;
+}
 
 namespace Coral::Reef {
 	class BufferSettings;
@@ -43,19 +46,17 @@ namespace Coral::Asset {
         void RemoveMaterial(const boost::uuids::uuid& id);
 
         void AddTexture(std::unique_ptr<Graphics::Texture> texture);
-		bool HasTexture(const boost::uuids::uuid& id) const;
+		[[nodiscard]] bool HasTexture(const boost::uuids::uuid& id) const;
 		const Graphics::Texture* GetTexture(const boost::uuids::uuid& id);
         void RemoveTexture(const boost::uuids::uuid& id);
 
 		void AddPrefab(std::unique_ptr<Prefab> prefab);
-		const Prefab& GetPrefab(const boost::uuids::uuid& id) const;
+		[[nodiscard]] const Prefab& GetPrefab(const boost::uuids::uuid& id) const;
 		void RemovePrefab(const boost::uuids::uuid& id);
 
-        Graphics::Mesh* GetRandomMesh();
+		boost::uuids::uuid LoadTextureFromFile(const std::filesystem::path& path);
 
-		static Manager& Get() {
-			return *instance;
-		}
+        Graphics::Mesh* GetRandomMesh();
 
 	protected:
 		void OnGUIAttach() override;
@@ -72,8 +73,6 @@ namespace Coral::Asset {
 		std::unique_ptr<Reef::MaterialList> m_materialList;
 		std::unique_ptr<Reef::TextureList> m_texturesList;
 		std::unique_ptr<Reef::PrefabList> m_prefabsList;
-
-		inline static Manager* instance = nullptr;
 
         inline static auto idProvider = boost::uuids::random_generator();
         boost::unordered_map<boost::uuids::uuid, std::unique_ptr<Graphics::Mesh>> meshes {};

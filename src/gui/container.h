@@ -9,12 +9,11 @@
 #include "layer.h"
 
 namespace Coral::Reef {
-    template <typename T>
+    template <class T> requires std::is_base_of_v<Layer, T>
     class Container {
-        static_assert(std::is_base_of_v<Layer, T>, "Container can only be used with classes derived from Layer");
     public:
         Container() = default;
-		Container(nullptr_t) : m_layer(nullptr) {}
+		explicit Container(nullptr_t) : m_layer(nullptr) {}
 
         explicit Container(T *layer) : m_layer(layer) {
             Context::GUIManager().AddLayer(m_layer);

@@ -29,7 +29,6 @@ namespace Coral {
 
     using String = std::string;
     using Path = std::filesystem::path;
-    using Time = std::chrono::high_resolution_clock::time_point;
 
     using u8 = uint8_t;
     using u16 = uint16_t;

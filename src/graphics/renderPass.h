@@ -95,8 +95,8 @@ namespace Coral::Graphics {
         RenderPass &operator=(const RenderPass &) = delete;
 
         void Begin(const Core::CommandBuffer& commandBuffer, uint32_t imageIndex);
-        void Update(float deltaTime);
-        void Draw(const Core::CommandBuffer& commandBuffer) const;
+        void Update();
+        void Draw(const Core::CommandBuffer& commandBuffer, void* usrData = nullptr) const;
         void End(const Core::CommandBuffer& commandBuffer);
 
         [[nodiscard]] const std::vector<Attachment>& Attachments() const { return m_attachments; }
@@ -156,7 +156,7 @@ namespace Coral::Graphics {
         std::vector<Attachment> m_attachments;
         std::vector<std::unique_ptr<Memory::ImageView>> m_imageViews;
 
-        std::vector<struct Subpass> m_subpasses;
+        std::vector<Subpass> m_subpasses;
         std::vector<vk::SubpassDependency> m_dependencies;
 
         vk::SampleCountFlagBits m_sampleCount = vk::SampleCountFlagBits::e1;
