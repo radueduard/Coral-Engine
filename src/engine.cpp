@@ -84,7 +84,7 @@ namespace Coral {
 
         const auto windowCreateInfo = Core::Window::CreateInfo {
             .title = "Coral",
-            .extent = { 1920u, 1080u },
+            .extent = { 2560u, 1440u },
             .resizable = true,
             .fullscreen = false
         };
@@ -217,23 +217,11 @@ namespace Coral {
 
         	m_shaderManager->Update();
         	m_sceneManager->Update();
-        	// pipeline.Update();
 
             if (!m_window->IsPaused()) {
             	if (m_sceneManager->IsSceneLoaded())
 					m_sceneManager->GetLoadedScene().Update();
                 m_scheduler->Update();
-    //         	m_device->RunSingleTimeCommand([&](const Core::CommandBuffer& commandBuffer) {
-    //         		colorImage->TransitionLayout(commandBuffer, vk::ImageLayout::eGeneral);
-    //         		colorImage->Clear(commandBuffer, vk::ClearColorValue(std::array { 0.f, 0.f, 0.f, 1.f }));
-				// 	// depthImage->Clear(commandBuffer, vk::ClearDepthStencilValue { 1.f, 0 });
-    //         		depthImage->Clear(commandBuffer, vk::ClearColorValue(std::array { UINT32_MAX, 0u, 0u, 0u }));
-				// 	pipeline.Bind(commandBuffer);
-				// 	pipeline.BindDescriptorSet(0, commandBuffer, *descriptorSet);
-				// 	commandBuffer->dispatch(1280 / 16, 720 / 16, 16);
-    //         		colorImage->TransitionLayout(commandBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-				// }, vk::QueueFlagBits::eCompute);
-
                 m_scheduler->Draw();
             }
 
