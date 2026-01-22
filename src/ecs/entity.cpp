@@ -10,26 +10,32 @@
 #include "components/camera.h"
 #include "components/light.h"
 #include "components/renderTarget.h"
+#include "components/script.h"
 
 namespace Coral::ECS {
 	template<>
-	constexpr u16 TypeMask<Transform>() {
+	const u16 TypeMask<Transform>() {
 		return 0b1000'0000'0000'0000;
 	}
 
 	template<>
-	constexpr u16 TypeMask<Camera>() {
+	const u16 TypeMask<Camera>() {
 		return 0b0000'0000'0000'0010;
 	}
 
 	template<>
-	constexpr u16 TypeMask<Light>() {
+	const u16 TypeMask<Light>() {
 		return 0b0000'0000'0000'0100;
 	}
 
 	template<>
-	constexpr u16 TypeMask<RenderTarget>() {
+	const u16 TypeMask<Script>() {
 		return 0b0000'0000'0000'1000;
+	}
+
+	template<>
+	const u16 TypeMask<RenderTarget>() {
+		return 0b0000'0000'0001'0000;
 	}
 
 	Entity::Entity(String name) {
@@ -60,6 +66,14 @@ namespace Coral::ECS {
 		registry.emplace<Entity*>(newEntity->m_id, newEntity.get());
 		registry.emplace<Transform>(newEntity->m_id, transform.position, transform.rotation, transform.scale);
 
+		if (m_componentMask & TypeMask<RenderTarget>()) {
+			const auto& renderTarget = registry.get<RenderTarget>(m_id);
+			auto& newRenderTarget = newEntity->Add<RenderTarget>();
+			for (const auto& [mesh, material] : renderTarget.Targets()) {
+				newRenderTarget.Add(mesh, material);
+			}
+		}
+
 		for (const auto& child : Children()) {
 			auto clonedChild = child->Clone();
 			newEntity->AddChild(std::move(clonedChild));
@@ -78,6 +92,11 @@ namespace Coral::ECS {
 		if (m_componentMask & TypeMask<Light>()) {
 			auto& light = registry.get<Light>(m_id);
 			light.Update();
+		}
+
+		if (m_componentMask & TypeMask<Script>()) {
+			auto& script = registry.get<Script>(m_id);
+			script.Update();
 		}
 
 		if (m_componentMask & TypeMask<RenderTarget>()) {
@@ -104,32 +123,33 @@ namespace Coral::ECS {
 		AddChild(std::move(child));
 	}
 
-	void Entity::AddLight(const LightType& type) {
+	Entity& Entity::AddLight(const LightType& type) {
 		static int counter = 0;
 		auto child = std::make_unique<Entity>("Light_" + std::to_string(counter++));
 
 		switch (type) {
 		case LightType::Point:
 			child->Add<Light>(LightType::Point, false);
-			AddChild(std::move(child));
+			return AddChild(std::move(child));
 			break;
 		case LightType::Directional:
 			child->Add<Light>(LightType::Directional, true);
-			AddChild(std::move(child));
+			return AddChild(std::move(child));
 			break;
 		case LightType::Spot:
 			child->Add<Light>(LightType::Spot, true);
-			AddChild(std::move(child));
+			return AddChild(std::move(child));
 			break;
 		}
+		throw std::runtime_error("Unknown light type");
 	}
 
 	void Entity::AddCube() {
 		static int counter = 0;
 		auto child = std::make_unique<Entity>("Cube" + std::to_string(counter++));
 		auto& renderTarget = child->Add<RenderTarget>();
-		renderTarget.Add(Asset::Manager::Get().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")),
-						 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
+		renderTarget.Add(Context::AssetManager().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")),
+						 Context::AssetManager().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
 		AddChild(std::move(child));
 	}
 
@@ -137,8 +157,44 @@ namespace Coral::ECS {
 		static int counter = 0;
 		auto child = std::make_unique<Entity>("Sphere" + std::to_string(counter++));
 		auto& renderTarget = child->Add<RenderTarget>();
-		renderTarget.Add(Asset::Manager::Get().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")),
-						 Asset::Manager::Get().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
+		renderTarget.Add(Context::AssetManager().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002")),
+						 Context::AssetManager().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
 		AddChild(std::move(child));
+	}
+
+	void Entity::AddCylinder() {
+		static int counter = 0;
+		auto child = std::make_unique<Entity>("Cylinder" + std::to_string(counter++));
+		auto& renderTarget = child->Add<RenderTarget>();
+		renderTarget.Add(Context::AssetManager().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000003")),
+						 Context::AssetManager().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
+		AddChild(std::move(child));
+	}
+
+	void Entity::AddCone() {
+		static int counter = 0;
+		auto child = std::make_unique<Entity>("Cone" + std::to_string(counter++));
+		auto& renderTarget = child->Add<RenderTarget>();
+		renderTarget.Add(Context::AssetManager().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000005")),
+						 Context::AssetManager().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
+		AddChild(std::move(child));
+	}
+
+	void Entity::AddPrism() {
+		static int counter = 0;
+		auto child = std::make_unique<Entity>("Prism" + std::to_string(counter++));
+		auto& renderTarget = child->Add<RenderTarget>();
+		renderTarget.Add(Context::AssetManager().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000004")),
+						 Context::AssetManager().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001")));
+		AddChild(std::move(child));
+	}
+
+	void Entity::Duplicate() {
+		auto clonedEntity = Clone();
+		clonedEntity->Name() += "_copy";
+
+		if (m_parent) {
+			m_parent->AddChild(std::move(clonedEntity));
+		}
 	}
 }

@@ -132,6 +132,7 @@ public struct DirectionalLight : ILight {
     public float3 direction;
     public float4 color;
     public float intensity;
+    public uint shadowIndex;
 
     private float3 getDirection(float3 worldPosition) {
         return -normalize(direction);
@@ -182,9 +183,10 @@ public struct SpotLight : ILight {
     public float3 attenuation;
     public float innerConeAngle;
     public float outerConeAngle;
+    public uint shadowIndex;
 
     private float3 getDirection(float3 worldPosition) {
-        return -normalize(direction);
+        return normalize(position - worldPosition);
     }
 
     private float getSpotFactor(float3 worldPosition) {
@@ -206,7 +208,7 @@ public struct SpotLight : ILight {
 
     public float3 GetDirectIlumination(float3 worldPosition, float3 eye, MaterialProperties material) {
         float3 L = getDirection(worldPosition);
-        float3 V = normalize(worldPosition - eye);
+        float3 V = -normalize(worldPosition - eye);
         float3 H = normalize(L + V);
         float3 N = material.normal;
 

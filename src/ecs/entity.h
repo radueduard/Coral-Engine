@@ -17,7 +17,7 @@
 
 namespace Coral::ECS {
 	template<typename T> requires std::is_base_of_v<Component, T>
-	constexpr u16 TypeMask();
+	const u16 TypeMask();
 
     class Entity final : public Tree<Entity, entt::entity> {
     public:
@@ -73,9 +73,14 @@ namespace Coral::ECS {
 
     	void AddEmpty();
 		void AddCamera();
-		void AddLight(const LightType& type);
+		Entity& AddLight(const LightType& type);
 		void AddCube();
 		void AddSphere();
+		void AddCylinder();
+		void AddCone();
+    	void AddPrism();
+
+    	void Duplicate();
 
 	private:
         String m_name;

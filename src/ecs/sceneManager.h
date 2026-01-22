@@ -23,7 +23,7 @@ namespace Coral::ECS {
 			return m_registry;
 		}
 
-		void Update(float deltaTime);
+		void Update();
 
 		void RegisterEvent(std::function<void()> event);
 

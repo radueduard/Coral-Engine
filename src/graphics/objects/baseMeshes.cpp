@@ -84,16 +84,15 @@ namespace Coral::Graphics {
     	return builder.Build();
     }
 
-    std::unique_ptr<Mesh> Sphere() {
+    std::unique_ptr<Mesh> Sphere(const int segments, const int rings) {
         auto sphere = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000002"));
     	sphere
             .Name("Sphere");
 
-        int density = 30;
-        for (int i = 0; i <= density; i++) {
-            const float theta = static_cast<float>(i) * glm::pi<float>() / static_cast<float>(density);
-            for (int j = 0; j <= density; j++) {
-                const float phi = static_cast<float>(j) * 2.0f * glm::pi<float>() / static_cast<float>(density);
+        for (int i = 0; i <= rings; i++) {
+            const float theta = static_cast<float>(i) * glm::pi<float>() / static_cast<float>(rings);
+            for (int j = 0; j <= segments; j++) {
+                const float phi = static_cast<float>(j) * 2.0f * glm::pi<float>() / static_cast<float>(segments);
 
             	Math::Vector3f position = {
             		sin(theta) * cos(phi),
@@ -103,16 +102,19 @@ namespace Coral::Graphics {
             	Math::Vector3f normal = position.Normalized();
                 Math::Vector3f tangent = { -sin(phi), 0.0f, cos(phi) };
 
-                Math::Vector2f texCoord = {static_cast<float>(j) / static_cast<float>(density), static_cast<float>(i) / static_cast<float>(density)};
+                Math::Vector2f texCoord = {
+	                static_cast<float>(j) / static_cast<float>(segments),
+                	static_cast<float>(i) / static_cast<float>(rings)
+                };
                 Math::Vector4f tangent4 = Math::Vector4(tangent, 1.f);
                 sphere.AddVertex({position, normal, tangent4, texCoord});
             }
         }
 
-        for (int i = 0; i < density; i++) {
-            for (int j = 0; j < density; j++) {
-                const int first = i * (density + 1) + j;
-                const int second = first + density + 1;
+        for (int i = 0; i < rings; i++) {
+            for (int j = 0; j < segments; j++) {
+                const int first = i * (segments + 1) + j;
+                const int second = first + segments + 1;
 
                 sphere.AddIndex(first).AddIndex(first + 1).AddIndex(second);
                 sphere.AddIndex(second + 1).AddIndex(second).AddIndex(first + 1);
@@ -121,7 +123,160 @@ namespace Coral::Graphics {
         return sphere.Build();
     }
 
-    std::unique_ptr<Mesh> Frustum(ECS::Camera *camera) {
+	std::unique_ptr<Mesh> Cylinder(int segments, bool caps) {
+    	auto cylinder = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000003"));
+    	cylinder
+			.Name("Cylinder");
+    	for (int i = 0; i <= segments; i++) {
+			const float theta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(segments);
+
+			Math::Vector3f topPosition = { cos(theta), 1.0f, sin(theta) };
+			Math::Vector3f bottomPosition = { cos(theta), -1.0f, sin(theta) };
+			Math::Vector3f normal = { cos(theta), 0.0f, sin(theta) };
+			Math::Vector3f tangent = { -sin(theta), 0.0f, cos(theta) };
+
+			Math::Vector2f topTexCoord = {
+				static_cast<float>(i) / static_cast<float>(segments),
+				0.0f
+			};
+			Math::Vector2f bottomTexCoord = {
+				static_cast<float>(i) / static_cast<float>(segments),
+				1.0f
+			};
+			Math::Vector4f tangent4 = Math::Vector4(tangent, 1.f);
+			cylinder.AddVertex({topPosition, normal, tangent4, topTexCoord});
+			cylinder.AddVertex({bottomPosition, normal, tangent4, bottomTexCoord});
+		}
+
+    	if (caps) {
+    		// duplicate vertices for caps
+    		for (int i = 0; i <= segments; i++) {
+    			const float theta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(segments);
+    			Math::Vector3f topPosition = { cos(theta), 1.0f, sin(theta) };
+    			Math::Vector3f bottomPosition = { cos(theta), -1.0f, sin(theta) };
+    			Math::Vector3f topNormal = { 0.0f, 1.0f, 0.0f };
+    			Math::Vector3f bottomNormal = { 0.0f, -1.0f, 0.0f };
+    			Math::Vector3f tangent = { -sin(theta), 0.0f, cos(theta) };
+    			Math::Vector2f topTexCoord = {
+    				(cos(theta) + 1.0f) * 0.5f,
+					(sin(theta) + 1.0f) * 0.5f
+				};
+    			Math::Vector2f bottomTexCoord = {
+    				(cos(theta) + 1.0f) * 0.5f,
+					(sin(theta) + 1.0f) * 0.5f
+				};
+    			Math::Vector4f tangent4 = Math::Vector4(tangent, 1.f);
+    			cylinder.AddVertex({topPosition, topNormal, tangent4,  topTexCoord});
+    			cylinder.AddVertex({bottomPosition, bottomNormal, tangent4, bottomTexCoord});
+    		}
+    		const int topCenterIndex = (segments + 1) * 2;
+			const int bottomCenterIndex = topCenterIndex + 1;
+    		cylinder.AddVertex({{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.5f, 0.5f}});
+			cylinder.AddVertex({{0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.5f, 0.5f}});
+
+			for (int i = 0; i < segments; i++) {
+				const int topVertexIndex = (segments + 1) * 2 + 2 + i * 2;
+				const int bottomVertexIndex = topVertexIndex + 1;
+				const int nextTopVertexIndex = (i == segments - 1) ? (segments + 1) * 2 + 2 : topVertexIndex + 2;
+				const int nextBottomVertexIndex = nextTopVertexIndex + 1;
+
+				// Top cap
+				cylinder.AddIndex(topCenterIndex).AddIndex(topVertexIndex).AddIndex(nextTopVertexIndex);
+				// Bottom cap
+				cylinder.AddIndex(bottomCenterIndex).AddIndex(nextBottomVertexIndex).AddIndex(bottomVertexIndex);
+			}
+    	}
+
+		for (int i = 0; i < segments; i++) {
+			const int top1 = i * 2;
+			const int bottom1 = top1 + 1;
+			const int top2 = ((i + 1) % (segments + 1)) * 2;
+			const int bottom2 = top2 + 1;
+
+			cylinder.AddIndex(top1).AddIndex(bottom1).AddIndex(top2);
+			cylinder.AddIndex(bottom2).AddIndex(top2).AddIndex(bottom1);
+		}
+
+		return cylinder.Build();
+	}
+
+	std::unique_ptr<Mesh> Cone(int segments, bool cap) {
+    	auto cone = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000005"));
+		cone
+			.Name("Cone");
+
+    	Math::Vector3f apexPosition = { 0.0f, 1.0f, 0.0f };
+		Math::Vector3f apexNormal = { 0.0f, 1.0f, 0.0f };
+		Math::Vector4f apexTangent = { 1.0f, 0.0f, 0.0f, 1.0f };
+		Math::Vector2f apexTexCoord = { 0.5f, 0.0f };
+		cone.AddVertex({ apexPosition, apexNormal, apexTangent, apexTexCoord });
+
+		for (int i = 0; i <= segments; i++) {
+			const float theta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(segments);
+			Math::Vector3f basePosition = { cos(theta), -1.0f, sin(theta) };
+			Math::Vector3f baseNormal = Math::Vector3f { cos(theta), 0.0f, sin(theta) }.Normalized();
+			Math::Vector3f tangent = { -sin(theta), 0.0f, cos(theta) };
+			Math::Vector2f baseTexCoord = {
+				(static_cast<float>(i) / static_cast<float>(segments)),
+				1.0f
+			};
+			Math::Vector4f tangent4 = Math::Vector4(tangent, 1.f);
+			cone.AddVertex({ basePosition, baseNormal, tangent4, baseTexCoord });
+		}
+
+		for (int i = 1; i <= segments; i++) {
+			cone.AddIndex(0).AddIndex(i).AddIndex(i + 1);
+		}
+
+		if (cap) {
+			const int baseCenterIndex = segments + 2;
+			cone.AddVertex({ {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.5f, 0.5f} });
+
+			for (int i = 1; i <= segments; i++) {
+				const int currentBaseIndex = i;
+				const int nextBaseIndex = (i % segments) + 1;
+				cone.AddIndex(baseCenterIndex).AddIndex(nextBaseIndex).AddIndex(currentBaseIndex);
+			}
+		}
+
+		return cone.Build();
+	}
+
+	std::unique_ptr<Mesh> Prism() {
+    	auto prism = Mesh::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000004"));
+		prism
+			.Name("Prism");
+
+    	Math::Vector2f p1 = Math::Vector2f { 0.0f, 1.0f };
+    	Math::Vector2f p2 = Math::Vector2f { -0.866f, -0.5f };
+    	Math::Vector2f p3 = Math::Vector2f { 0.866f, -0.5f };
+
+    	prism
+    		// Top face
+    		.AddVertex({ {p1.x, 1.0f, p1.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.5f, 1.0f} })
+    		.AddVertex({ {p2.x, 1.0f, p2.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} })
+			.AddVertex({ {p3.x, 1.0f, p3.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} })
+			// Bottom face
+			.AddVertex({ {p1.x, -1.0f, p1.y}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.5f, 1.0f} })
+			.AddVertex({ {p2.x, -1.0f, p2.y}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} })
+			.AddVertex({ {p3.x, -1.0f, p3.y}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} });
+
+    	// Top face
+    	prism.AddIndex(0).AddIndex(1).AddIndex(2);
+		// Bottom face
+    	prism.AddIndex(5).AddIndex(4).AddIndex(3);
+    	// Side faces
+    	prism.AddIndex(0).AddIndex(3).AddIndex(1);
+		prism.AddIndex(4).AddIndex(1).AddIndex(3);
+    	prism.AddIndex(1).AddIndex(4).AddIndex(2);
+		prism.AddIndex(5).AddIndex(2).AddIndex(4);
+		prism.AddIndex(2).AddIndex(5).AddIndex(0);
+    	prism.AddIndex(3).AddIndex(0).AddIndex(5);
+
+    	return prism.Build();
+	}
+
+	std::unique_ptr<Mesh> Frustum(ECS::Camera *camera) {
         const float near = camera->GetProjectionData().data.perspective.near;
         const float far = camera->GetProjectionData().data.perspective.near + 5.0f;
         const float aspect = camera->AspectRatio();

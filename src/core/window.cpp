@@ -91,25 +91,12 @@ namespace Coral::Core {
     }
 
     vk::SurfaceKHR Window::CreateSurface(const vk::Instance& instance) const {
-        VkSurfaceKHR surface;
-        if (const auto result = glfwCreateWindowSurface(instance, m_window, nullptr, &surface); result != VK_SUCCESS) {
-            std::cerr << "Failed to create window surface: " << vk::to_string(static_cast<vk::Result>(result)) << std::endl;
-        }
+	    VkSurfaceKHR surface;
+    	if (const auto result = glfwCreateWindowSurface(instance, m_window, nullptr, &surface); result != VK_SUCCESS) {
+    		std::cerr << "Failed to create window surface: " << vk::to_string(static_cast<vk::Result>(result)) << std::endl;
+    	}
 
-        return { surface };
-    }
-
-    void Window::UpdateDeltaTime() {
-        const double currentTime = glfwGetTime();
-        m_deltaTime = currentTime - m_lastTime;
-        m_lastTime = currentTime;
-
-    	m_timeSinceLastFixedUpdate += m_deltaTime;
-    	if (m_timeSinceLastFixedUpdate >= m_fixedDeltaTime) {
-			m_timeSinceLastFixedUpdate -= m_fixedDeltaTime;
-    		m_timeSinceLastFixedUpdate = 0.0;
-    		shouldRunFixedUpdate = true;
-		}
+    	return { surface };
     }
 
 	void Window::FramebufferResize(GLFWwindow* window, const int width, const int height) {
@@ -122,5 +109,4 @@ namespace Coral::Core {
     		app->UnPause();
     	}
     }
-
 }

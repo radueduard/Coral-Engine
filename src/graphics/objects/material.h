@@ -91,6 +91,7 @@ namespace Coral::Graphics {
         [[nodiscard]] const std::string& Name() const { return m_name; }
     	[[nodiscard]] const Memory::Descriptor::Set& DescriptorSet() const { return *m_descriptorSet; }
 
+        static const Material* Default();
 
     private:
         boost::uuids::uuid m_uuid;

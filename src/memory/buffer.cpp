@@ -20,8 +20,7 @@ Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::UsageFlags(const
 	m_usageFlagSet.insert(usageFlag);
 	return *this;
 }
-Coral::Memory::Buffer::Builder&
-Coral::Memory::Buffer::Builder::MemoryProperty(const vk::MemoryPropertyFlagBits memoryPropertyFlag) {
+Coral::Memory::Buffer::Builder& Coral::Memory::Buffer::Builder::MemoryProperty(const vk::MemoryPropertyFlagBits memoryPropertyFlag) {
 	m_memoryPropertyFlagSet.insert(memoryPropertyFlag);
 	return *this;
 }

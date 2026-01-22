@@ -324,7 +324,7 @@ namespace Coral::Asset {
 
     	LoadMeshes();
     	LoadMaterials();
-    	Manager::Get().AddPrefab(std::make_unique<Prefab>(m_name, m_metadata));
+    	Context::AssetManager().AddPrefab(std::make_unique<Prefab>(m_name, m_metadata));
     }
 
 
@@ -396,7 +396,7 @@ namespace Coral::Asset {
                 }
             }
 
-            Manager::Get().AddMesh(builder.Build());
+            Context::AssetManager().AddMesh(builder.Build());
         }
         m_meshesLoaded = true;
     }
@@ -426,9 +426,9 @@ namespace Coral::Asset {
             for (const auto& [textureType, textureUUID] : materialData["textures"].items()) {
                 const auto textureId = _stringToUuid(textureUUID.get<std::string>());
             	const auto textureEnum = PBR::FromAiTextureType(magic_enum::enum_cast<aiTextureType>(textureType).value());
-                builder.AddTexture(textureEnum, Manager::Get().GetTexture(textureId));
+                builder.AddTexture(textureEnum, Context::AssetManager().GetTexture(textureId));
             }
-            Manager::Get().AddMaterial(builder.Build());
+            Context::AssetManager().AddMaterial(builder.Build());
         }
 
         m_materialsLoaded = true;
@@ -477,7 +477,7 @@ namespace Coral::Asset {
 			if (!texture) {
 				throw std::runtime_error("Failed to create texture from builder");
 			}
-			Manager::Get().AddTexture(std::move(texture));
+			Context::AssetManager().AddTexture(std::move(texture));
 		}
 
 		for (const auto data : datas) {

@@ -26,25 +26,25 @@ namespace Coral::Graphics {
 		for (auto usage : magic_enum::enum_values<PBR::Usage>()) {
 			switch (usage) {
 				case PBR::Usage::Albedo:
-					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000002"));
+					m_textures[usage] = Context::AssetManager().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000002"));
 					break;
 				case PBR::Usage::Normal:
-					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000003"));
+					m_textures[usage] = Context::AssetManager().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000003"));
 					break;
 				case PBR::Usage::Metallic:
-					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					m_textures[usage] = Context::AssetManager().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
 					break;
 				case PBR::Usage::Roughness:
-					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					m_textures[usage] = Context::AssetManager().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
 					break;
 				case PBR::Usage::Emissive:
-					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					m_textures[usage] = Context::AssetManager().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
 					break;
 				case PBR::Usage::AmbientOcclusion:
-					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000002"));
+					m_textures[usage] = Context::AssetManager().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000002"));
 					break;
 				default:
-					m_textures[usage] = Asset::Manager::Get().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
+					m_textures[usage] = Context::AssetManager().GetTexture(stringGenerator("00000000-0000-0000-0000-000000000001"));
 					break;
 			}
 		}
@@ -102,4 +102,12 @@ namespace Coral::Graphics {
     		.WriteImage(6, m_textures.at(PBR::Usage::AmbientOcclusion)->DescriptorInfo())
 			.Build();
     }
+
+	const Material * Material::Default() {
+		static const Graphics::Material *defaultMaterial = nullptr;
+		if (!defaultMaterial) {
+			defaultMaterial = Context::AssetManager().GetMaterial(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"));
+		}
+		return defaultMaterial;
+	}
 }

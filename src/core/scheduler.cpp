@@ -84,8 +84,8 @@ namespace Coral::Core {
         }
     }
 
-    void Scheduler::Update(const float deltaTime) {
-        m_renderGraph->Update(deltaTime);
+    void Scheduler::Update() {
+        m_renderGraph->Update();
         // m_renderGraph->Resize(m_window.Extent());
     }
 

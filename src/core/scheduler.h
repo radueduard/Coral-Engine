@@ -83,7 +83,7 @@ namespace Coral::Core {
     	Scheduler(const Scheduler &) = delete;
     	Scheduler &operator=(const Scheduler &) = delete;
 
-    	void Update(float deltaTime);
+    	void Update();
     	void Draw();
 
     	[[nodiscard]] const Graphics::SwapChain &SwapChain() const { return *m_swapChain; }

@@ -38,6 +38,7 @@ auto Coral::ECS::Light::GPU<Coral::ECS::LightType::Directional>() const {
 		.direction = Math::Direction(Math::Radians<f32, 3>(transform.rotation)),
 		.color = {color.r, color.g, color.b, color.a },
 		.intensity = intensity,
+		.shadowIndex = m_shadowMapIndex,
 	};
 }
 
@@ -53,6 +54,7 @@ auto Coral::ECS::Light::GPU<Coral::ECS::LightType::Spot>() const {
 		.attenuation = attenuation,
 		.innerAngle = innerAngle,
 		.outerAngle = outerAngle,
+		.shadowIndex = m_shadowMapIndex,
 	};
 }
 
@@ -117,6 +119,8 @@ void Coral::ECS::Light::Setup() {
 		buffer.WriteAt(m_shadowMapIndex, GPU::Camera {
 			.view = camera.View(),
 			.projection = camera.Projection(),
+			.inverseView = camera.InverseView(),
+			.inverseProjection = camera.InverseProjection(),
 		});
 		buffer.Unmap();
 		break;
@@ -135,11 +139,13 @@ void Coral::ECS::Light::Update()
 		case LightType::Directional:
 		case LightType::Spot: {
 			auto& buffer = Context::Scene().LightCameraBuffer();
-			buffer.Map<GPU::Camera>();
-			buffer.WriteAt(m_shadowMapIndex, GPU::Camera {
+			auto cameras = buffer.Map<GPU::Camera>();
+			cameras[m_shadowMapIndex] = GPU::Camera {
 				.view = camera.View(),
 				.projection = camera.Projection(),
-			});
+				.inverseView = camera.InverseView(),
+				.inverseProjection = camera.InverseProjection(),
+			};
 			buffer.Unmap();
 			break;
 		}

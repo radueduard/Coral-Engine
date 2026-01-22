@@ -34,7 +34,7 @@ namespace Coral::Asset {
         if (meshes.contains(id)) {
             return meshes[id].get();
         }
-        return nullptr;
+        throw std::runtime_error("Mesh not found: " + boost::uuids::to_string(id));
     }
 
     void Manager::RemoveMesh(const boost::uuids::uuid &id) {
@@ -51,7 +51,7 @@ namespace Coral::Asset {
         if (materials.contains(id)) {
             return materials[id].get();
         }
-        return nullptr;
+        throw std::runtime_error("Material not found: " + boost::uuids::to_string(id));
     }
 
     void Manager::RemoveMaterial(const boost::uuids::uuid &id) {
@@ -128,7 +128,12 @@ namespace Coral::Asset {
     }
 
     Manager::Manager() {
-    	instance = this;
+    	static bool firstInstance = true;
+		if (!firstInstance) {
+			throw std::runtime_error("Asset Manager already exists!");
+		}
+    	firstInstance = false;
+    	Context::m_assetManager = this;
 
         Reset();
 
@@ -186,6 +191,9 @@ namespace Coral::Asset {
 
     	AddMesh(Graphics::Cube());
     	AddMesh(Graphics::Sphere());
+    	AddMesh(Graphics::Cylinder());
+    	AddMesh(Graphics::Cone());
+    	AddMesh(Graphics::Prism());
 
     	AddMaterial(Graphics::Material::Builder(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"))
 			.Name("default")

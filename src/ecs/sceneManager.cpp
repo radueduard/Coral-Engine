@@ -34,7 +34,7 @@ void Coral::ECS::SceneManager::NewScene() {
 	m_loadedScene = Reef::MakeContainer<Scene>();
 	m_loadedScene->Setup();
 }
-void Coral::ECS::SceneManager::Update(float deltaTime) {
+void Coral::ECS::SceneManager::Update() {
 	for (const auto& event : m_events) {
 		event();
 	}

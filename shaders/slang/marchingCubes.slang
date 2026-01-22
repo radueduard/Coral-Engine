@@ -25,34 +25,6 @@ public struct GridCell
 	}
 };
 
-public func GetTrianglesFromCube(uint vertexMask, GridCell cell, float threshold, out Array<Optional<Triangle>, 4> triangles)
-{
-	Array<float3, 12> intersectionPoints = { float3(0, 0, 0) };
-    var indexList = triangulationTable[vertexMask];
-	int intersectionsKey = edgeTable[vertexMask];
-	
-	int index = 0;
-	while (index < 12) {
-		if (((intersectionsKey >> index) & 1) == 1) {
-			int v1 = edgeVertexIndices[index][0], v2 = edgeVertexIndices[index][1];
-			float t = (threshold - cell.densities[v1]) / (cell.densities[v2] - cell.densities[v1]);
-			intersectionPoints[index] = lerp(cell.positions[v1], cell.positions[v2], t);
-		}
-		index++;
-	}
-
-	int triangleCount = 0;
-	for (int i = 0; indexList[i] != -1; i += 3) {
-		Triangle tri = {
-			intersectionPoints[indexList[i + 0]],
-			intersectionPoints[indexList[i + 1]],
-			intersectionPoints[indexList[i + 2]]
-		};
-		triangles[triangleCount++] = tri;
-	}
-    
-}
-
 public func GetTrianglesFromCube (
 	GridCell cell, 
 	float threshold, 
@@ -64,7 +36,7 @@ public func GetTrianglesFromCube (
 {
 	uint vertexMask = 0;
 	for (int i = 0; i < 8; i++) {
-		if (cell.densities[i] > threshold) {
+		if (cell.densities[i] >= threshold) {
 			vertexMask |= (1 << i);
 		}
 	}

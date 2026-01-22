@@ -5,10 +5,8 @@
 #include "component.h"
 
 #include "context.h"
-#include "ecs/entity.h"
 #include "ecs/scene.h"
 
 Coral::ECS::Entity& Coral::ECS::Component::Entity() const {
 	return Context::Scene().Entity(m_entity);
-
 }

@@ -44,12 +44,12 @@ namespace Coral::ECS {
         } perspective;
 
         struct Orthographic {
-            f32 left = -10.0f;
-            f32 right = 10.0f;
-            f32 top = 10.0f;
-            f32 bottom = -10.0f;
-            f32 near = -10.f;
-            f32 far = 10.0f;
+            f32 left = -40.0f;
+            f32 right = 40.0f;
+            f32 top = 40.0f;
+            f32 bottom = -40.0f;
+            f32 near = -100.f;
+            f32 far = 100.0f;
         } orthographic;
 
         union Projection {
@@ -112,6 +112,9 @@ namespace Coral::ECS {
     	void Move(const Math::Vector3<f32>& amount);
     	void Rotate(f32 yaw, f32 pitch);
 
+        void SetUpDirection(const Math::Vector3<f32>& up) { m_up = up; }
+        void SetForwardDirection(const Math::Vector3<f32>& forward) { m_forward = forward; }
+
         void RecalculateProjection();
         void RecalculateView();
     private:
@@ -130,7 +133,7 @@ namespace Coral::ECS {
         bool m_moved = true;
         bool m_changed = false;
 
-    	const Math::Vector3<f32> FORWARD = { 0.0f, 0.0f, -1.0f };
-    	const Math::Vector3<f32> UP = { 0.0f, 1.0f, 0.0f };
+    	Math::Vector3<f32> m_forward = { 0.0f, 0.0f, -1.0f };
+    	Math::Vector3<f32> m_up = { 0.0f, 1.0f, 0.0f };
     };
 }

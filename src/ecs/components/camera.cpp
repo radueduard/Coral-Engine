@@ -46,13 +46,13 @@ namespace Coral::ECS {
 	    }
 
     	if (updateBuffer) {
-			m_cameraBuffer->Map<GPU::Camera>();
-    		m_cameraBuffer->WriteAt(0, GPU::Camera {
+			auto cameras =m_cameraBuffer->Map<GPU::Camera>();
+    		cameras[0] = GPU::Camera {
     			.view = m_view,
 				.projection = m_projection,
 				.inverseView = m_inverseView,
 				.inverseProjection = m_inverseProjection,
-			});
+			};
     		m_cameraBuffer->Flush();
     		m_cameraBuffer->Unmap();
     	}
@@ -62,8 +62,8 @@ namespace Coral::ECS {
     	auto& transform = Entity().Get<Transform>();
 
 		const auto rotation = Math::Quaternion(Math::Radians<f32, 3>(transform.rotation));
-		const auto forward = rotation * FORWARD;
-		const auto up = UP;
+		const auto forward = rotation * m_forward;
+		const auto up = m_up;
 		const auto right = -Math::Vector3<f32>::Cross(forward, up).Normalized();
 
 		transform.position += (forward * amount.z) + (up * amount.y) + (right * amount.x);
@@ -77,18 +77,18 @@ namespace Coral::ECS {
     	auto& transform = Entity().Get<Transform>();
 
 		const auto rotation = Math::Quaternion(Math::Radians<f32, 3>(transform.rotation));
-    	auto forward = rotation * FORWARD;
-    	const auto right = -forward.Cross(UP).Normalized();
+    	auto forward = rotation * m_forward;
+    	const auto right = -forward.Cross(m_up).Normalized();
 
     	yaw /= static_cast<f32>(m_viewportSize.x);
     	pitch /= static_cast<f32>(m_viewportSize.y);
 
     	const auto rotate = Math::Quaternion<>::Cross(
 			Math::Quaternion<>::FromAxisAngle(-pitch, right),
-			Math::Quaternion<>::FromAxisAngle(-yaw, UP)).Normalized();
+			Math::Quaternion<>::FromAxisAngle(-yaw, m_up)).Normalized();
     	forward = Math::Rotate(rotate, forward).Normalized();
 
-    	transform.rotation = Math::Degrees<f32, 3>(Math::Quaternion<>::ToEulerAngles(Math::LookAt(forward, UP)));
+    	transform.rotation = Math::Degrees<f32, 3>(Math::Quaternion<>::ToEulerAngles(Math::LookAt(forward, m_up)));
 
     	m_moved = true;
     }
@@ -123,7 +123,7 @@ namespace Coral::ECS {
         m_view = Math::LookAt(
             transform.position,
             transform.position + Math::Direction(Math::Radians<f32, 3>(transform.rotation)),
-            UP);
+            m_up);
         m_inverseView = m_view.Inverse();
     	m_moved = false;
     }
