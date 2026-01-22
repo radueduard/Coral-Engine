@@ -27,6 +27,7 @@ namespace Coral::Reef {
 }
 
 namespace Coral::Graphics {
+	class CubeMap;
 	class Material;
 }
 
@@ -38,7 +39,7 @@ namespace Coral::ECS {
     class Scene final : public Reef::Layer {
     public:
         explicit Scene();
-		~Scene() override = default;
+		~Scene() override;
 
         void OnGUIAttach() override;
 		void Setup();
@@ -68,6 +69,7 @@ namespace Coral::ECS {
 
     	Memory::Descriptor::Set& ShadowDescriptorSet(const u32 index) const { return *m_shadowDescriptorSets[index]; }
     	Memory::Descriptor::Set& LightsDescriptorSet() const { return *m_lightsDescriptorSet; }
+    	Memory::Descriptor::Set& SkyboxDescriptorSet() const { return *m_skyboxDescriptorSet; }
 
     	Memory::Image& ShadowMap(const u32 index) const { return *m_shadowMapArray[index]; }
 
@@ -113,5 +115,9 @@ namespace Coral::ECS {
 
     	std::unique_ptr<Memory::Descriptor::SetLayout> m_lightsDescriptorSetLayout;
 		std::unique_ptr<Memory::Descriptor::Set> m_lightsDescriptorSet;
+
+    	std::unique_ptr<Graphics::CubeMap> m_skybox;
+    	std::unique_ptr<Memory::Descriptor::SetLayout> m_skyboxDescriptorSetLayout;
+		std::unique_ptr<Memory::Descriptor::Set> m_skyboxDescriptorSet;
     };
 }

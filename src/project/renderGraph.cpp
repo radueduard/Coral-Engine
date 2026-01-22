@@ -19,6 +19,8 @@
 
 #include <entt/entity/registry.hpp>
 
+#include "assets/manager.h"
+
 #include "ecs/components/light.h"
 #include "ecs/components/renderTarget.h"
 
@@ -410,6 +412,45 @@ namespace Coral::Project {
 		}
 
 		// TODO: Delete this:
+		{
+			auto* vertexShader = Context::ShaderManager().SlangShader("skybox", "vertex");
+			auto* fragmentShader = Context::ShaderManager().SlangShader("skybox", "fragment");
+
+			auto pipelineBuilder = std::make_unique<Graphics::Pipeline::BuilderRenderPass>(*m_renderPasses.at("color"));
+			(*pipelineBuilder)
+				.AddShader(vertexShader)
+				.AddShader(fragmentShader)
+				.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
+					.setPolygonMode(vk::PolygonMode::eFill)
+					.setCullMode(vk::CullModeFlagBits::eNone)
+					.setFrontFace(vk::FrontFace::eClockwise)
+					.setLineWidth(1.0f))
+				.DepthStencil(vk::PipelineDepthStencilStateCreateInfo()
+					.setDepthTestEnable(vk::True)
+					.setDepthWriteEnable(vk::False)
+					.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+					.setDepthBoundsTestEnable(vk::False)
+					.setMinDepthBounds(0.0f)
+					.setMaxDepthBounds(1.0f)
+					.setStencilTestEnable(vk::False))
+				.InputAssemblyState(vk::PipelineInputAssemblyStateCreateInfo()
+					.setTopology(vk::PrimitiveTopology::eTriangleList)
+					.setPrimitiveRestartEnable(vk::False))
+				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer, void*) {
+					pipeline.Bind(*commandBuffer);
+					pipeline.BindDescriptorSet(0, *commandBuffer, Context::Scene().DescriptorSet());
+					pipeline.BindDescriptorSet(1, *commandBuffer, Context::Scene().SkyboxDescriptorSet());
+
+					auto* mesh = Context::AssetManager().GetMesh(boost::uuids::string_generator()("00000000-0000-0000-0000-000000000001"));
+
+					mesh->Bind(*commandBuffer);
+					mesh->Draw(*commandBuffer);
+				});
+
+			m_pipelineBuilder = pipelineBuilder.get();
+			m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
+		}
+
 		{
 			auto* vertexShader = Context::ShaderManager().SlangShader("pbr", "vertex");
 			auto* fragmentShader = Context::ShaderManager().SlangShader("pbr", "fragment");

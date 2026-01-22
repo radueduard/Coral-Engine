@@ -22,6 +22,8 @@
 #include "core/scheduler.h"
 #include "core/time.h"
 
+#include "graphics/objects/cubeMap.h"
+
 #include "memory/gpuStructs.h"
 
 #include "utils/noise.h"
@@ -34,7 +36,10 @@ namespace Coral::ECS {
     	m_root = std::make_unique<ECS::Entity>("Root");
     }
 
-    void Scene::OnGUIAttach() {
+	Scene::~Scene() {
+	}
+
+	void Scene::OnGUIAttach() {
 		AddDockable("Scene View",
 			new Reef::Window(ICON_FA_LIST "   Scene View",
 				Reef::Style{
@@ -171,6 +176,23 @@ namespace Coral::ECS {
 				.setImageView(**m_planetImageView)
 				.setSampler(**m_planetSampler))
 			.WriteBuffer(1, camera.Buffer().DescriptorInfo())
+			.Build();
+
+    	m_skybox = Graphics::CubeMap::Builder()
+    		.PositiveX("assets/textures/nebula/skybox_left.png")
+    		.NegativeX("assets/textures/nebula/skybox_right.png")
+			.PositiveY("assets/textures/nebula/skybox_up.png")
+    		.NegativeY("assets/textures/nebula/skybox_down.png")
+			.PositiveZ("assets/textures/nebula/skybox_front.png")
+			.NegativeZ("assets/textures/nebula/skybox_back.png")
+			.Build();
+
+    	m_skyboxDescriptorSetLayout = Memory::Descriptor::SetLayout::Builder()
+			.AddBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+			.Build();
+
+    	m_skyboxDescriptorSet = Memory::Descriptor::Set::Builder(Context::Scheduler().DescriptorPool(), *m_skyboxDescriptorSetLayout)
+			.WriteImage(0, m_skybox->DescriptorInfo())
 			.Build();
 
     	auto albedoUUID = Context::AssetManager().LoadTextureFromFile("assets/textures/stylized_grass/stylized-grass1_albedo.png");
