@@ -4,6 +4,7 @@ import camera;
 import vertex;
 import material;
 import light;
+import aces;
 
 struct VertexOutput
 {
@@ -22,7 +23,7 @@ ConstantBuffer<Camera> camera;
 
 [shader("vertex")]
 VertexOutput vertex(Vertex input, uniform float4x4 model)
-{/*  */
+{
     float3 bitangent = normalize(cross(input.normal, input.tangent.xyz) * input.tangent.w);
 
     VertexOutput output;
@@ -128,7 +129,10 @@ float4 fragment(
 ) : SV_Target
 {
     float3 worldPosition = input.worldPosition.xyz / input.worldPosition.w;
-    float4 albedo = material.albedoTexture.Sample(input.uv0 * 50) * material.parameters.baseColorFactor;
+    float4 albedo = float4(
+        aces_tonemap(material.albedoTexture.Sample(input.uv0 * 50).rgb * material.parameters.baseColorFactor.rgb), 
+        material.parameters.baseColorFactor.a
+    );
 
     float4 normal = material.normalTexture.Sample(input.uv0 * 50);
     float3 N = applyNormalMap(normalize(input.normal), normalize(input.tangent), normalize(input.bitangent), normal.rgb);

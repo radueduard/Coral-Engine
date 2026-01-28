@@ -1,5 +1,6 @@
 module skybox;
 import camera;
+import aces;
 
 layout(set = 0) ConstantBuffer<Camera> camera;
 
@@ -34,5 +35,7 @@ layout(set = 1) SamplerCube<float4> skyboxTexture;
 [shader("fragment")]
 float4 fragment(PSInput input) : SV_TARGET
 {
-    return skyboxTexture.Sample(input.texcoord) * .5f;
+    float4 color = skyboxTexture.Sample(input.texcoord);
+    // return color;
+    return float4(aces_tonemap(color.rgb), 1.0);
 }

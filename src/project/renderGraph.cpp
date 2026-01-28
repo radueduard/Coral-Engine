@@ -522,6 +522,39 @@ namespace Coral::Project {
 		// 	m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
 		// }
 
+		{
+			auto* vertexShader = Context::ShaderManager().SlangShader("grid", "vertex");
+			auto* fragmentShader = Context::ShaderManager().SlangShader("grid", "fragment");
+
+			auto pipelineBuilder = std::make_unique<Graphics::Pipeline::BuilderRenderPass>(*m_renderPasses.at("color"));
+			(*pipelineBuilder)
+				.AddShader(vertexShader)
+				.AddShader(fragmentShader)
+				.Rasterizer(vk::PipelineRasterizationStateCreateInfo()
+					.setPolygonMode(vk::PolygonMode::eFill)
+					.setCullMode(vk::CullModeFlagBits::eNone)
+					.setFrontFace(vk::FrontFace::eClockwise)
+					.setLineWidth(1.0f))
+				.InputAssemblyState(vk::PipelineInputAssemblyStateCreateInfo()
+					.setTopology(vk::PrimitiveTopology::eTriangleList)
+					.setPrimitiveRestartEnable(vk::False))
+				.RenderFunction([](const Graphics::Pipeline& pipeline, const Core::CommandBuffer& commandBuffer, void*) {
+					pipeline.Bind(*commandBuffer);
+					pipeline.BindDescriptorSet(0, *commandBuffer, Context::Scene().DescriptorSet());
+
+					constexpr struct PushConstants {
+						Math::Matrix4f modelMatrix = Math::Matrix4f::Identity();
+						Math::Vector4f origin = Math::Vector4f::Zero();
+					} pushConstants;
+
+					pipeline.PushConstants(*commandBuffer, vk::ShaderStageFlagBits::eVertex, 0, pushConstants);
+					commandBuffer->draw(6, 1, 0, 0);
+				});
+
+			m_pipelineBuilder = pipelineBuilder.get();
+			m_renderPasses.at("color")->AddPipeline(std::move(pipelineBuilder));
+		}
+
 		// ------------------
 
 		if (m_guiEnabled) {

@@ -215,16 +215,21 @@ namespace Coral::Graphics {
             .setDynamicStates(m_dynamicStates);
 
         m_colorBlendAttachments.clear();
-    	auto subpass = m_renderPass.SubpassColorAttachments(m_subpass);
-        for (const auto& attachment : subpass) {
+		for (const auto subpass = m_renderPass.SubpassColorAttachments(m_subpass); const auto& _ : subpass) {
             m_colorBlendAttachments.emplace_back(vk::PipelineColorBlendAttachmentState()
-                .setBlendEnable(vk::False)
+                .setBlendEnable(vk::True)
+                .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
+                .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
+                .setColorBlendOp(vk::BlendOp::eAdd)
+                .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+                .setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+                .setAlphaBlendOp(vk::BlendOp::eAdd)
                 .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA));
         }
 
         m_colorBlending
             .setLogicOpEnable(vk::False)
-            .setLogicOp(vk::LogicOp::eCopy)
+    		.setLogicOp(vk::LogicOp::eCopy)
             .setAttachments(m_colorBlendAttachments);
 
         m_multisampling = vk::PipelineMultisampleStateCreateInfo()

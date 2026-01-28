@@ -126,16 +126,23 @@ namespace Coral::Core {
 			.setDynamicRendering(true)
 			.setPNext(&deviceMeshShaderFeatures);
 
+        auto vk11Features = vk::PhysicalDeviceVulkan11Features()
+            .setShaderDrawParameters(true)
+            .setPNext(&dynamicRenderingFeatures);
+
     	auto vk12Features = vk::PhysicalDeviceVulkan12Features()
 			.setShaderInt8(true)
     		.setRuntimeDescriptorArray(true)
     		.setTimelineSemaphore(true)
-			.setPNext(&dynamicRenderingFeatures);
-			// .setPNext(&maintenance4Features);
+			.setPNext(&vk11Features);
+
+    	// auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features()
+    	// 	.setMaintenance4(true)
+			// .setPNext(&vk12Features);
 
    //  	auto vk13Features = vk::PhysicalDeviceVulkan13Features()
 			// .setShaderDemoteToHelperInvocation(true)
-			// .setPNext(&vk12Features);
+			// .setPNext(&maintenance4Features);
 
         const auto deviceCreateInfo = vk::DeviceCreateInfo()
             .setQueueCreateInfos(queueCreateInfos)

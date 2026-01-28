@@ -79,6 +79,27 @@ namespace Coral::ECS {
 						}),
 				}));
 
+  //   	AddDockable("Grid Settings",
+		// 	new Reef::Window(ICON_FA_GRIP "   Grid Settings",
+		// 		Reef::Style{
+		// 		   .size = {300.f, 0.f},
+		// 		   .padding = {10.f, 10.f, 10.f, 10.f},
+		// 		   .spacing = 10.f,
+		// 		   .backgroundColor = {0.0f, 0.0f, 0.0f, 1.f},
+		// 		},
+		// 		{
+		// 			new Reef::Element (
+		// 				Reef::Style{
+		// 					.size = {Reef::Grow, Reef::Grow},
+		// 					.padding = {10.f, 10.f, 10.f, 10.f},
+		// 					.cornerRadius = 10.f,
+		// 					.backgroundColor = {0.1f, 0.1f, 0.1f, 1.f},
+		// 				}
+		// 			),
+		// 		}
+		// 	)
+		// );
+
 
 		// m_guiBuilder["Object Inspector"] = [this] () -> GUI::Element* {
 		//     if (m_selectedObject == entt::null) {

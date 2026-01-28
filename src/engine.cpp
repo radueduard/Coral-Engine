@@ -84,7 +84,7 @@ namespace Coral {
 
         const auto windowCreateInfo = Core::Window::CreateInfo {
             .title = "Coral",
-            .extent = { 2560u, 1440u },
+            .extent = { 1920u, 1080u },
             .resizable = true,
             .fullscreen = false
         };
@@ -140,8 +140,8 @@ namespace Coral {
         Input::Setup();
 
 
-		// const Utils::PerlinNoise2D noise({ 512u, 512u }, 6);
-  //   	Reef::Container<ImageTest> noiseTestContainer = Reef::MakeContainer<ImageTest>(noise.Image());
+		const Utils::PerlinNoise2D noise({ 512u, 512u }, 6);
+    	Reef::Container<ImageTest> noiseTestContainer = Reef::MakeContainer<ImageTest>(noise.Image());
 
 		const auto image = std::make_unique<Utils::PerlinNoise3D>(Math::Vector3u(256), 9);
 		// const auto image = std::make_unique<Utils::CircleNoise<3>>(Math::Vector3u(64u), 0.75f);
